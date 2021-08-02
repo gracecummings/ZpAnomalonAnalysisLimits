@@ -47,7 +47,7 @@ if __name__=='__main__':
 
     #load in the files with the hists
     bkgs = go.backgrounds('BkgInputs/',zptcut,hptcut,metcut,btagwp)
-    sig  = go.signal('BkgInputs/',zptcut,hptcut,metcut,btagwp,10,101.27)#path tbd
+    sig  = go.signal('BkgInputs/',zptcut,hptcut,metcut,btagwp,1.0,101.27)#path tbd
     dyEst = ROOT.TFile('BkgInputs/Run2_2017_2018_dy_extraploation_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
 
     #Get ttbar, VV straight from selections
@@ -56,6 +56,7 @@ if __name__=='__main__':
     empty.Reset("ICESM")#creates an empty hist with same structure
     empty2 = empty.Clone()
     empty3 = empty.Clone()
+    hdat = empty.Clone()
     htt = bkgs.getAddedHist(empty,"TT","sr","h_zp_jigm")
     hzz  = bkgs.getAddedHist(empty2,"ZZTo2L2Q","sr","h_zp_jigm")
     hwz  = bkgs.getAddedHist(empty3,"WZTo2L2Q","sr","h_zp_jigm")
@@ -69,13 +70,23 @@ if __name__=='__main__':
     htt.SetName("TT")
     hvv.SetName("VV")
     hdy.SetName("DY")
+    hdat.SetName("data_obs")
 
     #Signal Samples
     siginfo = sig.prepsigsr
     for sig in siginfo:
-        signame = sig["name"]
-        hsig = sig["tfile"].Get("h_zp_jigm")
+        name = sig["name"]
+        signame = name.replace("-","")
+        hsigori = sig["tfile"].Get("h_zp_jigm")
+        hsigori.Sumw2(ROOT.kTRUE)
+        hsig = hsigori.Clone()
         hsig.SetName(signame)
+        #hsig.Scale(sig["scale"])
+
+        for ibin in range(hsig.GetNbinsX()+1):
+         oribin = hsigori.GetBinContent(ibin)
+         orierr = hsigori.GetBinError(ibin)
+         hsig.SetBinContent(ibin,oribin*sig["scale"])
 
         #For writing the datacard
         #it makes sense to have the line be the key,
@@ -90,6 +101,8 @@ if __name__=='__main__':
         htt.Write()
         hvv.Write()
         hdy.Write()
+        hdat.Write()
+        hsig.Write()
         prepRootFile.Close()
 
         writeDataCard(procdict,prepRootName,chan)
