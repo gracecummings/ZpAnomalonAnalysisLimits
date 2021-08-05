@@ -32,6 +32,12 @@ def writeDataCard(processes,rootFileName,channel):
     card.write("process 0 1 2 3\n")#hardcode
     card.write("rate "+" ".join(rates)+"\n")
     card.write("------------\n")
+
+    for syst in processes["syst"].keys():
+        vals = [x*processes["syst"][syst]["unc"] for x in processes["syst"][syst]["proc"]]
+        sval = [x if x != 0 else "-" for x in vals]
+        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst),processes["syst"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
+        card.write(cardstr)
     #After here, put some sort of interation through a list of systematics
     card.close()
     
@@ -44,10 +50,11 @@ if __name__=='__main__':
     metcut  = '200.0'
     btagwp  = '0.8'
     chan    = 'mumu'
+    sigxs   = 1.0
 
     #load in the files with the hists
     bkgs = go.backgrounds('BkgInputs/',zptcut,hptcut,metcut,btagwp)
-    sig  = go.signal('BkgInputs/',zptcut,hptcut,metcut,btagwp,1.0,101.27)#path tbd
+    sig  = go.signal('BkgInputs/',zptcut,hptcut,metcut,btagwp,sigxs,101.27)#path tbd
     dyEst = ROOT.TFile('BkgInputs/Run2_2017_2018_dy_extraploation_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
 
     #Get ttbar, VV straight from selections
@@ -82,19 +89,31 @@ if __name__=='__main__':
         hsig = hsigori.Clone()
         hsig.SetName(signame)
         #hsig.Scale(sig["scale"])
+        testscale = 1/hsigori.Integral()
 
         for ibin in range(hsig.GetNbinsX()+1):
          oribin = hsigori.GetBinContent(ibin)
          orierr = hsigori.GetBinError(ibin)
-         hsig.SetBinContent(ibin,oribin*sig["scale"])
+         newbinval = oribin*sig["scale"]
+         #newbinval = oribin
+         hsig.SetBinContent(ibin,newbinval)
+         hsig.SetBinError(ibin,newbinval**(1/2))
+         #hsig.SetBinContent(ibin,oribin*testscale)
 
         #For writing the datacard
         #it makes sense to have the line be the key,
         #and then to have subdicts with the channel
         procdict = {"processnames":[signame,"DY","TT","VV"],
                     "hists":[hsig,hdy,htt,hvv],
+                    "method":["mc","alpha","mc","mc"],
+                    "syst":{"lumi_13TeV":
+                            {"type":"lnN","unc":1.018,"proc":[1,1,1,1]},
+                            #"alphar_alt":
+                            #{"type":"shape","unc":1,"proc":[0,1,0,0]},
+                            #"jetEnergy":
+                            #{"type":"shape","unc":1,"proc":[0,1,0,0]},
+                            },
                     }
-
     
         prepRootName = go.makeOutFile('Run2_2017_2018_ZllHbbMET',chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         prepRootFile = ROOT.TFile(prepRootName,"recreate")
