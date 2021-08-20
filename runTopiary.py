@@ -30,6 +30,8 @@ parser = argparse.ArgumentParser()
 if __name__=="__main__":
     parser.add_argument("-s","--sample",help="sample name")
     parser.add_argument("-c","--channel",help="string for channel: mumu,ee, or emu")
+    parser.add_argument("-upjec","--upsystematics",type=bool,help="if you want jec up systematics output")
+    parser.add_argument("-dwnjec","--downsystematics",type=bool,help="if you want jec down systematics output")
     args = parser.parse_args() 
     samp = args.sample
     samptype = -1
@@ -38,8 +40,6 @@ if __name__=="__main__":
     samptype,checkedyear = go.sampleType(samp)
     channel,channelprint = channelEncoding(args.channel)
     year = "20"+str(checkedyear)
-
-    #Do not start if you are not prepared
     if samptype < 0:
         print("You have a problem, we do not undertand the sample coding")
         sys.exit()
@@ -68,11 +68,22 @@ if __name__=="__main__":
         inChain.Add("../dataHandling/"+year+"/"+samp+"*.root")
         origevnts = inChain.GetEntries()
 
-    outFile = go.makeOutFile(samp,'topiary_'+args.channel,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
+    #Systematics?
+    syststring = "systnominal"
+    systind    = 0
+    if args.upsystematics:
+        syststring = "systjecup"
+        systind = 1
+    if args.downsystematics:
+        syststring = "systjecdwn"
+        systind = -1
+        
+    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
     print( "Making topiary of ",samp)
     print("     Sample type ",samptype)
     print("     Sample Year ",year)
     print("    ",channelprint)
+    print("     Systematics ",syststring)
     print("     Events in TChain: ",inChain.GetEntries())
     print(("     Original data set had {0} events in type.").format(origevnts))
     print("    Saving topiary in ",outFile)
@@ -81,10 +92,9 @@ if __name__=="__main__":
     ROOT.gROOT.ProcessLine(".include ../UHH2/JetMETObjects/interface")
     ROOT.gSystem.Load("TreeMakerTopiary.so")
     ROOT.gInterpreter.Declare('#include "TreeMakerTopiary.h"')
-    #ROOT.gInterpreter.Declare('#include " RestFrames/RestFrames.hh"')
 
     topiary = ROOT.TreeMakerTopiary(inChain,samptype,checkedyear,channel)
-    topiary.Loop(outFile,origevnts,samptype,checkedyear,channel)
+    topiary.Loop(outFile,origevnts,samptype,checkedyear,channel,systind)
 
 
 

@@ -16,7 +16,7 @@ using std::string;
 RestFrames::RFKey ensure_autoload(1);
 using namespace RestFrames;
 
-void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year,int anchan)
+void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year,int anchan,int jecsys)
 {
    if (fChain == 0) return;
    Long64_t nentries = fChain->GetEntriesFast();
@@ -553,6 +553,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  fat = JetsAK8Clean->at(i);
 	  fsd = JetsAK8Clean_softDropMass->at(i);
 	  fid = JetsAK8Clean_ID->at(i);
+	  jec_unc->setJetEta(fat.Eta());
+	  jec_unc->setJetPt(fat.Pt());
+	  double unc = 0;
+	  unc = std::abs(jec_unc->getUncertainty(true));
+	  double jecsysfac = 1 + jecsys*unc;
 	  double masshdiff = std::abs(125.18 - fsd);
 	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
 	    basehdiff = masshdiff;
@@ -563,10 +568,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    hdmdzhbbvqcd = JetsAK8Clean_DeepMassDecorrelTagZHbbvsQCD->at(i);
 	    hmiddb = JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb->at(i);
 	    passh = true;
-	    jec_unc->setJetEta(fat.Eta());
-	    jec_unc->setJetPt(fat.Pt());
-	    double unc = 0;
-	    unc = jec_unc->getUncertainty(true);
 	  }
 	}
       }
