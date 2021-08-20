@@ -1,12 +1,20 @@
 #define TreeMakerTopiary_cxx
 #include "TreeMakerTopiary.h"
-//#include "RestFrames/RestFrames.hh"
+#include "RestFrames/RestFrames.hh"
+#include "JetCorrectionUncertainty.h"
+#include "JetCorrectorParameters.h"
 #include <TLeaf.h>
 #include <TH1.h>
+#include <TString.h>
 #include <iostream>
+#include <vector>
+#include <string>
 
-//RestFrames::RFKey ensure_autoload(1);
-//using namespace RestFrames;
+using std::vector;
+using std::string;
+
+RestFrames::RFKey ensure_autoload(1);
+using namespace RestFrames;
 
 void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year,int anchan)
 {
@@ -147,6 +155,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *gzCand_eta = trimTree->Branch("gzCandidate_eta",&gzCandidate_eta,"gzCandidate_eta/D");
    TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
 
+   //Uncertainty holder
+   TString uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+   JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
+
    //Info and holders
    hnskimed->SetBinContent(1,nentries);
    hnorigevnts->SetBinContent(1,totalOriginalEvents);
@@ -154,7 +166,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    float zmwinlow = 70.;
    float zmwinhi  = 110.;
    float hptcut   = 250.;
-   /*
+   ///*
    //Recursive Jigsaw Part
    LabRecoFrame         LABcontra("LABcontra","LABcontra");
    DecayRecoFrame       Zp("Zp","Z'");
@@ -197,7 +209,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    MinMND.AddInvisibleFrame(NSbar, 1);
 
    LABcontra.InitializeAnalysis();
-   */
+   //*/
 
    //Trigger Stuff
    string trgtit;
@@ -551,6 +563,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    hdmdzhbbvqcd = JetsAK8Clean_DeepMassDecorrelTagZHbbvsQCD->at(i);
 	    hmiddb = JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb->at(i);
 	    passh = true;
+	    jec_unc->setJetEta(fat.Eta());
+	    jec_unc->setJetPt(fat.Pt());
+	    double unc = 0;
+	    unc = jec_unc->getUncertainty(true);
 	  }
 	}
       }
@@ -585,7 +601,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       TVector3 met3     = TVector3(ptmiss_px,ptmiss_py,0.0);
 
       //recursive jigsaw
-      /*
+      // /*
       LABcontra.ClearEvent();
       INVcontra.SetLabFrameThreeVector(met3);
       Z.SetLabFrameFourVector(theZ);
@@ -594,7 +610,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       mEstZp = Zp.GetMass();
       mEstND = ND.GetMass();
       mEstNS = NS.GetMass();
-      */
+      //*/
 
       if (passZ && passTrig && mumuchan) {
 	countzpass +=1 ;

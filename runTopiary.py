@@ -77,10 +77,12 @@ if __name__=="__main__":
     print(("     Original data set had {0} events in type.").format(origevnts))
     print("    Saving topiary in ",outFile)
 
+    ROOT.gSystem.Load("../UHH2/JetMETObjects/obj/libSUHH2JetMETObjects.so")
+    ROOT.gROOT.ProcessLine(".include ../UHH2/JetMETObjects/interface")
+    ROOT.gSystem.Load("TreeMakerTopiary.so")
+    ROOT.gInterpreter.Declare('#include "TreeMakerTopiary.h"')
+    #ROOT.gInterpreter.Declare('#include " RestFrames/RestFrames.hh"')
 
-    ROOT.gSystem.CompileMacro("TreeMakerTopiary.C","g0ck")
-    #ROOT.gSystem.CompileMacro("TreeMakerTopiary.C","kfc")
-    ROOT.gSystem.Load('TreeMakerTopiary_C')
     topiary = ROOT.TreeMakerTopiary(inChain,samptype,checkedyear,channel)
     topiary.Loop(outFile,origevnts,samptype,checkedyear,channel)
 

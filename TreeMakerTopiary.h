@@ -17,9 +17,12 @@
 #include <TFile.h>
 #include <TLorentzVector.h>
 #include <iostream>
+#include <vector>
+#include <string>
 
-// Header file for the classes stored in the TTree if any.
-#include "vector"
+using std::vector;
+using std::string;
+
 
 class TreeMakerTopiary {
 public :
