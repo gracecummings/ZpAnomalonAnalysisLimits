@@ -117,6 +117,7 @@ if __name__=='__main__':
     siginfo = sig.prepsigsr
     sigJECup = systsigup.prepsigsr
     sigJECdwn = systsigdwn.prepsigsr
+    sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
     for s,sig in enumerate(siginfo):
         name = sig["name"]
         signame = "holder"
@@ -172,6 +173,7 @@ if __name__=='__main__':
                             {"type":"shapeN2","unc":1,"proc":[1,0,1,1]},
                             },
                     }
+
     
         prepRootName = go.makeOutFile('Run2_2017_2018_ZllHbbMET',chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         prepRootFile = ROOT.TFile(prepRootName,"recreate")
@@ -191,6 +193,19 @@ if __name__=='__main__':
 
         writeDataCard(procdict,prepRootName,chan)
 
+        #Make Plot for each signal sample
+        tc = ROOT.TCanvas("tc",signame,600,600)
+        hsig.SetLineColor(ROOT.kBlack)
+        hsigup.SetLineColor(ROOT.kRed)
+        hsigdwn.SetLineColor(ROOT.kBlue)
+        hsigup.SetStats(0)
+        hsigup.GetXaxis().SetTitle("Z' Jigsaw Mass Estmator")
+        tc.cd()
+        hsigup.Draw('hist')
+        hsig.Draw('histsame')
+        hsigdwn.Draw('histsame')
+        sigplotname = go.makeOutFile(signame,'jecupdowncomp','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        tc.SaveAs(sigplotname)
     #Debug for background
 
     #Extra plots
