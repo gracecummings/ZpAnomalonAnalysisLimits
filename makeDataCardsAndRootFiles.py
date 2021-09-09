@@ -2,7 +2,8 @@ import ROOT
 import glob
 import os
 import sys
-import gecorg as go
+#import gecorg as go
+import gecorg_test as go
 import numpy as np
 import pandas as pd
 import configparser
@@ -53,24 +54,57 @@ if __name__=='__main__':
     sigxs   = 1.0
 
     #load in the files with the hists
-    bkgs = go.backgrounds('BkgInputs/',zptcut,hptcut,metcut,btagwp)
-    sig  = go.signal('BkgInputs/',zptcut,hptcut,metcut,btagwp,sigxs,101.27)#path tbd
+    bkgs        = go.backgrounds('BkgInputs/',zptcut,hptcut,metcut,btagwp)
+    systbkgsup  = go.backgrounds('BkgJECSyst/',zptcut,hptcut,metcut,btagwp,"systjecup")
+    systbkgsdwn = go.backgrounds('BkgJECSyst/',zptcut,hptcut,metcut,btagwp,"systjecdwn")
+    sig         = go.signal('SignalInputs/',zptcut,hptcut,metcut,btagwp,sigxs,101.27)
+    systsigup   = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecup")
+    systsigdwn  = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecdwn")
     dyEst = ROOT.TFile('BkgInputs/Run2_2017_2018_dy_extraploation_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
 
-    #Get ttbar, VV straight from selections
+
+    ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_zp_jigm')
     empty.Reset("ICESM")#creates an empty hist with same structure
+    empty1 = empty.Clone()
     empty2 = empty.Clone()
     empty3 = empty.Clone()
+    empty4 = empty.Clone()
+    empty5 = empty.Clone()
+    empty6 = empty.Clone()
+    empty7 = empty.Clone()
+    empty8 = empty.Clone()
+    empty9 = empty.Clone()
+
+    ####Gathering the Systematics####
+    httup  = systbkgsup.getAddedHist(empty4,"TT","sr","h_zp_jigm")
+    httdwn = systbkgsdwn.getAddedHist(empty5,"TT","sr","h_zp_jigm")
+    hzzup  = systbkgsup.getAddedHist(empty6,"ZZTo2L2Q","sr","h_zp_jigm")
+    hzzdwn = systbkgsdwn.getAddedHist(empty7,"ZZTo2L2Q","sr","h_zp_jigm")
+    hwzup  = systbkgsup.getAddedHist(empty8,"WZTo2L2Q","sr","h_zp_jigm")
+    hwzdwn = systbkgsdwn.getAddedHist(empty9,"WZTo2L2Q","sr","h_zp_jigm")
+    hvvup  = hzzup.Clone()
+    hvvdwn = hzzdwn.Clone()
+    hvvup.Add(hwzup)
+    hvvdwn.Add(hwzdwn)
+
+    #Rename and Restructure
+    httup.SetName("TT_jecUp")
+    httdwn.SetName("TT_jecDown")
+    hvvup.SetName("VV_jecUp")
+    hvvdwn.SetName("VV_jecDown")
+    
+    
+    ####Getting the Estimations####
     hdat = empty.Clone()
-    htt = bkgs.getAddedHist(empty,"TT","sr","h_zp_jigm")
+    htt = bkgs.getAddedHist(empty1,"TT","sr","h_zp_jigm")
     hzz  = bkgs.getAddedHist(empty2,"ZZTo2L2Q","sr","h_zp_jigm")
     hwz  = bkgs.getAddedHist(empty3,"WZTo2L2Q","sr","h_zp_jigm")
     hvv  = hzz.Clone()
     hvv.Add(hwz)
 
-    #Get DY from estmation
+    #Get DY from estimation
     hdy = dyEst.Get("extrphist").Clone()
 
     #Rename and restructure background if necessary
@@ -81,24 +115,48 @@ if __name__=='__main__':
 
     #Signal Samples
     siginfo = sig.prepsigsr
-    for sig in siginfo:
+    sigJECup = systsigup.prepsigsr
+    sigJECdwn = systsigdwn.prepsigsr
+    for s,sig in enumerate(siginfo):
         name = sig["name"]
-        signame = name.replace("-","")
+        signame = "holder"
+        if name != sigJECup[s]["name"] !=  sigJECdwn[s]["name"]:
+            print("Cannot find matching entries in JEC systematics collections, aborting")
+            break
+        if "Tune" in name:
+            strippedname = name.split("_Tune")[0]
+            signame = strippedname.replace("-","")
+        else:
+            signame = name.replace("-","")
+
+        #nominal    
         hsigori = sig["tfile"].Get("h_zp_jigm")
-        hsigori.Sumw2(ROOT.kTRUE)
+        #hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
         hsig = hsigori.Clone()
         hsig.SetName(signame)
-        #hsig.Scale(sig["scale"])
-        testscale = 1/hsigori.Integral()
+        hsig.Scale(sig["scale"])
 
-        for ibin in range(hsig.GetNbinsX()+1):
-         oribin = hsigori.GetBinContent(ibin)
-         orierr = hsigori.GetBinError(ibin)
-         newbinval = oribin*sig["scale"]
-         #newbinval = oribin
-         hsig.SetBinContent(ibin,newbinval)
-         hsig.SetBinError(ibin,newbinval**(1/2))
-         #hsig.SetBinContent(ibin,oribin*testscale)
+        #up
+        hsigupori = sigJECup[s]["tfile"].Get("h_zp_jigm")
+        hsigup = hsigupori.Clone()
+        hsigup.SetName(signame+"_jecUp")
+        hsigup.Scale(sigJECup[s]["scale"])
+
+        #down
+        hsigdwnori = sigJECdwn[s]["tfile"].Get("h_zp_jigm")
+        hsigdwn = hsigdwnori.Clone()
+        hsigdwn.SetName(signame+"_jecDown")
+        hsigdwn.Scale(sigJECdwn[s]["scale"])
+
+        #This is need to get the errors on the bins correct
+        #built for nominal case
+        #but not needed for Combine
+        #for ibin in range(hsig.GetNbinsX()+1):
+        # oribin = hsigori.GetBinContent(ibin)
+        # orierr = hsigori.GetBinError(ibin)
+        # newbinval = oribin*sig["scale"]
+        # hsig.SetBinContent(ibin,newbinval)
+        # hsig.SetBinError(ibin,newbinval**(1/2))
 
         #For writing the datacard
         #it makes sense to have the line be the key,
@@ -110,8 +168,8 @@ if __name__=='__main__':
                             {"type":"lnN","unc":1.018,"proc":[1,1,1,1]},
                             #"alphar_alt":
                             #{"type":"shape","unc":1,"proc":[0,1,0,0]},
-                            #"jetEnergy":
-                            #{"type":"shape","unc":1,"proc":[0,1,0,0]},
+                            "jec":
+                            {"type":"shapeN2","unc":1,"proc":[1,1,1,1]},
                             },
                     }
     
@@ -122,6 +180,13 @@ if __name__=='__main__':
         hdy.Write()
         hdat.Write()
         hsig.Write()
+        hsigup.Write()
+        hsigdwn.Write()
+        httup.Write()
+        httdwn.Write()
+        hvvup.Write()
+        hvvdwn.Write()
+
         prepRootFile.Close()
 
         writeDataCard(procdict,prepRootName,chan)

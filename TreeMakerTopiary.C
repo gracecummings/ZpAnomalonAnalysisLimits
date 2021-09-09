@@ -367,6 +367,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       unsigned int nZmumu = ZCandidatesMuMu->size();
       unsigned int nZee = ZCandidatesEE->size();
       unsigned int nZeu = ZCandidatesEU->size();
+
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
       TLorentzVector leade;
@@ -465,8 +466,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    passZ = true;
 	  }
 	}
-	*/
+	//*/
       }
+      
       if (nZmumu == 0 && nZee > 0 && nZeu > 0 && anchan == 3) {
 	//011
 	channel = 3.;
@@ -481,8 +483,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	zemu += 1;
 	}
       }
-      //*/
-
+            
       //Z Candidate Build
       //For old ntuples
       /*
