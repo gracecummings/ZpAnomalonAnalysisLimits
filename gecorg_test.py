@@ -7,13 +7,12 @@ import pandas as pd
 import numpy as np
 from datetime import date
 
-def sampleType(sampstring):
+def sampleType(sampstring,givejecs=False):
     #Make numerical code for type of sample
     if "Run" in sampstring:
         samptype = 0
     elif "ZpAnomalon" in sampstring:
         samptype = 1
-        year = 17
     elif "DYJetsToLL" in sampstring:
          samptype = 2
     elif "TTTo" in sampstring:
@@ -27,6 +26,15 @@ def sampleType(sampstring):
 
     if "2018" in sampstring:
         year = 18
+        if givejecs:
+            if "Run2018A" in sampstring:
+                year = 180
+            if "Run2018B" in sampstring:
+                year = 181
+            if "Run2018C" in sampstring:
+                year = 182
+            if "Run2018D" in sampstring:
+                year = 183
     if "Autumn18" in sampstring:
         year = 18
     if "2017" in sampstring:

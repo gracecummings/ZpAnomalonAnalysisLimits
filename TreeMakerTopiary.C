@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cmath>
 
 using std::vector;
 using std::string;
@@ -156,8 +157,42 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
 
    //Uncertainty holder
-   TString uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+   //TString uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+   TString uncfile = "badstring";
+   std::cout<<"Looking at year  "<<year<<std::endl;
+   if (year == 180){
+     std::cout<<"In Run2018RunA"<<std::endl;
+     uncfile = "JEC/Autumn18_RunA_V19_DATA/Autumn18_RunA_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 181){
+     uncfile = "JEC/Autumn18_RunB_V19_DATA/Autumn18_RunB_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 182){
+     uncfile = "JEC/Autumn18_RunC_V19_DATA/Autumn18_RunC_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 183){
+     uncfile = "JEC/Autumn18_RunD_V19_DATA/Autumn18_RunD_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 18) {
+     std::cout<<"In Autumn18"<<std::endl;
+     uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+   }
+   if (year == 17) {
+     uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 16) {
+     std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
+   }
+   std::cout<<"using uncertainty file "<<uncfile<<std::endl;
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
+
+   //bring data era encoding back to normal numbers
+   //Data era added as a digit on the end of the year
+   //dividing by ten makes the year the integer when rounded
+   if (year > 100){
+     year = year/10;
+     year = round(year);
+   }
 
    //Info and holders
    hnskimed->SetBinContent(1,nentries);
@@ -364,9 +399,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //Z exploration
       unsigned int nselmu = SelectedMuons->size();
       unsigned int nselel = SelectedElectrons->size();
-      unsigned int nZmumu = ZCandidatesMuMu->size();
-      unsigned int nZee = ZCandidatesEE->size();
-      unsigned int nZeu = ZCandidatesEU->size();
+      //unsigned int nZmumu = ZCandidatesMuMu->size();
+      //unsigned int nZee = ZCandidatesEE->size();
+      //unsigned int nZeu = ZCandidatesEU->size();
 
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
@@ -378,7 +413,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       TLorentzVector theZ;
       double baseZdiff = 99999;
       //Channel Flags
-      ///*
+      /*
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	//in binary 100, 4 in decimal
 	channel = 4.;//4 in decimal
@@ -466,8 +501,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    passZ = true;
 	  }
 	}
-	//*/
-      }
+	*/
+      /*}
       
       if (nZmumu == 0 && nZee > 0 && nZeu > 0 && anchan == 3) {
 	//011
@@ -483,10 +518,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	zemu += 1;
 	}
       }
-            
+      */  
       //Z Candidate Build
       //For old ntuples
-      /*
+      ///*
       if (nselmu > 0 && nselel == 0) {
       	mumuchan = true;
 	std::vector<TLorentzVector>::iterator muit;
@@ -511,7 +546,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  }
 	}
       }
-      */
+      //*/
       
       //Higgs Candidate Build
       //JetBranch = JetsAK8Clean;

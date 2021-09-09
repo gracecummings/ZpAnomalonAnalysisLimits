@@ -3,7 +3,7 @@ import glob
 import argparse
 import os
 import sys
-import gecorg as go
+import gecorg_test as go
 from datetime import date
 
 def channelEncoding(string):
@@ -35,11 +35,20 @@ if __name__=="__main__":
     args = parser.parse_args() 
     samp = args.sample
     samptype = -1
-
+    extrajeccrap = True
     #Check what you are working with
-    samptype,checkedyear = go.sampleType(samp)
+    samptype,checkedyear = go.sampleType(samp,extrajeccrap)
     channel,channelprint = channelEncoding(args.channel)
+
+    topyear = checkedyear #has era encoding
+
+    #This is account for era encoding
+    #Eras add a digit to the year, i.e, 18A -> 180
+    if checkedyear > 100:
+        tmp = checkedyear/10
+        checkedyear = round(tmp)
     year = "20"+str(checkedyear)
+    
     if samptype < 0:
         print("You have a problem, we do not undertand the sample coding")
         sys.exit()
@@ -50,9 +59,11 @@ if __name__=="__main__":
 
     #Prepare your TChain
     if samptype != 1 and ".root" not in samp:
+    #if ".root" not in samp:#should also take multi file signal
         #for non-signal samples
         inChain = ROOT.TChain("PreSelection")
         inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
+        print(inputs)
         for f in inputs:
             inChain.Add(f)
             tf = ROOT.TFile.Open(f)
@@ -61,12 +72,21 @@ if __name__=="__main__":
         #for debug, and ntuple in working directory
         inChain = ROOT.TChain("TreeMaker2/PreSelection")
         inChain.Add(samp)
+    elif samptype == 1 and ".root" not in samp:
+        inChain = ROOT.TChain("TreeMaker2/PreSelection")
+        inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
+        print(inputs)
+        for f in inputs:
+            inChain.Add(f)
+            tf = ROOT.TFile.Open(f)
+            #origevnts += tf.Get("hnevents").GetBinContent(1)
     else:
         #for signal
         inChain = ROOT.TChain("TreeMaker2/PreSelection")
         inputs = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
         inChain.Add("../dataHandling/"+year+"/"+samp+"*.root")
         origevnts = inChain.GetEntries()
+
 
     #Systematics?
     syststring = "systnominal"
@@ -82,6 +102,7 @@ if __name__=="__main__":
     print( "Making topiary of ",samp)
     print("     Sample type ",samptype)
     print("     Sample Year ",year)
+    print("     Topiary Year ",topyear)
     print("    ",channelprint)
     print("     Systematics ",syststring)
     print("     Events in TChain: ",inChain.GetEntries())
@@ -93,8 +114,9 @@ if __name__=="__main__":
     ROOT.gSystem.Load("TreeMakerTopiary.so")
     ROOT.gInterpreter.Declare('#include "TreeMakerTopiary.h"')
 
-    topiary = ROOT.TreeMakerTopiary(inChain,samptype,checkedyear,channel)
-    topiary.Loop(outFile,origevnts,samptype,checkedyear,channel,systind)
+    #topiary = ROOT.TreeMakerTopiary(inChain,samptype,checkedyear,channel)
+    topiary = ROOT.TreeMakerTopiary(inChain,samptype,topyear,channel,systind)
+    topiary.Loop(outFile,origevnts,samptype,topyear,channel,systind)
 
 
 
