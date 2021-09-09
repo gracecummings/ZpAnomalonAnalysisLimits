@@ -180,6 +180,18 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    if (year == 17) {
      uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
    }
+   if (year == 170) {
+     uncfile = "JEC/Fall17_17Nov2017B_V32_DATA/Fall17_17Nov2017B_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+       }
+   if (year == 171) {
+     uncfile = "JEC/Fall17_17Nov2017C_V32_DATA/Fall17_17Nov2017C_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 172) {
+     uncfile = "JEC/Fall17_17Nov2017DE_V32_DATA/Fall17_17Nov2017DE_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 173) {
+     uncfile = "JEC/Fall17_17Nov2017F_V32_DATA/Fall17_17Nov2017F_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
    if (year == 16) {
      std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
    }
@@ -399,9 +411,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //Z exploration
       unsigned int nselmu = SelectedMuons->size();
       unsigned int nselel = SelectedElectrons->size();
-      //unsigned int nZmumu = ZCandidatesMuMu->size();
-      //unsigned int nZee = ZCandidatesEE->size();
-      //unsigned int nZeu = ZCandidatesEU->size();
+      unsigned int nZmumu = ZCandidatesMuMu->size();
+      unsigned int nZee = ZCandidatesEE->size();
+      unsigned int nZeu = ZCandidatesEU->size();
 
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
@@ -413,7 +425,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       TLorentzVector theZ;
       double baseZdiff = 99999;
       //Channel Flags
-      /*
+      ///*
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	//in binary 100, 4 in decimal
 	channel = 4.;//4 in decimal
@@ -501,8 +513,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    passZ = true;
 	  }
 	}
-	*/
-      /*}
+	*/}
       
       if (nZmumu == 0 && nZee > 0 && nZeu > 0 && anchan == 3) {
 	//011
@@ -518,7 +529,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	zemu += 1;
 	}
       }
-      */  
+  
       //Z Candidate Build
       //For old ntuples
       ///*

@@ -39,6 +39,17 @@ def sampleType(sampstring,givejecs=False):
         year = 18
     if "2017" in sampstring:
         year = 17
+        if givejecs:
+            if "Run2017B" in sampstring:
+                year = 170
+            if "Run2017C" in sampstring:
+                year = 171
+            if "Run2017D" in sampstring:
+                year = 172
+            if "Run2017E" in sampstring:
+                year = 172
+            if "Run2017F" in sampstring:
+                year = 173
     if "Fall17" in sampstring:
         year = 17
     if "2016" in sampstring:
