@@ -158,7 +158,10 @@ def prepBkg(bkgfiles,bkgnames,bkg_colors,ini_file,lumi,flag="yes"):
         if bkg_channel == "DYJetsToLL":
             #orders smallest HT to largest
             bkg.sort(key = orderDY)
-            normscale = np.load('analysis_output_ZpAnomalon/2021-06-22_alphaMethStuff/Run2_2017_2018_dynormalization_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+            normscale = np.load('BkgJECSyst/Run2_2017_2018_dynormalization_systjecup_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+            #normscale = 1
+            #print("Put back in derived norm")
+            print("applying a normalization,watch out")
         elif bkg_channel == "TT":
             #sorts in alphabetical order 
             bkg.sort()                                                     
@@ -168,10 +171,14 @@ def prepBkg(bkgfiles,bkgnames,bkg_colors,ini_file,lumi,flag="yes"):
         #loop through each process bin or categrory
         for s,bkgbin in enumerate(bkg):
             bkgbin_dict = {}
+            #print(bkgbin)
             bkgbin_dict["binname"] = bkgbin_xs_pairs[s][0]
+            #print(bkgbin_dict["binname"])
             bkgbin_dict["tfile"]   = ROOT.TFile(bkgbin)
             bkgbin_sampsize        = str(bkgbin_dict["tfile"].Get('hnevents').GetString())
             bkgbin_xs              = float(bkgbin_xs_pairs[s][1].split()[0])*1000#Into Femtobarn
+            #print(bkgbin_sampsize)
+            #print(bkgbin_xs)
             bkgbin_dict["scale"]   = findScale(float(bkgbin_sampsize),bkgbin_xs,lumi)*normscale
             bkgbin_dict["color"]   = bkg_colors[b]
             #get the number of passing events
@@ -439,22 +446,23 @@ class backgrounds:
 
 
 class run2:
-    def __init__(self,path,zptcut,hptcut,metcut,btagwp):
+    def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr=""):
         self.path = path
         self.zptcut = zptcut
         self.hptcut = hptcut
         self.metcut = metcut
         self.btagwp = btagwp
+        self.systr = systr
 
         #gather data files
-        self.run17sb = glob.glob(str(path)+'/Run2017*upout_sideband*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-        self.run18sb = glob.glob(str(path)+'/Run2018*upout_sideband*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.run17sb = glob.glob(str(path)+'/Run2017*upout_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.run18sb = glob.glob(str(path)+'/Run2018*upout_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run17sr = glob.glob(str(path)+'/Run2017*upout_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run18sr = glob.glob(str(path)+'/Run2018*upout_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
         #gather errors
-        self.run17sberrs = glob.glob(str(path)+'/Run2017*selected_errors_sideband*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
-        self.run18sberrs = glob.glob(str(path)+'/Run2018*selected_errors_sideband*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.run17sberrs = glob.glob(str(path)+'/Run2017*selected_errors_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.run18sberrs = glob.glob(str(path)+'/Run2018*selected_errors_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run17srerrs = glob.glob(str(path)+'/Run2017*selected_errors_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run18srerrs = glob.glob(str(path)+'/Run2018*selected_errors_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
 

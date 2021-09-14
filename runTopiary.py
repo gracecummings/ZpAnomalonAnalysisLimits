@@ -63,7 +63,6 @@ if __name__=="__main__":
         #for non-signal samples
         inChain = ROOT.TChain("PreSelection")
         inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
-        print(inputs)
         for f in inputs:
             inChain.Add(f)
             tf = ROOT.TFile.Open(f)

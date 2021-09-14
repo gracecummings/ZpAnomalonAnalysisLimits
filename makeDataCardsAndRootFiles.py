@@ -57,10 +57,12 @@ if __name__=='__main__':
     bkgs        = go.backgrounds('BkgInputs/',zptcut,hptcut,metcut,btagwp)
     systbkgsup  = go.backgrounds('BkgJECSyst/',zptcut,hptcut,metcut,btagwp,"systjecup")
     systbkgsdwn = go.backgrounds('BkgJECSyst/',zptcut,hptcut,metcut,btagwp,"systjecdwn")
-    sig         = go.signal('SignalInputs/',zptcut,hptcut,metcut,btagwp,sigxs,59.74)
-    systsigup   = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,59.74,"systjecup")
-    systsigdwn  = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,59.74,"systjecdwn")
-    dyEst = ROOT.TFile('BkgInputs/Run2_2017_2018_dy_extraploation_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    sig         = go.signal('SignalInputs/',zptcut,hptcut,metcut,btagwp,sigxs,101.27)
+    systsigup   = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecup")
+    systsigdwn  = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecdwn")
+    dyEst       = ROOT.TFile('BkgInputs/Run2_2017_2018_dy_extraploation_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    dyEstup     = ROOT.TFile('BkgJECSyst/Run2_2017_2018_dy_extraploationsystjecup_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    dyEstdwn    = ROOT.TFile('BkgJECSyst/Run2_2017_2018_dy_extraploationsystjecdwn_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
 
 
     ####Prepping holders####
@@ -88,12 +90,23 @@ if __name__=='__main__':
     hvvdwn = hzzdwn.Clone()
     hvvup.Add(hwzup)
     hvvdwn.Add(hwzdwn)
+    hdyup  = dyEstup.Get("extrphist").Clone()
+    hdydwn = dyEstdwn.Get("extrphist").Clone()
 
     #Rename and Restructure
     httup.SetName("TT_jecUp")
     httdwn.SetName("TT_jecDown")
     hvvup.SetName("VV_jecUp")
     hvvdwn.SetName("VV_jecDown")
+    hdyup.SetName("DY_jecUp")
+    hdydwn.SetName("DY_jecDown")
+    httup.GetXaxis().SetRangeUser(1500,5000)
+    httdwn.GetXaxis().SetRangeUser(1500,5000)
+    hvvup.GetXaxis().SetRangeUser(1500,5000)
+    hvvdwn.GetXaxis().SetRangeUser(1500,5000)
+    hdyup.GetXaxis().SetRangeUser(1500,5000)
+    hdydwn.GetXaxis().SetRangeUser(1500,5000)
+
     
     
     ####Getting the Estimations####
@@ -105,19 +118,28 @@ if __name__=='__main__':
     hvv.Add(hwz)
 
     #Get DY from estimation
-    hdy = dyEst.Get("extrphist").Clone()
+    hdy    = dyEst.Get("extrphist").Clone()
 
     #Rename and restructure background if necessary
     htt.SetName("TT")
     hvv.SetName("VV")
     hdy.SetName("DY")
     hdat.SetName("data_obs")
+    hdat.GetXaxis().SetRangeUser(1500,5000)
+    htt.GetXaxis().SetRangeUser(1500,5000)
+    hvv.GetXaxis().SetRangeUser(1500,5000)
+    hdy.GetXaxis().SetRangeUser(1500,5000)
+
 
     #Signal Samples
     siginfo = sig.prepsigsr
     sigJECup = systsigup.prepsigsr
     sigJECdwn = systsigdwn.prepsigsr
     sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
+
+    #Make a plot with all of the nominal signals plotted
+    #tcAllSig = ROOT.TCanvas("tcAllSig","AllSig",600,600)
+    #sigAllname = go.makeOutFile("allsig_2018_NS200",'nominaljec','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     for s,sig in enumerate(siginfo):
         name = sig["name"]
         signame = "holder"
@@ -136,18 +158,21 @@ if __name__=='__main__':
         hsig = hsigori.Clone()
         hsig.SetName(signame)
         hsig.Scale(sig["scale"])
+        hsig.GetXaxis().SetRangeUser(1500,5000)
 
         #up
         hsigupori = sigJECup[s]["tfile"].Get("h_zp_jigm")
         hsigup = hsigupori.Clone()
         hsigup.SetName(signame+"_jecUp")
         hsigup.Scale(sigJECup[s]["scale"])
+        hsigup.GetXaxis().SetRangeUser(1500,5000)
 
         #down
         hsigdwnori = sigJECdwn[s]["tfile"].Get("h_zp_jigm")
         hsigdwn = hsigdwnori.Clone()
         hsigdwn.SetName(signame+"_jecDown")
         hsigdwn.Scale(sigJECdwn[s]["scale"])
+        hsigdwn.GetXaxis().SetRangeUser(1500,5000)
 
         #This is need to get the errors on the bins correct
         #built for nominal case
@@ -169,8 +194,8 @@ if __name__=='__main__':
                             {"type":"lnN","unc":1.018,"proc":[1,1,1,1]},
                             #"alphar_alt":
                             #{"type":"shape","unc":1,"proc":[0,1,0,0]},
-                            "jec":
-                            {"type":"shapeN2","unc":1,"proc":[1,0,1,1]},
+                            #"jec":
+                            #{"type":"shapeN2","unc":1,"proc":[1,1,1,1]},
                             },
                     }
 
@@ -188,11 +213,24 @@ if __name__=='__main__':
         httdwn.Write()
         hvvup.Write()
         hvvdwn.Write()
+        hdyup.Write()
+        hdydwn.Write()
 
         prepRootFile.Close()
 
         writeDataCard(procdict,prepRootName,chan)
 
+        #Make the plot of all signal samples
+        #tcAllSig.cd()
+        #hsig.SetLineColor(sigcolors[s])
+        #hsig.SetStats(0)
+        #hsig.GetXaxis().SetTitle("Z' Jigsaw Mass Estimator")
+        #if s == 0:
+        #    hsig.Draw('hist')
+        #else:
+        #    hsig.Draw('histsame')
+        #tcAllSig.Update()
+        
         #Make Plot for each signal sample
         tc = ROOT.TCanvas("tc",signame,600,600)
         hsig.SetLineColor(ROOT.kBlack)
@@ -206,9 +244,21 @@ if __name__=='__main__':
         hsigdwn.Draw('histsame')
         sigplotname = go.makeOutFile(signame,'jecupdowncomp','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         tc.SaveAs(sigplotname)
+        #tcAllSig.cd()
+
+    #SAve the total plot
+    #tcAllSig.SaveAs(sigAllname)
+
     #Debug for background
 
     #Extra plots
+    dynormup = np.load('BkgJECSyst/Run2_2017_2018_dynormalization_systjecup_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+    dynormnom = np.load('BkgInputs/Run2_2017_2018_dynormalization_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+    dynormdwn = np.load('BkgJECSyst/Run2_2017_2018_dynormalization_systjecdwn_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+
+    print("DY norm up:  ",dynormup)
+    print("DY norm nom: ",dynormnom)
+    print("DY norm dwn: ",dynormdwn)
     emptypt = tf1.Get('h_h_pt')
     emptypt.Reset("ICESM")
     empty10 = emptypt.Clone()
@@ -220,7 +270,14 @@ if __name__=='__main__':
     empty16 = emptypt.Clone()
     empty17 = emptypt.Clone()
     empty18 = emptypt.Clone()
-    
+    empty19 = emptypt.Clone()
+    empty20 = emptypt.Clone()
+    empty21 = emptypt.Clone()
+
+    hdyuppt  = systbkgsup.getAddedHist(empty19,"DYJetsToLL","sr","h_h_pt")#.Scale(dynormup)
+    hdyuppt.Scale(dynormup)
+    hdydwnpt = systbkgsdwn.getAddedHist(empty20,"DYJetsToLL","sr","h_h_pt")#.Scale(dynormdwn)
+    hdydwnpt.Scale(dynormdwn)
     httuppt  = systbkgsup.getAddedHist(empty10,"TT","sr","h_h_pt")
     httdwnpt = systbkgsdwn.getAddedHist(empty11,"TT","sr","h_h_pt")
     hzzuppt  = systbkgsup.getAddedHist(empty12,"ZZTo2L2Q","sr","h_h_pt")
@@ -231,6 +288,8 @@ if __name__=='__main__':
     hvvdwnpt = hzzdwnpt.Clone()
     hvvuppt.Add(hwzuppt)
     hvvdwnpt.Add(hwzdwnpt)
+    hdypt    = bkgs.getAddedHist(empty21,"DYJetsToLL","sr","h_h_pt")#.Scale(dynormnom)
+    hdypt.Scale(dynormnom)
     httpt    = bkgs.getAddedHist(empty16,"TT","sr","h_h_pt")
     hzzpt    = bkgs.getAddedHist(empty17,"ZZTo2L2Q","sr","h_h_pt")
     hwzpt    = bkgs.getAddedHist(empty18,"WZTo2L2Q","sr","h_h_pt")
@@ -244,21 +303,25 @@ if __name__=='__main__':
     hdy.SetLineColor(ROOT.kBlack)
     httup.SetLineColor(ROOT.kRed)
     hvvup.SetLineColor(ROOT.kRed)
-    #hdyup.SetLineColor(ROOT.kRed)
+    hdyup.SetLineColor(ROOT.kRed)
     httdwn.SetLineColor(ROOT.kBlue)
     hvvdwn.SetLineColor(ROOT.kBlue)
-    #hdydwn.SetLineColor(ROOT.kBlue)
+    hdydwn.SetLineColor(ROOT.kBlue)
     httpt.SetLineColor(ROOT.kBlack)
     hvvpt.SetLineColor(ROOT.kBlack)
-    #hdypt.SetLineColor(ROOT.kBlack)
+    hdypt.SetLineColor(ROOT.kBlack)
     httuppt.SetLineColor(ROOT.kRed)
     hvvuppt.SetLineColor(ROOT.kRed)
-    #hdyuppt.SetLineColor(ROOT.kRed)
+    hdyuppt.SetLineColor(ROOT.kRed)
     httdwnpt.SetLineColor(ROOT.kBlue)
     hvvdwnpt.SetLineColor(ROOT.kBlue)
-    #hdydwnpt.SetLineColor(ROOT.kBlue)
+    hdydwnpt.SetLineColor(ROOT.kBlue)
     #httuppt.SetMaximum(10)
-    
+
+    dyupx = hdyup.GetXaxis()
+    dyupx.SetTitle("Z' Jigsaw Mass Estimator")
+    dyuptx = hdyuppt.GetXaxis()
+    dyuptx.SetTitle("Higgs Candidate pT")
     ttupx = httup.GetXaxis()
     ttupx.SetTitle("Z' Jigsaw Mass Estimator")
     ttuptx = httuppt.GetXaxis()
@@ -268,12 +331,17 @@ if __name__=='__main__':
     vvuptx = hvvuppt.GetXaxis()
     vvuptx.SetTitle("Higgs Candidate pT")
 
+    hdyup.SetStats(0)
     httup.SetStats(0)
     hvvup.SetStats(0)
+    hdyuppt.SetStats(0)
     httuppt.SetStats(0)
     hvvuppt.SetStats(0)
 
     #Relevant Info
+    dystrup  = "dy up, integral: "+str(round(hdyup.Integral(),3))
+    dystrnom = "dy nom, integral: "+str(round(hdy.Integral(),3))
+    dystrdwn = "dy dwn, integral: "+str(round(hdydwn.Integral(),3))
     ttstrup  = "tt up, integral: "+str(round(httup.Integral(),3))
     ttstrnom = "tt nom, integral: "+str(round(htt.Integral(),3))
     ttstrdwn = "tt dwn, integral: "+str(round(httdwn.Integral(),3))
@@ -281,6 +349,9 @@ if __name__=='__main__':
     vvstrnom = "vv nom, integral: "+str(round(hvv.Integral(),3))
     vvstrdwn = "vv dwn, integral: "+str(round(hvvdwn.Integral(),3))
 
+    dystruppt  = "dy up, integral: "+str(round(hdyuppt.Integral(),3))
+    dystrnompt = "dy nom, integral: "+str(round(hdypt.Integral(),3))
+    dystrdwnpt = "dy dwn, integral: "+str(round(hdydwnpt.Integral(),3))
     ttstruppt  = "tt up, integral: "+str(round(httuppt.Integral(),3))
     ttstrnompt = "tt nom, integral: "+str(round(httpt.Integral(),3))
     ttstrdwnpt = "tt dwn, integral: "+str(round(httdwnpt.Integral(),3))
@@ -289,6 +360,24 @@ if __name__=='__main__':
     vvstrdwnpt = "vv dwn, integral: "+str(round(hvvdwnpt.Integral(),3))
 
     #Labels
+    dyjiglab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+    dyjiglab.AddText(dystrup)
+    dyjiglab.AddText(dystrnom)
+    dyjiglab.AddText(dystrdwn)
+    dyjiglab.SetFillColor(0)
+    dyjiglab.GetLine(0).SetTextColor(ROOT.kRed)
+    dyjiglab.GetLine(1).SetTextColor(ROOT.kBlack)
+    dyjiglab.GetLine(2).SetTextColor(ROOT.kBlue)
+
+    dyptlab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+    dyptlab.AddText(dystruppt)
+    dyptlab.AddText(dystrnompt)
+    dyptlab.AddText(dystrdwnpt)
+    dyptlab.SetFillColor(0)
+    dyptlab.GetLine(0).SetTextColor(ROOT.kRed)
+    dyptlab.GetLine(1).SetTextColor(ROOT.kBlack)
+    dyptlab.GetLine(2).SetTextColor(ROOT.kBlue)
+
     ttjiglab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
     ttjiglab.AddText(ttstrup)
     ttjiglab.AddText(ttstrnom)
@@ -337,7 +426,10 @@ if __name__=='__main__':
     tcbkg.cd()
     pdy.Draw()
     pdy.cd()
-    #hdy.Draw()
+    hdyup.Draw('hist')
+    hdy.Draw('histsame')
+    hdydwn.Draw('histsame')
+    dyjiglab.Draw()
     pdy.Update()
     tcbkg.cd()
     ptt.Draw()
@@ -358,7 +450,10 @@ if __name__=='__main__':
     tcbkg.cd()
     ptdy.Draw()
     ptdy.cd()
-    #hdypt.Draw()
+    hdyuppt.Draw('hist')
+    hdypt.Draw('histsame')
+    hdydwnpt.Draw('histsame')
+    dyptlab.Draw()
     ptdy.Update()
     tcbkg.cd()
     pttt.Draw()
