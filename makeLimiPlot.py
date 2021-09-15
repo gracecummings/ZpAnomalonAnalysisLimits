@@ -64,6 +64,15 @@ if __name__=='__main__':
     #Make the 2D histogram
     hlim = ROOT.TH2F("hlim","",zpbins,float((zpmin-zpbinwidth/2)),float((zpmax+zpbinwidth/2)),ndbins,float((ndmin-ndbinwidth/2)),float((ndmax+ndbinwidth/2)))
     hlim.SetStats(0)
+    hlim.GetXaxis().SetTitle("m_{Z'} (GeV)")
+    hlim.GetXaxis().SetTitleSize(0.05)
+    hlim.GetXaxis().SetNdivisions(405)
+    hlim.GetXaxis().SetLabelSize(0.04)
+    hlim.GetYaxis().SetTitle("m_{ND} (GeV)")
+    hlim.GetYaxis().SetTitleSize(0.05)
+    hlim.GetYaxis().SetTitleOffset(1.35)
+    hlim.GetYaxis().SetLabelSize(0.04)
+
     hlim.SetContour(len(coldiv),coldiv)
     
     for combout in lims:
