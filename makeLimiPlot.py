@@ -72,6 +72,11 @@ if __name__=='__main__':
     hlim.GetYaxis().SetTitleSize(0.05)
     hlim.GetYaxis().SetTitleOffset(1.35)
     hlim.GetYaxis().SetLabelSize(0.04)
+    hlim.GetZaxis().SetTitle("Median cross section upper limit (95% CL)")
+    hlim.GetZaxis().SetTitleSize(0.04)
+    hlim.GetZaxis().SetTitleOffset(.9)
+    hlim.GetZaxis().SetLabelSize(0.025)
+    
 
     hlim.SetContour(len(coldiv),coldiv)
     
