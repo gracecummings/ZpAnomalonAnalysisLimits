@@ -25,7 +25,9 @@ if __name__=='__main__':
     chan    = 'mumu'
     sigxs   = 1.0
 
-    lims = glob.glob("limholder/limsWithJECs/*")
+    limitpath= "limholder/limWithNothing/h"
+    #lims = glob.glob("limholder/limsWithJECs/h*")
+    lims = glob.glob(limitpath+"*")
     zpbinwidth = 500
     ndbinwidth = 200
 
@@ -33,6 +35,7 @@ if __name__=='__main__':
     #allows for pulling info based on a single particle mass
     limsinfo = [[x,int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("NS")[-1])] for x in lims]
     limsdf = pd.DataFrame(limsinfo,columns = ['path','mzp','mnd','mns'])
+    limsdf['path'].astype("string")
 
     #Find relvant params
     zpmax = max(limsdf['mzp'])
@@ -54,6 +57,8 @@ if __name__=='__main__':
     tc = ROOT.TCanvas("tc","lims",700,600)
     tc.SetLeftMargin(0.15)
     tc.SetRightMargin(0.15)
+
+    tc1 = ROOT.TCanvas("tc1","brzllim",600,600)
 
     #Prep the z-axis colors
     coldivl = [x*0.02 for x in range(10,18)]
@@ -120,3 +125,57 @@ if __name__=='__main__':
     tc.Update()
     plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_'+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(plotname)
+
+    #Make brazilian flag plot
+    #for each value of Z' mass
+    #print(list(set(limsdf['mzp'])))
+    for mzpt in list(set(limsdf['mzp'])):
+        print("Making Brazlian Flag plot for mZp = "+str(mzpt))
+        title = "limit per m_{Z'} = "+str(mzpt)
+        df = limsdf[limsdf['mzp'] == mzpt]
+        #ndmax = max(limsdf['mnd'])
+        #ndmin = min(limsdf['mnd'])
+        ndbins = len(df['mnd'])
+        #ndbinvals = np.zeros(ndbins)
+        ndbinvals = []
+        limits = []
+        #1sigs  = []
+        #2sigs 
+
+        #tg = ROOT.TGraphErrors(ndbins,
+        #hbf = ROOT.TH1F("hbf",title,ndbins,float((ndmin-ndbinwidth/2)),float((ndmax+ndbinwidth/2)))
+        #hbf.SetStats(0)
+        #hbf.GetXaxis().SetTitle("m_{ND} (GeV)")
+        #hbf.GetYaxis().SetTitle("median xs upper limit (95% CL) fb")
+        #print(hbf)
+        for i,mndt in enumerate(sorted(df['mnd'])):
+            print("Checking mnd = "+str(mndt))
+            gdf = df[df['mnd'] == mndt]
+            fileweneed = glob.glob(limitpath+"iggsCombineZp"+str(mzpt)+"ND"+str(mndt)+"*")
+            f = ROOT.TFile.Open(fileweneed[0])
+            tree = f.Get("limit")
+            tree.GetEntry(2)#The 50% quantiles for median limit
+            limit = tree.limit
+            limits.append(limit)
+            ndbinvals.append(float(mndt))
+            #print("  Limit = ",limit)
+
+        limits = np.array(limits)
+        ndbinvals = np.array(ndbinvals)
+        print(ndbins)
+        print(limits)
+        print(ndbinvals)
+        print(min(limits))
+        print(max(limits))
+        tg = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
+        #tg.SetMinimum(min(limits)-min(limits)*.2)
+        #tg.SetMaximum(max(limits)+max(limits)*.2)
+        tg.SetMinimum(0)
+        tg.SetMaximum(4)
+        tc1.cd()
+        tg.Draw()
+        plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_Zp'+str(mzpt)+"_"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        #plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_Zp'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        tc1.SaveAs(plotname)
+
+
