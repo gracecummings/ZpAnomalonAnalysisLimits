@@ -15,6 +15,12 @@ CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
 CMS_lumi.writeExtraText = 0
 #CMS_lumi.extraText = "Simulation Preliminary"
 
+def makeBaseDataframe(filelist):
+    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("NS")[-1]),-1.0] for x in filelist]
+    limsdf = pd.DataFrame(limsinfo,columns = ['mzp','mnd','mns','limit'])
+    return limsdf
+    
+
 
 if __name__=='__main__':
 
@@ -25,17 +31,17 @@ if __name__=='__main__':
     chan    = 'mumu'
     sigxs   = 1.0
 
-    limitpath= "limholder/limWithNothing/h"
-    #lims = glob.glob("limholder/limsWithJECs/h*")
+    #limitpath= "limholder/limWithNothing/h"
+    limitpath= "limholder/limsNoJECs/h"
+    #limitpath= "limholder/limsNoJECBlownUpLumi/h"
+    #limitpath = "limholder/limsWithJECs/h"
     lims = glob.glob(limitpath+"*")
     zpbinwidth = 500
     ndbinwidth = 200
 
-    #Creates list of lists with masses, names, and tfiles seperated
-    #allows for pulling info based on a single particle mass
-    limsinfo = [[x,int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("NS")[-1])] for x in lims]
-    limsdf = pd.DataFrame(limsinfo,columns = ['path','mzp','mnd','mns'])
-    limsdf['path'].astype("string")
+    #Creates a dataframe first with just the masspoints
+    #wanted to incldue tfiles, but live and learn
+    limsdf = makeBaseDataframe(lims)
 
     #Find relvant params
     zpmax = max(limsdf['mzp'])
@@ -98,6 +104,16 @@ if __name__=='__main__':
         zpbin = int((int(mzpstr)-zpmin)/zpbinwidth+1)
         ndbin = int((int(mndstr)-ndmin)/ndbinwidth+1)
         hlim.SetBinContent(zpbin,ndbin,limit)
+
+        #want to add the limit to the df
+        zpdf = limsdf[limsdf['mzp']==int(mzpstr)]
+        ndzpdf = zpdf[zpdf['mnd']==int(mndstr)]
+        ndzpdf['limit'] = limit#works, but throws warning I do not like
+        
+        print("Checking a new point: Zp{0} ND{1}".format(mzpstr,mndstr))
+        print("This is the df")
+        print(ndzpdf)
+
 
         #print(signame)
         #print("    The median limit is: ",limit)
