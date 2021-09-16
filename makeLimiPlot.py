@@ -133,21 +133,12 @@ if __name__=='__main__':
         print("Making Brazlian Flag plot for mZp = "+str(mzpt))
         title = "limit per m_{Z'} = "+str(mzpt)
         df = limsdf[limsdf['mzp'] == mzpt]
-        #ndmax = max(limsdf['mnd'])
-        #ndmin = min(limsdf['mnd'])
         ndbins = len(df['mnd'])
-        #ndbinvals = np.zeros(ndbins)
         ndbinvals = []
         limits = []
         #1sigs  = []
         #2sigs 
 
-        #tg = ROOT.TGraphErrors(ndbins,
-        #hbf = ROOT.TH1F("hbf",title,ndbins,float((ndmin-ndbinwidth/2)),float((ndmax+ndbinwidth/2)))
-        #hbf.SetStats(0)
-        #hbf.GetXaxis().SetTitle("m_{ND} (GeV)")
-        #hbf.GetYaxis().SetTitle("median xs upper limit (95% CL) fb")
-        #print(hbf)
         for i,mndt in enumerate(sorted(df['mnd'])):
             print("Checking mnd = "+str(mndt))
             gdf = df[df['mnd'] == mndt]
@@ -158,24 +149,22 @@ if __name__=='__main__':
             limit = tree.limit
             limits.append(limit)
             ndbinvals.append(float(mndt))
-            #print("  Limit = ",limit)
 
         limits = np.array(limits)
         ndbinvals = np.array(ndbinvals)
-        print(ndbins)
-        print(limits)
-        print(ndbinvals)
-        print(min(limits))
-        print(max(limits))
+        #print(ndbins)
+        #print(limits)
+        #print(ndbinvals)
+        #print(min(limits))
+        #print(max(limits))
         tg = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
-        #tg.SetMinimum(min(limits)-min(limits)*.2)
-        #tg.SetMaximum(max(limits)+max(limits)*.2)
-        tg.SetMinimum(0)
-        tg.SetMaximum(4)
+        tg.SetMinimum(min(limits)-min(limits)*.2)
+        tg.SetMaximum(max(limits)+max(limits)*.2)
         tc1.cd()
         tg.Draw()
-        plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_Zp'+str(mzpt)+"_"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-        #plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_Zp'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_Zp'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         tc1.SaveAs(plotname)
+        tg.Delete()
+        tc1.Clear()
 
 
