@@ -87,8 +87,6 @@ if __name__=='__main__':
     hlim.GetZaxis().SetTitleSize(0.04)
     hlim.GetZaxis().SetTitleOffset(.9)
     hlim.GetZaxis().SetLabelSize(0.025)
-    
-
     hlim.SetContour(len(coldiv),coldiv)
     
     for combout in lims:
@@ -106,14 +104,12 @@ if __name__=='__main__':
         hlim.SetBinContent(zpbin,ndbin,limit)
 
         #want to add the limit to the df
+        #the df and lims are in the same order, could use integers that way
+        #but, if for some reason they are not, need to be mindful
         zpdf = limsdf[limsdf['mzp']==int(mzpstr)]
         ndzpdf = zpdf[zpdf['mnd']==int(mndstr)]
-        ndzpdf['limit'] = limit#works, but throws warning I do not like
-        
-        print("Checking a new point: Zp{0} ND{1}".format(mzpstr,mndstr))
-        print("This is the df")
-        print(ndzpdf)
-
+        indx = ndzpdf.index#returns the row that satisfies that slice
+        limsdf.loc[indx,'limit'] = limit#edits the main dataframe
 
         #print(signame)
         #print("    The median limit is: ",limit)
@@ -121,7 +117,7 @@ if __name__=='__main__':
         #print("    The Zpbin: ",hlim.GetXaxis().GetBinCenter(zpbin))
         #print("    The NDbin: ",hlim.GetYaxis().GetBinCenter(ndbin))
         #print("    The bin content is: ",hlim.GetBinContent(zpbin,ndbin))
-    
+
     tc.cd()
     hlim.Draw('colztext')#creates the palette objects
     tc.Update()#allows the palette object to be grabbed.
