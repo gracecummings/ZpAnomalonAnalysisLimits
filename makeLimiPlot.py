@@ -146,34 +146,13 @@ if __name__=='__main__':
         title = "limit per m_{Z'} = "+str(mzpt)
         df = limsdf[limsdf['mzp'] == mzpt]
         ndbins = len(df['mnd'])
-        ndbinvals = []
-        limits = []
-        #1sigs  = []
-        #2sigs 
 
-        for i,mndt in enumerate(sorted(df['mnd'])):
-            print("Checking mnd = "+str(mndt))
-            gdf = df[df['mnd'] == mndt]
-            limit = gdf['limit']
-            limits.append(limit)
-            ndbinvals.append(float(mndt))
-            #    fileweneed = glob.glob(limitpath+"iggsCombineZp"+str(mzpt)+"ND"+str(mndt)+"*")
-            #    f = ROOT.TFile.Open(fileweneed[0])
-            #    tree = f.Get("limit")
-            #    tree.GetEntry(2)#The 50% quantiles for median limit
-            #    limit = tree.limit
-
-
-        #ndbinvals = sorted(df['mnd'])
-        #limts = 
-
+        sf = df.sort_values(by=['mnd'])
+        ndbinvals = sf['mnd']
+        limits = sf['limit']
         limits = np.array(limits)
-        ndbinvals = np.array(ndbinvals)
-        #print(ndbins)
-        #print(limits)
-        #print(ndbinvals)
-        #print(min(limits))
-        #print(max(limits))
+        ndbinvals = np.array(ndbinvals,dtype=float)
+        
         tg = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
         tg.SetMinimum(min(limits)-min(limits)*.2)
         tg.SetMaximum(max(limits)+max(limits)*.2)
