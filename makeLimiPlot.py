@@ -154,13 +154,18 @@ if __name__=='__main__':
         for i,mndt in enumerate(sorted(df['mnd'])):
             print("Checking mnd = "+str(mndt))
             gdf = df[df['mnd'] == mndt]
-            fileweneed = glob.glob(limitpath+"iggsCombineZp"+str(mzpt)+"ND"+str(mndt)+"*")
-            f = ROOT.TFile.Open(fileweneed[0])
-            tree = f.Get("limit")
-            tree.GetEntry(2)#The 50% quantiles for median limit
-            limit = tree.limit
+            limit = gdf['limit']
             limits.append(limit)
             ndbinvals.append(float(mndt))
+            #    fileweneed = glob.glob(limitpath+"iggsCombineZp"+str(mzpt)+"ND"+str(mndt)+"*")
+            #    f = ROOT.TFile.Open(fileweneed[0])
+            #    tree = f.Get("limit")
+            #    tree.GetEntry(2)#The 50% quantiles for median limit
+            #    limit = tree.limit
+
+
+        #ndbinvals = sorted(df['mnd'])
+        #limts = 
 
         limits = np.array(limits)
         ndbinvals = np.array(ndbinvals)
