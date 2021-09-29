@@ -52,17 +52,18 @@ if __name__=='__main__':
     btagwp  = '0.8'
     chan    = 'mumu'
     sigxs   = 1.0
+    rebindiv = 2
 
     #load in the files with the hists
-    bkgs        = go.backgrounds('BkgInputs/',zptcut,hptcut,metcut,btagwp)
-    systbkgsup  = go.backgrounds('BkgJECSyst/',zptcut,hptcut,metcut,btagwp,"systjecup")
-    systbkgsdwn = go.backgrounds('BkgJECSyst/',zptcut,hptcut,metcut,btagwp,"systjecdwn")
-    sig         = go.signal('SignalInputs/',zptcut,hptcut,metcut,btagwp,sigxs,101.27)
-    systsigup   = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecup")
-    systsigdwn  = go.signal('SignalJECSyst/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecdwn")
-    dyEst       = ROOT.TFile('BkgInputs/Run2_2017_2018_dy_extraploation_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
-    dyEstup     = ROOT.TFile('BkgJECSyst/Run2_2017_2018_dy_extraploationsystjecup_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
-    dyEstdwn    = ROOT.TFile('BkgJECSyst/Run2_2017_2018_dy_extraploationsystjecdwn_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    bkgs        = go.backgrounds('BkgInputsNominalRebin/',zptcut,hptcut,metcut,btagwp)
+    systbkgsup  = go.backgrounds('BkgInputsJECSystRebin/',zptcut,hptcut,metcut,btagwp,"systjecup")
+    systbkgsdwn = go.backgrounds('BkgInputsJECSystRebin/',zptcut,hptcut,metcut,btagwp,"systjecdwn")
+    sig         = go.signal('SignalInputsNominalRebin/',zptcut,hptcut,metcut,btagwp,sigxs,101.27)
+    systsigup   = go.signal('SignalInputsJECSystRebin/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecup")
+    systsigdwn  = go.signal('SignalInputsJECSystRebin/',zptcut,hptcut,metcut,btagwp,sigxs,101.27,"systjecdwn")
+    dyEst       = ROOT.TFile('BkgInputsNominalRebin/Run2_2017_2018_dy_extraploation_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    dyEstup     = ROOT.TFile('BkgInputsJECSystRebin/Run2_2017_2018_dy_extraploationsystjecup_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    dyEstdwn    = ROOT.TFile('BkgInputsJECSystRebin/Run2_2017_2018_dy_extraploationsystjecdwn_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
 
 
     ####Prepping holders####
@@ -100,14 +101,16 @@ if __name__=='__main__':
     hvvdwn.SetName("VV_jecDown")
     hdyup.SetName("DY_jecUp")
     hdydwn.SetName("DY_jecDown")
+    httup.Rebin(rebindiv)
+    httdwn.Rebin(rebindiv)
+    hvvup.Rebin(rebindiv)
+    hvvdwn.Rebin(rebindiv)
     httup.GetXaxis().SetRangeUser(1500,5000)
     httdwn.GetXaxis().SetRangeUser(1500,5000)
     hvvup.GetXaxis().SetRangeUser(1500,5000)
     hvvdwn.GetXaxis().SetRangeUser(1500,5000)
     hdyup.GetXaxis().SetRangeUser(1500,5000)
     hdydwn.GetXaxis().SetRangeUser(1500,5000)
-
-    
     
     ####Getting the Estimations####
     hdat = empty.Clone()
@@ -125,11 +128,12 @@ if __name__=='__main__':
     hvv.SetName("VV")
     hdy.SetName("DY")
     hdat.SetName("data_obs")
+    htt.Rebin(rebindiv)
+    hvv.Rebin(rebindiv)
     hdat.GetXaxis().SetRangeUser(1500,5000)
     htt.GetXaxis().SetRangeUser(1500,5000)
     hvv.GetXaxis().SetRangeUser(1500,5000)
     hdy.GetXaxis().SetRangeUser(1500,5000)
-
 
     #Signal Samples
     siginfo = sig.prepsigsr
@@ -154,10 +158,11 @@ if __name__=='__main__':
 
         #nominal    
         hsigori = sig["tfile"].Get("h_zp_jigm")
-        #hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
+        hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
         hsig = hsigori.Clone()
         hsig.SetName(signame)
         hsig.Scale(sig["scale"])
+        hsig.Rebin(rebindiv)
         hsig.GetXaxis().SetRangeUser(1500,5000)
 
         #up
@@ -165,6 +170,7 @@ if __name__=='__main__':
         hsigup = hsigupori.Clone()
         hsigup.SetName(signame+"_jecUp")
         hsigup.Scale(sigJECup[s]["scale"])
+        hsigup.Rebin(rebindiv)
         hsigup.GetXaxis().SetRangeUser(1500,5000)
 
         #down
@@ -172,7 +178,9 @@ if __name__=='__main__':
         hsigdwn = hsigdwnori.Clone()
         hsigdwn.SetName(signame+"_jecDown")
         hsigdwn.Scale(sigJECdwn[s]["scale"])
+        hsigdwn.Rebin(rebindiv)
         hsigdwn.GetXaxis().SetRangeUser(1500,5000)
+        
 
         #This is need to get the errors on the bins correct
         #built for nominal case
@@ -191,11 +199,12 @@ if __name__=='__main__':
                     "hists":[hsig,hdy,htt,hvv],
                     "method":["mc","alpha","mc","mc"],
                     "syst":{"lumi_13TeV":
-                            {"type":"lnN","unc":1.018,"proc":[1,1,1,1]},
+                            {"type":"lnN","unc":1.018,"proc":[0,1,1,1]},#GOOD LUMI
+                            #{"type":"lnN","unc":1.5,"proc":[1,1,1,1]},#BAD LUMI
                             #"alphar_alt":
                             #{"type":"shape","unc":1,"proc":[0,1,0,0]},
-                            #"jec":
-                            #{"type":"shapeN2","unc":1,"proc":[1,1,1,1]},
+                            "jec":
+                            {"type":"shapeN2","unc":1,"proc":[1,1,1,1]},
                             },
                     }
 

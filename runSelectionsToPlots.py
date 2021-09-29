@@ -22,44 +22,44 @@ if __name__=='__main__':
     plots = ['h_z_pt']#['h_h_pt','h_z_pt','h_met','h_nd_jigm','h_zp_jigm','h_h_sd','h_btag']
 
     #topiary sample list: dateforfolder, samplename
-    samplelist = [['2021-09-09','Run2017B-31Mar2018-v1.SingleMuon'],
-                  ['2021-09-09','Run2017C-31Mar2018-v1.SingleMuon'],
-                  ['2021-09-09','Run2017D-31Mar2018-v1.SingleMuon'],
-                  ['2021-09-09','Run2017E-31Mar2018-v1.SingleMuon'],
-                  ['2021-09-09','Run2017F-31Mar2018-v1.SingleMuon'],
+    samplelist = [#['2021-09-09','Run2017B-31Mar2018-v1.SingleMuon'],
+                  #['2021-09-09','Run2017C-31Mar2018-v1.SingleMuon'],
+                  #['2021-09-09','Run2017D-31Mar2018-v1.SingleMuon'],
+                  #['2021-09-09','Run2017E-31Mar2018-v1.SingleMuon'],
+                  #['2021-09-09','Run2017F-31Mar2018-v1.SingleMuon'],
                   #['2021-06-17','ZpAnomalonHZ_UFO-Zp1200-ND175-NS1'],
                   #['2021-06-17','ZpAnomalonHZ_UFO-Zp2000-ND300-NS1'],
                   #['2021-06-17','ZpAnomalonHZ_UFO-Zp2000-ND500-NS200'],
                   #['2021-06-17','ZpAnomalonHZ_UFO-Zp2000-ND800-NS200'],
                   #['2021-06-17','ZpAnomalonHZ_UFO-Zp3000-ND1200-NS1'],
-                  ['2021-09-09','Fall17.TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8_new_pmx'],
-                  ['2021-09-09','Fall17.TTToHadronic_TuneCP5_13TeV-powheg-pythia8_new_pmx'],##ttbar bg
-                  ['2021-09-09','Fall17.TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8_new_pmx'],##ttbar bg
-                  ['2021-09-09','Fall17.WZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],
-                  ['2021-09-09','Fall17.ZZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],
-                  ['2021-09-09','Fall17.DYJetsToLL_M-50_HT-100to200_TuneCP5_13TeV-madgraphMLM-pythia8'],
-                  ['2021-09-09','Fall17.DYJetsToLL_M-50_HT-200to400_TuneCP5_13TeV-madgraphMLM-pythia8'],
-                  ['2021-09-09','Fall17.DYJetsToLL_M-50_HT-400to600_TuneCP5_13TeV-madgraphMLM-pythia8'],
-                  ['2021-09-09','Fall17.DYJetsToLL_M-50_HT-600to800_TuneCP5_13TeV-madgraphMLM-pythia8'],
-                  ['2021-09-09','Fall17.DYJetsToLL_M-50_HT-800to1200_TuneCP5_13TeV-madgraphMLM-pythia8'],
-                  ['2021-09-09','Fall17.DYJetsToLL_M-50_HT-1200to2500_TuneCP5_13TeV-madgraphMLM-pythia8'],
-                  ['2021-09-09','Fall17.DYJetsToLL_M-50_HT-2500toInf_TuneCP5_13TeV-madgraphMLM-pythia8'],
-                  ['2021-09-09','Run2018C-17Sep2018-v1.SingleMuon'],
-                  ['2021-09-09','Run2018B-17Sep2018-v1.SingleMuon'],
-                  ['2021-09-09','Run2018A-17Sep2018-v1.SingleMuon'],
-                  ['2021-09-09','Run2018D-22Jan2019-v2.SingleMuon'],#ttbar background
-                  ['2021-09-08','Autumn18.TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
-                  ['2021-09-08','Autumn18.TTToHadronic_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
-                  ['2021-09-08','Autumn18.TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
-                  ['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-100to200_TuneCP5_PSweights_13TeV-madgraphMLM-pythia'],
-                  ['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-200to400_TuneCP5_PSweights_13TeV-madgraphMLM-pythia'],
-                  ['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-400to600_TuneCP5_PSweights_13TeV-madgraphMLM-pythia'],
-                  ['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-600to800_TuneCP5_PSweights_13TeV-madgraphMLM-pythia'],
-                  ['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-800to1200_TuneCP5_PSweights_13TeV-madgraphMLM-pythia'],
-                  ['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-1200to2500_TuneCP5_PSweights_13TeV-madgraphMLM-pythia'],
-                  ['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-2500toInf_TuneCP5_PSweights_13TeV-madgraphMLM-pythia'],
-                  ['2021-09-08','Autumn18.ZpAnomalonHZ_UFO-Zp1200-ND200-NS1_TuneCP5_13TeV-madgraph-pythia8'],
-                  ['2021-09-08','Autumn18.ZpAnomalonHZ_UFO-Zp1300-ND400-NS1_TuneCP5_13TeV-madgraph-pythia8'],
+                  #['2021-09-09','Fall17.TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8_new_pmx'],
+                  #['2021-09-09','Fall17.TTToHadronic_TuneCP5_13TeV-powheg-pythia8_new_pmx'],##ttbar bg
+                  #['2021-09-09','Fall17.TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8_new_pmx'],##ttbar bg
+                  #['2021-09-09','Fall17.WZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],
+                  #['2021-09-09','Fall17.ZZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],
+                  #['2021-09-09','Fall17.DYJetsToLL_M-50_HT-100to200_TuneCP5_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-09','Fall17.DYJetsToLL_M-50_HT-200to400_TuneCP5_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-09','Fall17.DYJetsToLL_M-50_HT-400to600_TuneCP5_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-09','Fall17.DYJetsToLL_M-50_HT-600to800_TuneCP5_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-09','Fall17.DYJetsToLL_M-50_HT-800to1200_TuneCP5_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-09','Fall17.DYJetsToLL_M-50_HT-1200to2500_TuneCP5_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-09','Fall17.DYJetsToLL_M-50_HT-2500toInf_TuneCP5_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-09','Run2018C-17Sep2018-v1.SingleMuon'],
+                  #['2021-09-09','Run2018B-17Sep2018-v1.SingleMuon'],
+                  #['2021-09-09','Run2018A-17Sep2018-v1.SingleMuon'],
+                  #['2021-09-09','Run2018D-22Jan2019-v2.SingleMuon'],#ttbar background
+                  #['2021-09-08','Autumn18.TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
+                  #['2021-09-08','Autumn18.TTToHadronic_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
+                  #['2021-09-08','Autumn18.TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
+                  #['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-100to200_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-200to400_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-400to600_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-600to800_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-800to1200_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-1200to2500_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-08','Autumn18.DYJetsToLL_M-50_HT-2500toInf_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
+                  #['2021-09-08','Autumn18.ZpAnomalonHZ_UFO-Zp1200-ND200-NS1_TuneCP5_13TeV-madgraph-pythia8'],
+                  #['2021-09-08','Autumn18.ZpAnomalonHZ_UFO-Zp1300-ND400-NS1_TuneCP5_13TeV-madgraph-pythia8'],
                   #['2021-09-08','Autumn18.ZpAnomalonHZ_UFO-Zp1500-ND200-NS1_TuneCP5_13TeV-madgraph-pythia8'],
                   #['2021-09-08','Autumn18.ZpAnomalonHZ_UFO-Zp1500-ND600-NS1_TuneCP5_13TeV-madgraph-pythia8'],
                   ['2021-09-08','Autumn18.ZpAnomalonHZ_UFO-Zp1500-ND600-NS200_TuneCP5_13TeV-madgraph-pythia8'],
@@ -119,9 +119,9 @@ if __name__=='__main__':
         for samp in samplelist:
             #subprocess.run(["python","runTopiary.py","-s",samp[1],"-y","2018"])
             #subprocess.run(["python","runTopiary.py","-s",samp[1],"-y","2017"])
-            subprocess.run(["python","runTopiary.py","-s",samp[1],"-c","mumu","-upjec","1"])
-            subprocess.run(["python","runTopiary.py","-s",samp[1],"-c","mumu","-dwnjec","1"])
-            #subprocess.run(["python","runTopiary.py","-s",samp[1],"-c","mumu"])
+            #subprocess.run(["python","runTopiary.py","-s",samp[1],"-c","mumu","-upjec","1"])
+            #subprocess.run(["python","runTopiary.py","-s",samp[1],"-c","mumu","-dwnjec","1"])
+            subprocess.run(["python","runTopiary.py","-s",samp[1],"-c","mumu"])
             
     for cut in cutlist:
         print("Doing ZpT cut {0}, HpT cut {1}, MET cut {2}, btag wp {3}".format(cut[0],cut[1],cut[2],cut[4]))

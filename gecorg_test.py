@@ -158,10 +158,10 @@ def prepBkg(bkgfiles,bkgnames,bkg_colors,ini_file,lumi,flag="yes"):
         if bkg_channel == "DYJetsToLL":
             #orders smallest HT to largest
             bkg.sort(key = orderDY)
-            normscale = np.load('BkgJECSyst/Run2_2017_2018_dynormalization_systjecup_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
-            #normscale = 1
-            #print("Put back in derived norm")
-            print("applying a normalization,watch out")
+            #normscale = np.load('BkgJECSyst/Run2_2017_2018_dynormalization_systjecup_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+            normscale = 1
+            print("Put back in derived norm")
+            #print("applying a normalization,watch out")
         elif bkg_channel == "TT":
             #sorts in alphabetical order 
             bkg.sort()                                                     
@@ -396,6 +396,7 @@ class backgrounds:
             for i,f in enumerate(files):
                 fparts = f.split("/")
                 name = fparts[-1]
+                #print(name)
                 tf = ROOT.TFile(f)
                 numevents = float(str(tf.Get('hnevents').GetString()))
                 xs = float(xspairs[i][1].split()[0])*1000#Into Femtobarn

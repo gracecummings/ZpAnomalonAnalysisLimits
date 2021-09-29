@@ -239,7 +239,7 @@ if __name__=='__main__':
         meterrs      = boostUnc(fdf['METclean'],fdf['event_weight'],39,50,2000)
         metphierrs   = boostUnc(fdf['METPhiclean'],fdf['event_weight'],30,-3.14159,3.14159)
         metphiwerrs  = boostUnc(fdf['METPhiclean'].map(wrapPhi),fdf['event_weight'],30,0,3.14159)
-        zpjigerrs    = boostUnc(fdf['ZPrime_mass_est'],fdf['event_weight'],50,500,5000)
+        zpjigerrs    = boostUnc(fdf['ZPrime_mass_est'],fdf['event_weight'],46,500,5100)
         ndjigerrs    = boostUnc(fdf['ND_mass_est'],fdf['event_weight'],35,100,800)
         nsjigerrs    = boostUnc(fdf['NS_mass_est'],fdf['event_weight'],25,0,500)
         btagerrs     = boostUnc(fdf['hCandidate_'+btaggr],fdf['event_weight'],110,0,1.1)
