@@ -156,9 +156,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *gzCand_eta = trimTree->Branch("gzCandidate_eta",&gzCandidate_eta,"gzCandidate_eta/D");
    TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
 
-   //Uncertainty holder
-   //TString uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+   //Uncertainty + Scale Factor Stuff
    TString uncfile = "badstring";
+   TFile btagsf("btagsf/DeepAK8MassDecorrelZHbbvQCD_scalefactors_Zptcut_Hptcut_metcut_btagwp.root","READ");
+   TH1F *hbtagsf;
    std::cout<<"Looking at year  "<<year<<std::endl;
    if (year == 180){
      std::cout<<"In Run2018RunA"<<std::endl;
@@ -176,9 +177,16 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    if (year == 18) {
      std::cout<<"In Autumn18"<<std::endl;
      uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+     TH1F *hbtagsf = (TH1F*)btagsf.Get("2018sf");
+     hbtagsf->SetDirectory(0);
+     btagsf.Close();
    }
    if (year == 17) {
      uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
+     TH1F *hbtagsf = (TH1F*)btagsf.Get("2017sf");
+     hbtagsf->SetDirectory(0);
+     btagsf.Close();
+
    }
    if (year == 170) {
      uncfile = "JEC/Fall17_17Nov2017B_V32_DATA/Fall17_17Nov2017B_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
@@ -194,6 +202,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    }
    if (year == 16) {
      std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
+     TH1F *hbtagsf = (TH1F*)btagsf.Get("2016sf");
+     hbtagsf->SetDirectory(0);
+     btagsf.Close();
+
    }
    std::cout<<"using uncertainty file "<<uncfile<<std::endl;
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
