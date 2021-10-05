@@ -73,7 +73,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double mEstNS;
    double  evntwkf;
    double  evntwbtag;
-   double  btagunc;
+   double  btaguncup;
+   double  btaguncdwn;
    TLorentzVector LMuCandidate;
    double LMuCandidate_pt;
    double LMuCandidate_phi;
@@ -133,7 +134,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *NSMest    = trimTree->Branch("NS_mass_est",&mEstNS,"mEstNS/D");
    TBranch *evntweightkf = trimTree->Branch("event_weight_kf",&evntwkf,"evntwkf/D");
    TBranch *evntweightbtag = trimTree->Branch("event_weight_btag",&evntwbtag,"evntwbtag/D");
-   TBranch *evntbtagunc = trimTree->Branch("event_weight_btagunc",&btagunc,"btagunc/D");
+   TBranch *evntbtaguncup = trimTree->Branch("event_weight_btaguncup",&btaguncup,"btaguncup/D");
+   TBranch *evntbtaguncdwn = trimTree->Branch("event_weight_btaguncdwn",&btaguncdwn,"btaguncdwn/D");
    TBranch *channelf   = trimTree->Branch("channel_flag",&channelflag,"channelflag/D");
    TBranch *LMuCand     = trimTree->Branch("LMuCandidate","TLorentzVector",&LMuCandidate);
    TBranch *LMuCand_pt  = trimTree->Branch("LMuCandidate_pt",&LMuCandidate_pt,"LMuCandidate_pt/D");
@@ -162,10 +164,18 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
    //Uncertainty + Scale Factor Stuff
    TString uncfile = "badstring";
-   TFile btagsf("btagsf/DeepAK8MassDecorrelZHbbvQCD_scalefactors_Zptcut_Hptcut_metcut_btagwp.root","READ");
-   btagsf.ls();
-   
+   TString btagfile = "badstring";
+   if (sampleType == 3) {//ttbar
+     btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_ttscalefactors_Zptcut_Hptcut_metcut_btagwp.root";
+   }
+   else {
+     btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_scalefactors_Zptcut_Hptcut_metcut_btagwp.root";
+   }
+
+   TFile btagsf(btagfile,"READ");
    TH1F *hbtagsf = 0;
+   TH1F *hbtagsfuncup = 0;
+   TH1F *hbtagsfuncdwn = 0;
    std::cout<<"Looking at year  "<<year<<std::endl;
    if (year == 180){
      std::cout<<"In Run2018RunA"<<std::endl;
@@ -184,15 +194,23 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      std::cout<<"In Autumn18"<<std::endl;
      uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2018sf")));
+     hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2018uncUp")));
+     hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2018uncDown")));
+     hbtagsfuncup->SetDirectory(0);
+     hbtagsfuncdwn->SetDirectory(0);
      hbtagsf->SetDirectory(0);
      btagsf.Close();
    }
    if (year == 17) {
      uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2017sf")));
+     hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2017uncUp")));
+     hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2017uncDown")));
+     hbtagsfuncup->SetDirectory(0);
+     hbtagsfuncdwn->SetDirectory(0);
+     hbtagsf->SetDirectory(0);
      hbtagsf->SetDirectory(0);
      btagsf.Close();
-     //std::cout<<hbtagsf<<std::endl;
    }
    if (year == 170) {
      uncfile = "JEC/Fall17_17Nov2017B_V32_DATA/Fall17_17Nov2017B_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
@@ -209,11 +227,18 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    if (year == 16) {
      std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2016sf")));
+     hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2016uncUp")));
+     hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2016uncDown")));
+     hbtagsfuncup->SetDirectory(0);
+     hbtagsfuncdwn->SetDirectory(0);
+     hbtagsf->SetDirectory(0);
      hbtagsf->SetDirectory(0);
      btagsf.Close();
    }
 
-   std::cout<<"using uncertainty file "<<uncfile<<std::endl;
+   std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
+   std::cout<<"Using btagsf file  "<<btagfile<<std::endl;
+
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
 
    //bring data era encoding back to normal numbers
@@ -332,7 +357,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      if (jentry == 200) {
+      if (jentry == 20) {
 	break;
       }
      
@@ -590,7 +615,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double hsd = 0;
       double fsd = 0;
       double hsf = 1.0;
-      double hbtagun = 0.0;
+      double hbtagunup = 0;
+      double hbtagundwn = 0;
       int    sfidx = 0;
       double hdmdhbbvqcd = 0;
       double hdmdzbbvqcd = 0;
@@ -636,19 +662,31 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    hdmdzbbvqcd  = JetsAK8Clean_DeepMassDecorrelTagZbbvsQCD->at(i);
 	    hdmdzhbbvqcd = JetsAK8Clean_DeepMassDecorrelTagZHbbvsQCD->at(i);
 	    hmiddb = JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb->at(i);
-	    sfidx = hbtagsf->FindBin(fat.Pt());
-	    hsf = hbtagsf->GetBinContent(sfidx);
-	    hbtagun = hbtagsf->GetBinError(sfidx);
+	    //sfidx = hbtagsf->FindBin(fat.Pt());
+	    //if (sfidx > 0) {
+	    //hsf = hbtagsf->GetBinContent(sfidx);
+	    //hbtagunup = hbtagsfuncup->GetBinContent(sfidx);
+	    //hbtagundwn = hbtagsfuncdwn->GetBinContent(sfidx);
+	    //}
 	    passh = true;
 	  }
 	}
       }
 
+      sfidx = hbtagsf->FindBin(theh.Pt());
+      if (sfidx > 0) {
+	hsf = hbtagsf->GetBinContent(sfidx);
+	hbtagunup = hbtagsfuncup->GetBinContent(sfidx);
+	hbtagundwn = hbtagsfuncdwn->GetBinContent(sfidx);
+      }
+      
       //btag sf debug
       if (passh) {
 	std::cout<<"The jet pT "<<theh.Pt()<<std::endl;
-	std::cout<<"The sf "<<hsf<<std::endl;
-	std::cout<<"The sferr "<<hbtagun<<std::endl;
+	std::cout<<"The sf "<<hsf<<std::endl;	
+	std::cout<<"The sfidx "<<sfidx<<std::endl;
+	std::cout<<"The sferrup  "<<hbtagunup<<std::endl;
+	std::cout<<"The sferrdwn "<<hbtagundwn<<std::endl;
       }
 	    
       //unreclustered jets
@@ -715,7 +753,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	ZCandidate_m   = theZ.M();
 	evntwkf = evntwkf_hold;
 	evntwbtag = hsf;
-	btagunc   = hbtagun;
+	btaguncup  = hbtagunup;
+	btaguncdwn = hbtagundwn;
 	LMuCandidate = leadmu;
 	LMuCandidate_pt  = leadmu.Pt();
 	LMuCandidate_phi = leadmu.Phi();
