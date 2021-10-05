@@ -71,7 +71,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double mEstZp;
    double mEstND;
    double mEstNS;
-   double  evntw;
+   double  evntwkf;
+   double  evntwbtag;
+   double  btagunc;
    TLorentzVector LMuCandidate;
    double LMuCandidate_pt;
    double LMuCandidate_phi;
@@ -107,10 +109,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TTree* trimTree = fChain->CloneTree(0);
    TH1F*  hnskimed = new TH1F("hnskimed","number of events at skim level",1,0,1);
    TH1F*  hnorigevnts = new TH1F("hnorigevnts","original number of events, preskim",1,0,1);
-   TH1F*  htrigpass= new TH1F("htrigpass","trigger pass",1,0,1);
-   TH1F*  hZpass= new TH1F("hZpass","Z pass",1,0,1);
-   TH1F*  hHpass= new TH1F("hHpass","h pass",1,0,1);
-   TH1F*  hpass= new TH1F("hpass","passing all req",1,0,1);
+   TH1F*  htrigpass = new TH1F("htrigpass","trigger pass",1,0,1);
+   TH1F*  hZpass = new TH1F("hZpass","Z pass",1,0,1);
+   TH1F*  hHpass = new TH1F("hHpass","h pass",1,0,1);
+   TH1F*  hpass  = new TH1F("hpass","passing all req",1,0,1);
    TBranch *hCand     = trimTree->Branch("hCandidate","TLorentzVector",&hCandidate);
    TBranch *hCand_pt  = trimTree->Branch("hCandidate_pt",&hCandidate_pt,"hCandidate_pt/D");
    TBranch *hCand_phi = trimTree->Branch("hCandidate_phi",&hCandidate_phi,"hCandidate_phi/D");
@@ -129,7 +131,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *ZpMest    = trimTree->Branch("ZPrime_mass_est",&mEstZp,"mEstZp/D");
    TBranch *NDMest    = trimTree->Branch("ND_mass_est",&mEstND,"mEstND/D");
    TBranch *NSMest    = trimTree->Branch("NS_mass_est",&mEstNS,"mEstNS/D");
-   TBranch *evntweight = trimTree->Branch("event_weight",&evntw,"evntw/D");
+   TBranch *evntweightkf = trimTree->Branch("event_weight_kf",&evntwkf,"evntwkf/D");
+   TBranch *evntweightbtag = trimTree->Branch("event_weight_btag",&evntwbtag,"evntwbtag/D");
+   TBranch *evntbtagunc = trimTree->Branch("event_weight_btagunc",&btagunc,"btagunc/D");
    TBranch *channelf   = trimTree->Branch("channel_flag",&channelflag,"channelflag/D");
    TBranch *LMuCand     = trimTree->Branch("LMuCandidate","TLorentzVector",&LMuCandidate);
    TBranch *LMuCand_pt  = trimTree->Branch("LMuCandidate_pt",&LMuCandidate_pt,"LMuCandidate_pt/D");
@@ -207,7 +211,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2016sf")));
      hbtagsf->SetDirectory(0);
      btagsf.Close();
-
    }
 
    std::cout<<"using uncertainty file "<<uncfile<<std::endl;
@@ -384,7 +387,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //DY+Jets k-factors+GenParticleInfo
-      float evntw_hold = 1.;
+      float evntwkf_hold = 1.;
       TLorentzVector theGenZ;
       TLorentzVector theGenH;
       if (sampleType != 0) {//Not Data
@@ -419,7 +422,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  if (ewknlosf <= 0.0) {
 	    ewknlosf = 1.;
 	  }
-	  evntw_hold = ewknlosf*qcdnnlosf*qcdnlosf;
+	  evntwkf_hold = ewknlosf*qcdnnlosf*qcdnlosf;
 	}
       }
       
@@ -587,6 +590,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double hsd = 0;
       double fsd = 0;
       double hsf = 1.0;
+      double hbtagun = 0.0;
       int    sfidx = 0;
       double hdmdhbbvqcd = 0;
       double hdmdzbbvqcd = 0;
@@ -634,14 +638,19 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    hmiddb = JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb->at(i);
 	    sfidx = hbtagsf->FindBin(fat.Pt());
 	    hsf = hbtagsf->GetBinContent(sfidx);
+	    hbtagun = hbtagsf->GetBinError(sfidx);
 	    passh = true;
 	  }
 	}
       }
 
       //btag sf debug
-      std::cout<<"The jet pT "<<theh.Pt()<<std::endl;
-      std::cout<<"The sf "<<hsf<<std::endl;
+      if (passh) {
+	std::cout<<"The jet pT "<<theh.Pt()<<std::endl;
+	std::cout<<"The sf "<<hsf<<std::endl;
+	std::cout<<"The sferr "<<hbtagun<<std::endl;
+      }
+	    
       //unreclustered jets
       /*
       if (nfat > 0) {
@@ -704,7 +713,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	ZCandidate_phi = theZ.Phi();
 	ZCandidate_eta = theZ.Eta();
 	ZCandidate_m   = theZ.M();
-	evntw          = evntw_hold;
+	evntwkf = evntwkf_hold;
+	evntwbtag = hsf;
+	btagunc   = hbtagun;
 	LMuCandidate = leadmu;
 	LMuCandidate_pt  = leadmu.Pt();
 	LMuCandidate_phi = leadmu.Phi();
