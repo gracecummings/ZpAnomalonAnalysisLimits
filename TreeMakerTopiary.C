@@ -575,7 +575,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
   
       //Z Candidate Build
       //For old ntuples
-      ///*
+      /*
       if (nselmu > 0 && nselel == 0) {
       	mumuchan = true;
 	std::vector<TLorentzVector>::iterator muit;
@@ -662,32 +662,28 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    hdmdzbbvqcd  = JetsAK8Clean_DeepMassDecorrelTagZbbvsQCD->at(i);
 	    hdmdzhbbvqcd = JetsAK8Clean_DeepMassDecorrelTagZHbbvsQCD->at(i);
 	    hmiddb = JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb->at(i);
-	    //sfidx = hbtagsf->FindBin(fat.Pt());
-	    //if (sfidx > 0) {
-	    //hsf = hbtagsf->GetBinContent(sfidx);
-	    //hbtagunup = hbtagsfuncup->GetBinContent(sfidx);
-	    //hbtagundwn = hbtagsfuncdwn->GetBinContent(sfidx);
-	    //}
 	    passh = true;
 	  }
 	}
       }
 
-      sfidx = hbtagsf->FindBin(theh.Pt());
-      if (sfidx > 0) {
-	hsf = hbtagsf->GetBinContent(sfidx);
-	hbtagunup = hbtagsfuncup->GetBinContent(sfidx);
-	hbtagundwn = hbtagsfuncdwn->GetBinContent(sfidx);
+      if (sampleType != 0) {
+	sfidx = hbtagsf->FindBin(theh.Pt());
+	if (sfidx > 0) {
+	  hsf = hbtagsf->GetBinContent(sfidx);
+	  hbtagunup = hbtagsfuncup->GetBinContent(sfidx);
+	  hbtagundwn = hbtagsfuncdwn->GetBinContent(sfidx);
+	}
       }
       
       //btag sf debug
-      if (passh) {
-	std::cout<<"The jet pT "<<theh.Pt()<<std::endl;
-	std::cout<<"The sf "<<hsf<<std::endl;	
-	std::cout<<"The sfidx "<<sfidx<<std::endl;
-	std::cout<<"The sferrup  "<<hbtagunup<<std::endl;
-	std::cout<<"The sferrdwn "<<hbtagundwn<<std::endl;
-      }
+      //if (passh) {
+      //std::cout<<"The jet pT "<<theh.Pt()<<std::endl;
+      //std::cout<<"The sf "<<hsf<<std::endl;	
+      //std::cout<<"The sfidx "<<sfidx<<std::endl;
+      //std::cout<<"The sferrup  "<<hbtagunup<<std::endl;
+      //std::cout<<"The sferrdwn "<<hbtagundwn<<std::endl;
+      //}
 	    
       //unreclustered jets
       /*
