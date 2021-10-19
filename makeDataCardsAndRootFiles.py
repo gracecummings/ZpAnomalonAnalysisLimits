@@ -35,7 +35,8 @@ def writeDataCard(processes,rootFileName,channel):
     card.write("------------\n")
 
     for syst in processes["syst"].keys():
-        vals = [x*processes["syst"][syst]["unc"] for x in processes["syst"][syst]["proc"]]
+        #vals = [x*processes["syst"][syst]["unc"] for x in processes["syst"][syst]["proc"]]
+        vals = processes["syst"][syst]["proc"]
         sval = [x if x != 0 else "-" for x in vals]
         cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst),processes["syst"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
@@ -100,7 +101,7 @@ if __name__=='__main__':
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.prepsigsr
     sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
-    for s,sig in enumerate(siginfo):
+    for s,sig in enumerate(siginfo[:1]):
         name = sig["name"]
         signame = "holder"
         if "Tune" in name:
@@ -129,9 +130,17 @@ if __name__=='__main__':
         hdat.Write()
         hsig.Write()
 
+        #####Gather Systematics
+        systdict = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":[0,1.018,1.018,1.018]},#GOOD LUMI
+                    }
 
-        for syst in systs[1:]:
+        print(systdict)
+        for syst in systs:
             print("------- Looking at systematic ",syst)
+
+            appcode = config.get(syst,'applist').split(',')
+            applist = [float(x) for x in appcode]
+            systdict[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
             
             systbkgsup  = go.backgrounds(config.get(syst,'pathup'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strup'))
             systbkgsdwn = go.backgrounds(config.get(syst,'pathdwn'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strdwn'))
@@ -245,17 +254,11 @@ if __name__=='__main__':
         #For writing the datacard
         #it makes sense to have the line be the key,
         #and then to have subdicts with the channel
+        print(systdict)
         procdict = {"processnames":[signame,"DY","TT","VV"],
                     "hists":[hsig,hdy,htt,hvv],
                     "method":["mc","alpha","mc","mc"],
-                    "syst":{"lumi_13TeV":
-                            {"type":"lnN","unc":1.018,"proc":[0,1,1,1]},#GOOD LUMI
-                            #{"type":"lnN","unc":1.5,"proc":[1,1,1,1]},#BAD LUMI
-                            #"alphar_alt":
-                            #{"type":"shape","unc":1,"proc":[0,1,0,0]},
-                            "jec":
-                            {"type":"shapeN2","unc":1,"proc":[1,1,1,1]},
-                    },
+                    "syst":systdict,
         }
         print("------- Defined the Datacard Dict")
         print("------- Writing the Datacard")
