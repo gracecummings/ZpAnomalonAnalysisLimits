@@ -101,7 +101,7 @@ if __name__=='__main__':
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.prepsigsr
     sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
-    for s,sig in enumerate(siginfo[:1]):
+    for s,sig in enumerate(siginfo):
         name = sig["name"]
         signame = "holder"
         if "Tune" in name:
@@ -134,7 +134,6 @@ if __name__=='__main__':
         systdict = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":[0,1.018,1.018,1.018]},#GOOD LUMI
                     }
 
-        print(systdict)
         for syst in systs:
             print("------- Looking at systematic ",syst)
 
@@ -252,9 +251,6 @@ if __name__=='__main__':
 
 
         #For writing the datacard
-        #it makes sense to have the line be the key,
-        #and then to have subdicts with the channel
-        print(systdict)
         procdict = {"processnames":[signame,"DY","TT","VV"],
                     "hists":[hsig,hdy,htt,hvv],
                     "method":["mc","alpha","mc","mc"],
