@@ -59,13 +59,14 @@ if __name__=='__main__':
     p22 = ROOT.TPad("p22","ttsb",0.33,.5,0.66,1.0)
     p23 = ROOT.TPad("p23","vvsb",0.66,.5,1.0,1.0)
 
-        
+    #Get systematic info
+    config = configparser.RawConfigParser()
+    config.optionxform = str
+    fp = open('systematics.ini')
+    config.read_file(fp)
+    systs = config.sections()
     
-    #will replace with command line options
-    #path    = 'analysis_output_ZpAnomalon/2021-06-22_alphaMethStuff/'
-    pathbkg    = 'BkgInputsJECSystRebin/'
-    pathdata   = 'DataInputsJECSystRebin/'
-
+    #Starting parameters
     zptcut  = '150.0'
     hptcut  = '300.0'
     metcut  = '200.0'
@@ -73,9 +74,15 @@ if __name__=='__main__':
     dynorm  = 1.
     validation = False
     rstr = "signalblind"
-    systr = 'systjecdwn'
+    rebindiv = 2
+    systname = 'btag'
+    systclass = 'pathnom'
+    syststr = 'strnom'
 
-
+    pathbkg    = config.get(systname,systclass)
+    pathdata   = 'DataInputsNominalJECBtag/'
+    datastr = 'systnominal_btagdwn'
+    
     if validation:
         rstr = "validationblind"
         dynorm = np.load(path+'/Run2_2017_2018_dynormalization_validationblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
@@ -85,15 +92,16 @@ if __name__=='__main__':
         srstring = "55 < m_{hcand,SD} < 70"
         srregionstring = "Validation Region"
     else:
-        dynorm = np.load(pathbkg+'Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
-        bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
-        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
+        dynorm = np.load(pathbkg+'Run2_2017_2018_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+        bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
+        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp)
         sbstring = "30 < m_{hcand,SD} < 70"
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
         
     print("Using the DY normalization factor: ",dynorm)
-
+    
+    
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_zp_jigm')
     empty.Reset("ICESM")#creates an empty hist with same structure
@@ -120,6 +128,7 @@ if __name__=='__main__':
     hsrvv = hsrzz.Clone()
     hsrvv.Add(hsrwz)
 
+
     if not validation:
         hdatsb = data.getAddedHist(empty9,"sb","h_zp_jigm")
     if validation:
@@ -130,7 +139,27 @@ if __name__=='__main__':
     #Apply the normalization
     hsbdy.Scale(dynorm)
     hsrdy.Scale(dynorm)
-    
+
+    #rebin
+
+    hsbdy.Rebin(rebindiv)
+    hsrdy.Rebin(rebindiv)
+    hsbtt.Rebin(rebindiv)
+    hsrtt.Rebin(rebindiv)
+    hsrvv.Rebin(rebindiv)
+    hsbvv.Rebin(rebindiv)
+    hdatsbsub.Rebin(rebindiv)
+    hdatsb.Rebin(rebindiv)
+
+    #hsbdy.GetXaxis().SetRangeUser(1500,5000)
+    #hsrdy.GetXaxis().SetRangeUser(1500,5000)
+    #hsbtt.GetXaxis().SetRangeUser(1500,5000)
+    #hsrtt.GetXaxis().SetRangeUser(1500,5000)
+    #hsrvv.GetXaxis().SetRangeUser(1500,5000)
+    #hsbvv.GetXaxis().SetRangeUser(1500,5000)
+    #hdatsbsub.GetXaxis().SetRangeUser(1500,5000)
+    #hdatsb.GetXaxis().SetRangeUser(1500,5000)
+
     ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
     ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
     
@@ -265,7 +294,7 @@ if __name__=='__main__':
     l111.AddEntry(hsbttc,"TT","f")
     l111.AddEntry(hsbwzc,"WZ","f")
     l111.AddEntry(hsbwzc,"ZZ","f")
-    hsbkg.SetMaximum(50.)
+    hsbkg.SetMaximum(80.)
     hsbkg.SetMinimum(0.)
 
     hsbkg.Draw("HIST")
@@ -320,8 +349,8 @@ if __name__=='__main__':
     alpha.Draw()
 
     
-    figshapes = go.makeOutFile('Run2_2017_2018','alpha_shapes_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-    datavis = go.makeOutFile('Run2_2017_2018','alpha_sub_tester_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    figshapes = go.makeOutFile('Run2_2017_2018','alpha_shapes_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    datavis = go.makeOutFile('Run2_2017_2018','alpha_sub_tester_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(figshapes)
 
     #Subtracted Background canvas
@@ -382,9 +411,9 @@ if __name__=='__main__':
     hdatsbsub1 = hdatsbsub.Clone()#check errors
     print("=========doing sb extrapolation fit==================")
     extrap  = ROOT.alphaExtrapolation(hsbdy,hsrdy,hdatsbsub1)
-    extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,hdatsbsub1,2)
+    extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,hdatsbsub1,1)
     hsrdy.GetXaxis().SetRangeUser(1500,5000)
-    hsrdy.GetYaxis().SetRangeUser(0,10)
+    hsrdy.GetYaxis().SetRangeUser(0,20)
     hsrdy.Draw("HIST")
     extrap.Draw("SAME")
     CMS_lumi.CMS_lumi(pd132,4,13)
@@ -402,7 +431,7 @@ if __name__=='__main__':
 
     tc2.SaveAs(datavis)
 
-    rootOutName = go.makeOutFile('Run2_2017_2018','dy_extraploation'+systr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    rootOutName = go.makeOutFile('Run2_2017_2018','dy_extraploation'+config.get(systname,syststr),'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootFile = ROOT.TFile(rootOutName,"recreate")
     extrphist.Write()
     rootFile.Close()
