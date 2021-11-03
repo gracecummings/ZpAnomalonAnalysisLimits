@@ -125,7 +125,7 @@ def prepSig(sigfiles,sig_colors,sig_xsec,lumi):
         sig_dict["tfile"] = ROOT.TFile(sig)                                                             
         sig_samplesize    = str(sig_dict["tfile"].Get('hnevents').GetString())
         if float(sig_samplesize) == 0.0:
-            print("Fix your hack for ntuple signal counting, setting sample size to 35000")
+            #print("Fix your hack for ntuple signal counting, setting sample size to 35000")
             sig_samplesize = "35000.0"###HACK
         sig_dict["scale"] = findScale(float(sig_samplesize),sig_xsec,lumi)
         sig_dict["name"]  = nameSignal(sig)
@@ -158,10 +158,11 @@ def prepBkg(bkgfiles,bkgnames,bkg_colors,ini_file,lumi,flag="yes"):
         if bkg_channel == "DYJetsToLL":
             #orders smallest HT to largest
             bkg.sort(key = orderDY)
-            #normscale = np.load('BkgJECSyst/Run2_2017_2018_dynormalization_systjecup_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+            #normscale = np.load('BkgInputsNominalJECBtag/Run2_2017_2018_dynormalization_systnominal_btagnom_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+            #normscale = np.load('BkgInputs/Run2_2017_2018_dynormalization_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+            #print("applying a normalization,watch out")
             normscale = 1
             print("Put back in derived norm")
-            #print("applying a normalization,watch out")
         elif bkg_channel == "TT":
             #sorts in alphabetical order 
             bkg.sort()                                                     
@@ -214,11 +215,15 @@ def stackBkg(bkg_info,hist_to_stack,hsbkg,legend,stack_max,stack_min):
                 
 def stackBkgMultiYear(bkginfo0,bkginfo1,hist_to_stack,hsbkg,legend,stack_max,stack_min):
     for i,bkg in enumerate(bkginfo0):
-        #print(bkg["name"])
-        #print(bkginfo1[i]["name"])
+        bkgdictmatch = bkginfo1[i]
+        if bkg["name"] != bkginfo1[i]["name"]:
+            #print("background orders do not match!!!!!")
+            bkgdictmatch = [bkgdict for bkgdict in bkginfo1 if bkgdict["name"] == bkg["name"]][0]
         for b,bkgbin in enumerate(bkg["binlist"]):
+            #print("new bin!")
             #print(bkgbin["binname"])
             #print(bkginfo1[i]["binlist"][b]["binname"])
+            #print(bkgdictmatch["binlist"][b]["binname"])
             hbkg0 = bkgbin["tfile"].Get(hist_to_stack)
             hbkg0.SetStats(0)
             hbkg0.Scale(bkgbin["scale"])
@@ -226,11 +231,11 @@ def stackBkgMultiYear(bkginfo0,bkginfo1,hist_to_stack,hsbkg,legend,stack_max,sta
             hbkg0.SetLineColor(bkgbin["color"])
             hbkg0.SetMaximum(stack_max)
             hbkg0.SetMinimum(stack_min)
-            hbkg1 = bkginfo1[i]["binlist"][b]["tfile"].Get(hist_to_stack)
+            hbkg1 = bkgdictmatch["binlist"][b]["tfile"].Get(hist_to_stack)
             hbkg1.SetStats(0)
-            hbkg1.Scale(bkginfo1[i]["binlist"][b]["scale"])
-            hbkg1.SetFillColor(bkginfo1[i]["binlist"][b]["color"])
-            hbkg1.SetLineColor(bkginfo1[i]["binlist"][b]["color"])
+            hbkg1.Scale(bkgdictmatch["binlist"][b]["scale"])
+            hbkg1.SetFillColor(bkgdictmatch["binlist"][b]["color"])
+            hbkg1.SetLineColor(bkgdictmatch["binlist"][b]["color"])
             hbkg1.SetMaximum(stack_max)
             hbkg1.SetMinimum(stack_min)
 
@@ -377,6 +382,7 @@ class backgrounds:
     def getAddedHist(self,hist,samp,region,hname,years = [17,18]):
         bkg = self.bkgs[samp]
         xspairs = self.config.items(samp)
+        #print(xspairs)
         bkgdfs  = []
         
         for year in years:
@@ -393,6 +399,8 @@ class backgrounds:
             if "TT" in samp:
                 files.sort()
                 errs.sort()
+
+            #print(files)
             for i,f in enumerate(files):
                 fparts = f.split("/")
                 name = fparts[-1]
@@ -402,8 +410,9 @@ class backgrounds:
                 xs = float(xspairs[i][1].split()[0])*1000#Into Femtobarn
                 scale = findScale(numevents,xs,lumi)
                 h = tf.Get(hname)
-                h.Scale(scale)
-                hist.Add(h)
+                hscaled = h.Clone()
+                hscaled.Scale(scale)
+                hist.Add(hscaled)
                 
                 #calc hist errors
                 df = pd.read_pickle(errs[i])
@@ -412,6 +421,10 @@ class backgrounds:
                 bkgdfs.append(sqrddf)
 
                 debugstring = name+" "+str(xs)+" "+str(scale)
+                #print(debugstring)
+                #print("   integral of unscaled histogram: ",h.Integral())
+                #print("                            scale: ",scale)
+                #print("      intgral of scaled histogram: ",hscaled.Integral())
 
         uncsqdDYJetsdf = sum(bkgdfs)
         uncDYJetsdf    = uncsqdDYJetsdf**(1/2)
@@ -423,6 +436,7 @@ class backgrounds:
                 binerr = uncDYJetsdf[hname][ibin-1]
                 hist.SetBinError(ibin,binerr)
 
+        #print("    integral added hist: ",hist.Integral())
         return hist
 
     #Add something that does this nicely within this class

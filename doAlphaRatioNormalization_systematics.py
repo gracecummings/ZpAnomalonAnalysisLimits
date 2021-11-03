@@ -8,6 +8,7 @@ import gecorg_test as go
 import numpy as np
 import pandas as pd
 import configparser
+import argparse
 
 tdrstyle.setTDRStyle()
 CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
@@ -52,16 +53,25 @@ ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","
 ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
 
 if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m","--metcut", type=float,help = "met cut of samples")
+    parser.add_argument("-z","--zptcut", type=float,help = "zpt cut of samples")
+    parser.add_argument("-j","--hptcut", type=float,help = "hpt cut of samples")
+    parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
+    parser.add_argument("-dir","--directory", type=str,help = "date folder with output")
+    parser.add_argument("-v","--validationregion", type=bool,help = "is this a validation region?")
+    args = parser.parse_args()
+
 
     #will replace with command line options
-    pathbkg    = 'BkgInputsJECSystRebin/'
-    pathdata   = 'DataInputsJECSystRebin/'
-    #pathbkg    = '/'
-    #xpathdata   = '/'
-    zptcut  = '150.0'
-    hptcut  = '300.0'
-    metcut  = '200.0'
-    btagwp  = '0.8'
+    #pathbkg    = 'BkgInputsNominalJECBtagSyst/'
+    #pathdata   = 'DataInputsNominalJECBtagSyst/'
+    pathbkg    = args.directory#'pfMETNominal/'
+    pathdata   = args.directory#'pfMETNominal/'
+    zptcut  = args.zptcut#'150.0'
+    hptcut  = args.hptcut#'300.0'
+    metcut  = args.metcut#'200.0'
+    btagwp  = args.btagwp#'0.8'
 
     #ranges in question
     lsb = [30,70]
@@ -75,7 +85,7 @@ if __name__=='__main__':
     if validation:
         rstr = "validationblind"
 
-    systr = 'systjecdwn'
+    systr = 'systnominal_btagnom'
 
     bkgs  = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
     data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
@@ -119,12 +129,17 @@ if __name__=='__main__':
     #This uses the old and outdated way of making the stacked plots
     #This is subject to mixing the normalizations
     #Have to be careful that an old normalization is not use in the stacking
+    plotmax = 20.
+    linemax = plotmax*.8
+    labelmin = plotmax*.75
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
     bkgcols  = go.colsFromPalette(bkgnames,ROOT.kLake)
     info17 = go.prepBkg(bkgfiles17,bkgnames,bkgcols,"xsects_2017.ini",41.53)
     info18 = go.prepBkg(bkgfiles18,bkgnames,bkgcols,"xsects_2017.ini",59.74)
+    #print(info17)
+    #print(info18)
     stackleg = ROOT.TLegend(0.55,0.40,0.93,0.8)
-    go.stackBkgMultiYear(info17,info18,'h_h_sd',hsbkg,stackleg,50,0)
+    go.stackBkgMultiYear(info17,info18,'h_h_sd',hsbkg,stackleg,plotmax,0)
 
 
     #makes some fits
@@ -171,7 +186,7 @@ if __name__=='__main__':
     hsbkgnorm.Add(htrwz)
     hsbkgnorm.Add(htrtt)
     hsbkgnorm.Add(htrdyclone)
-    hsbkgnorm.SetMaximum(50.)
+    hsbkgnorm.SetMaximum(plotmax)
     hsbkgnorm.SetMinimum(0.0)
 
     #labels
@@ -199,17 +214,17 @@ if __name__=='__main__':
     normlabel = ROOT.TPaveText(0.6,0.2,0.93,0.35,"NBNDC")
     normlabel.AddText("DY MC with SB data norm")
     normlabel.SetFillColor(0)
-    brl = ROOT.TLine(br[0],0,br[0],40.)
-    brh = ROOT.TLine(br[1],0,br[1],40.)
-    vrl = ROOT.TLine(vr[0],0,vr[0],40.)
-    srl = ROOT.TLine(sr[0],0,sr[0],40.)
-    srlabel = ROOT.TPaveText(125,35,135,40,"NB")
+    brl = ROOT.TLine(br[0],0,br[0],linemax)
+    brh = ROOT.TLine(br[1],0,br[1],linemax)
+    vrl = ROOT.TLine(vr[0],0,vr[0],linemax)
+    srl = ROOT.TLine(sr[0],0,sr[0],linemax)
+    srlabel = ROOT.TPaveText(125,labelmin,135,linemax,"NB")
     srlabel.SetFillColor(0)
     srlabel.AddText("SR")
-    vrlabel = ROOT.TPaveText(57.5,35,67.5,40,"NB")
+    vrlabel = ROOT.TPaveText(57.5,labelmin,67.5,linemax,"NB")
     vrlabel.SetFillColor(0)
     vrlabel.AddText("VR")
-    zrlabel = ROOT.TPaveText(85,35,95,40,"NB")
+    zrlabel = ROOT.TPaveText(85,labelmin,95,linemax,"NB")
     zrlabel.SetFillColor(0)
     zrlabel.AddText("ZR")
     
