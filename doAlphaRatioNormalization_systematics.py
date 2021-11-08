@@ -49,6 +49,40 @@ def plotMsd(pad,hist,islog=False,logmin=0.1,isData=False):
     
     hist.Draw(drawopts)
 
+def makeRatios(hsbkg,hsdat):
+    hsumb = hsbkg.GetStack().Last()
+    binlist = np.zeros(hsumb.GetNbinsX()+1)
+    fill    = np.zeros(hsumb.GetNbinsX()+1)
+    ratiolist = np.zeros(hsumb.GetNbinsX()+1)
+    rerrlist = np.zeros(hsumb.GetNbinsX()+1)
+
+    for ibin in range(hsumb.GetNbinsX()+1):#CHECK
+        bincen = hsumb.GetBinCenter(ibin)
+        bkgmc  = hsumb.GetBinContent(ibin)
+        data   = hsdat.GetBinContent(ibin)
+        binlist[ibin] = bincen
+        if ibin != 0:
+            ratiolist[ibin] = -1
+            datunc = hsdat.GetBinError(ibin)
+            datval = hsdat.GetBinContent(ibin)
+            bkgval = hsumb.GetBinContent(ibin)
+            bkgerr = hsumb.GetBinError(ibin)
+            if bkgmc != 0 and data != 0:
+                ratiolist[ibin] = datval/bkgval
+                #rerrlist[ibin] = datval/bkgval*sqrt((datunc/data)**2+(bkguncs[hname][ibin-1]/bkgmc)**2)
+            if bkgmc == 0:
+                ratiolist[ibin] = -1
+                rerrlist[ibin] = 0
+            else:
+                ratiolist[ibin] = -1
+                rerrlist[ibin] = 0
+        
+        #remove underflow bin#hopefuly can get rid of this
+        ratiolist = np.delete(ratiolist,0)
+        binlist   = np.delete(binlist,0)
+        rerrlist  = np.delete(rerrlist,0)
+
+
 ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
 ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
 
@@ -189,6 +223,18 @@ if __name__=='__main__':
     hsbkgnorm.SetMaximum(plotmax)
     hsbkgnorm.SetMinimum(0.0)
 
+    #Bkg Hist Sum for Scaling (tracks Uncertainties)
+    hbkgaddtion = htrzz.Clone()
+    hbkgaddtion.Add(htrwz)
+    hbkgaddtion.Add(htrtt)
+    hbkgaddtion.Add(htrdyclone)
+    hdiv = hdatsb.Clone()
+    hdiv.Divide(hdatsb,hbkgaddtion)
+
+    #print("The integral of the added backgrounds is: ",hbkgaddtion.Integral())
+    #print("The integral of the stack backgrounds is: ",hsbkgnorm.GetStack().Last().Integral())
+
+
     #labels
     dyleg  = ROOT.TLegend(0.55,0.65,0.9,0.8)
     dyleg.AddEntry(htrdy,"DY","ep")
@@ -266,10 +312,12 @@ if __name__=='__main__':
     normshapes = go.makeOutFile('Run2_2017_2018','norm_shapes_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(normshapes)
 
-    tc1 = ROOT.TCanvas("tc1","stacked",1500,600)
-    pd11 = ROOT.TPad("pd11","bkgonly",0,0,0.5,1.0)
-    pd12 = ROOT.TPad("pd12","datfit",0.5,0.0,1.0,1.0)
-    #pd12 = ROOT.TPad("pd12","datfit",0.0,0.0,1.0,1.0)
+    tc1 = ROOT.TCanvas("tc1","stacked",1500,800)
+    pd11 = ROOT.TPad("pd11","bkgonly",0,.25,0.5,1.0)
+    pd12 = ROOT.TPad("pd12","datfit",0.5,0.25,1.0,1.0)
+    pd21 = ROOT.TPad("pd21","bkgonlyratio",0,0,0.5,.25)
+    pd22 = ROOT.TPad("pd22","datfitratio",0.5,0,1.0,.25)
+    ratline = ROOT.TLine(hdiv.GetBinLowEdge(1),1,hdiv.GetBinWidth(1)*hdiv.GetNbinsX(),1)
 
     pd11.Draw()
     pd11.cd()
@@ -342,6 +390,28 @@ if __name__=='__main__':
         vrl.Draw()    
         vrlabel.Draw()
     p12.Update()
+    tc1.cd()
+    tc1.Update()
+
+    pd22.Draw()
+    pd22.cd()
+    hdiv.SetMarkerStyle(8)
+    hdiv.SetMarkerSize(0.5)
+    hdiv.SetMarkerColor(ROOT.kBlack)
+    hdiv.GetYaxis().SetRangeUser(0,2)
+    hdiv.GetYaxis().SetTitle("data/bkg")
+    hdiv.GetYaxis().SetTitleSize(0.15)
+    hdiv.GetYaxis().SetTitleOffset(0.3)
+    hdiv.GetYaxis().SetLabelSize(0.12)
+    hdiv.GetYaxis().SetLabelOffset(0.017)
+    hdiv.GetYaxis().SetNdivisions(503)
+    hdiv.GetXaxis().SetLabelSize(0.10)
+    hdiv.GetXaxis().SetLabelOffset(0.017)
+    #hdiv.GetXaxis().SetNdivisions(503)
+
+    hdiv.Draw()
+    ratline.Draw()
+    pd22.Update()
     tc1.cd()
     tc1.Update()
 
