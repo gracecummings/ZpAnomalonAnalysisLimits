@@ -145,36 +145,30 @@ if __name__=='__main__':
     htrvv  = htrzz.Clone()
     htrvv.Add(htrwz)
 
-    #Make overall stackplot, og way
-    hsbkg = ROOT.THStack("hsbkg","")
-    bkgfiles17 = [bkgs.bkgs["DYJetsToLL"][17]["tr"][0],
-                  bkgs.bkgs["TT"][17]["tr"][0],
-                  bkgs.bkgs["WZTo2L2Q"][17]["tr"][0],
-                  bkgs.bkgs["ZZTo2L2Q"][17]["tr"][0]
-    ]
-    bkgfiles18 = [bkgs.bkgs["DYJetsToLL"][18]["tr"][0],
-                  bkgs.bkgs["TT"][18]["tr"][0],
-                  bkgs.bkgs["WZTo2L2Q"][18]["tr"][0],
-                  bkgs.bkgs["ZZTo2L2Q"][18]["tr"][0]
-    ]
-
-
-
-    #This uses the old and outdated way of making the stacked plots
-    #This is subject to mixing the normalizations
-    #Have to be careful that an old normalization is not use in the stacking
-    plotmax = 20.
-    linemax = plotmax*.8
-    labelmin = plotmax*.75
+    #Background hist styles
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
     bkgcols  = go.colsFromPalette(bkgnames,ROOT.kLake)
-    info17 = go.prepBkg(bkgfiles17,bkgnames,bkgcols,"xsects_2017.ini",41.53)
-    info18 = go.prepBkg(bkgfiles18,bkgnames,bkgcols,"xsects_2017.ini",59.74)
-    #print(info17)
-    #print(info18)
-    stackleg = ROOT.TLegend(0.55,0.40,0.93,0.8)
-    go.stackBkgMultiYear(info17,info18,'h_h_sd',hsbkg,stackleg,plotmax,0)
+    htrdy.SetFillColor(bkgcols[0])
+    htrdy.SetLineColor(bkgcols[0])
+    htrtt.SetFillColor(bkgcols[1])
+    htrtt.SetLineColor(bkgcols[1])
+    htrwz.SetFillColor(bkgcols[2])
+    htrwz.SetLineColor(bkgcols[2])
+    htrzz.SetFillColor(bkgcols[3])
+    htrzz.SetLineColor(bkgcols[3])
 
+    plotmax = 35.
+    linemax = plotmax*.8
+    labelmin = plotmax*.75
+
+    #stack for no scaling
+    hsbkg = ROOT.THStack("hsbkg","")
+    hsbkg.Add(htrzz)
+    hsbkg.Add(htrwz)
+    hsbkg.Add(htrtt)
+    hsbkg.Add(htrdy)
+    hsbkg.SetMaximum(plotmax)
+    hsbkg.SetMinimum(0.0)
 
     #makes some fits
     dyfit = ROOT.poly5Fit(htrdy,"dyl","QR0+",30,250)
@@ -210,12 +204,6 @@ if __name__=='__main__':
     htrdyclone.SetFillColor(bkgcols[0])
     htrdyclone.SetLineColor(bkgcols[0])
     htrdyclone.Scale(dynormpostfit)
-    htrtt.SetFillColor(bkgcols[1])
-    htrtt.SetLineColor(bkgcols[1])
-    htrwz.SetFillColor(bkgcols[2])
-    htrwz.SetLineColor(bkgcols[2])
-    htrzz.SetFillColor(bkgcols[3])
-    htrzz.SetLineColor(bkgcols[3])
     hsbkgnorm.Add(htrzz)
     hsbkgnorm.Add(htrwz)
     hsbkgnorm.Add(htrtt)
@@ -223,19 +211,23 @@ if __name__=='__main__':
     hsbkgnorm.SetMaximum(plotmax)
     hsbkgnorm.SetMinimum(0.0)
 
-    #Bkg Hist Sum for Scaling (tracks Uncertainties)
+    #Ratio plots
+    #Needs backgrounds stored as an added hist
+    #Stacks do not track uncertainties properly
+    hbkgaddtionscaled = htrzz.Clone()
+    hbkgaddtionscaled.Add(htrwz)
+    hbkgaddtionscaled.Add(htrtt)
+    hbkgaddtionscaled.Add(htrdyclone)
+    hdivscaled = hdatsb.Clone()
+    hdivscaled.Divide(hdatsb,hbkgaddtionscaled)
     hbkgaddtion = htrzz.Clone()
     hbkgaddtion.Add(htrwz)
     hbkgaddtion.Add(htrtt)
-    hbkgaddtion.Add(htrdyclone)
+    hbkgaddtion.Add(htrdy)
     hdiv = hdatsb.Clone()
     hdiv.Divide(hdatsb,hbkgaddtion)
 
-    #print("The integral of the added backgrounds is: ",hbkgaddtion.Integral())
-    #print("The integral of the stack backgrounds is: ",hsbkgnorm.GetStack().Last().Integral())
-
-
-    #labels
+    #labels and legends
     dyleg  = ROOT.TLegend(0.55,0.65,0.9,0.8)
     dyleg.AddEntry(htrdy,"DY","ep")
     dyleg.AddEntry(dyfit,"5th deg poly fit","l")
@@ -248,16 +240,21 @@ if __name__=='__main__':
     vvleg.AddEntry(htrvv,"VV","ep")
     vvleg.AddEntry(vvfit,"GausPol1 Fit","l")
     vvleg.SetBorderSize(0)
+    stackleg = ROOT.TLegend(0.55,0.40,0.93,0.8)
+    stackleg.AddEntry(htrdy,"DYJetsToLL","f")
+    stackleg.AddEntry(htrtt,"TT","f")
+    stackleg.AddEntry(htrwz,"WZTo2L2Q","f")
+    stackleg.AddEntry(htrzz,"ZZTo2L2Q","f")
     stackleg.AddEntry(bkgfit,"Bkg MC fit Prefit - Likelihood","l")
     stackleg.SetBorderSize(0)
     normcomplabel = ROOT.TPaveText(0.17,0.8,0.52,0.9,"NBNDC")
     normcomplabel.AddText("Prefit DY Norm:  {0}".format(round(dynormprefit,4)))
     normcomplabel.AddText("Postfit DY Norm: {0}".format(round(dynormpostfit,4)))
     normcomplabel.SetFillColor(0)
-    unnormlabel = ROOT.TPaveText(0.6,0.2,0.93,0.35,"NBNDC")
-    unnormlabel.AddText("MC w/out SB data norm")
+    unnormlabel = ROOT.TPaveText(0.6,0.3,0.93,0.4,"NBNDC")
+    unnormlabel.AddText("DY MC w/out SB data norm")
     unnormlabel.SetFillColor(0)
-    normlabel = ROOT.TPaveText(0.6,0.2,0.93,0.35,"NBNDC")
+    normlabel = ROOT.TPaveText(0.6,0.3,0.93,0.4,"NBNDC")
     normlabel.AddText("DY MC with SB data norm")
     normlabel.SetFillColor(0)
     brl = ROOT.TLine(br[0],0,br[0],linemax)
@@ -317,7 +314,7 @@ if __name__=='__main__':
     pd12 = ROOT.TPad("pd12","datfit",0.5,0.25,1.0,1.0)
     pd21 = ROOT.TPad("pd21","bkgonlyratio",0,0,0.5,.25)
     pd22 = ROOT.TPad("pd22","datfitratio",0.5,0,1.0,.25)
-    ratline = ROOT.TLine(hdiv.GetBinLowEdge(1),1,hdiv.GetBinWidth(1)*hdiv.GetNbinsX(),1)
+    ratline = ROOT.TLine(hdivscaled.GetBinLowEdge(1),1,hdivscaled.GetBinWidth(1)*hdivscaled.GetNbinsX(),1)
 
     pd11.Draw()
     pd11.cd()
@@ -357,6 +354,28 @@ if __name__=='__main__':
     tc1.cd()
     tc1.Update()
 
+    pd21.Draw()
+    pd21.cd()
+    hdiv.SetMarkerStyle(8)
+    hdiv.SetMarkerSize(0.5)
+    hdiv.SetMarkerColor(ROOT.kBlack)
+    hdiv.GetYaxis().SetRangeUser(0,2)
+    hdiv.GetYaxis().SetTitle("data/bkg")
+    hdiv.GetYaxis().SetTitleSize(0.15)
+    hdiv.GetYaxis().SetTitleOffset(0.3)
+    hdiv.GetYaxis().SetLabelSize(0.12)
+    hdiv.GetYaxis().SetLabelOffset(0.017)
+    hdiv.GetYaxis().SetNdivisions(503)
+    hdiv.GetXaxis().SetLabelSize(0.10)
+    hdiv.GetXaxis().SetLabelOffset(0.017)
+
+    hdiv.Draw()
+    ratline.Draw()
+    pd21.Update()
+    tc1.cd()
+    tc1.Update()
+
+
     pd12.Draw()
     pd12.cd()
     hsbkgnorm.Draw('HIST')
@@ -395,21 +414,21 @@ if __name__=='__main__':
 
     pd22.Draw()
     pd22.cd()
-    hdiv.SetMarkerStyle(8)
-    hdiv.SetMarkerSize(0.5)
-    hdiv.SetMarkerColor(ROOT.kBlack)
-    hdiv.GetYaxis().SetRangeUser(0,2)
-    hdiv.GetYaxis().SetTitle("data/bkg")
-    hdiv.GetYaxis().SetTitleSize(0.15)
-    hdiv.GetYaxis().SetTitleOffset(0.3)
-    hdiv.GetYaxis().SetLabelSize(0.12)
-    hdiv.GetYaxis().SetLabelOffset(0.017)
-    hdiv.GetYaxis().SetNdivisions(503)
-    hdiv.GetXaxis().SetLabelSize(0.10)
-    hdiv.GetXaxis().SetLabelOffset(0.017)
-    #hdiv.GetXaxis().SetNdivisions(503)
+    hdivscaled.SetMarkerStyle(8)
+    hdivscaled.SetMarkerSize(0.5)
+    hdivscaled.SetMarkerColor(ROOT.kBlack)
+    hdivscaled.GetYaxis().SetRangeUser(0,2)
+    hdivscaled.GetYaxis().SetTitle("data/bkg")
+    hdivscaled.GetYaxis().SetTitleSize(0.15)
+    hdivscaled.GetYaxis().SetTitleOffset(0.3)
+    hdivscaled.GetYaxis().SetLabelSize(0.12)
+    hdivscaled.GetYaxis().SetLabelOffset(0.017)
+    hdivscaled.GetYaxis().SetNdivisions(503)
+    hdivscaled.GetXaxis().SetLabelSize(0.10)
+    hdivscaled.GetXaxis().SetLabelOffset(0.017)
+    #hdivscaled.GetXaxis().SetNdivisions(503)
 
-    hdiv.Draw()
+    hdivscaled.Draw()
     ratline.Draw()
     pd22.Update()
     tc1.cd()
