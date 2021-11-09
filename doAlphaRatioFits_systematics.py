@@ -54,10 +54,18 @@ def plotMzp(pad,hist,islog=False,logmin=0.1,isData=False):
 
 def getMaxXY(hist):
     binmax = hist.GetMaximumBin()
-    print(binmax)
     xmax   = hist.GetBinCenter(binmax)
     hmax   = hist.GetMaximum()
-    return(xmax,hmax)
+    return(int(binmax),int(xmax),float(hmax))
+
+def getMinXY(hist,minthresh):
+    laststatsbin = hist.FindLastBinAbove(minthresh)
+    lastbincent = hist.GetBinCenter(hist.GetNbinsX())
+    if laststatsbin > 0:
+        lastbincent = hist.GetBinCenter(laststatsbin)
+    else:
+        laststatsbin = hist.GetNbinsX()
+    return(int(laststatsbin),int(lastbincent))
 
     
 if __name__=='__main__':
@@ -141,15 +149,10 @@ if __name__=='__main__':
     hsbdy = bkgs.getAddedHist(empty,"DYJetsToLL","sb","h_zp_jigm")
     hsrdy = bkgs.getAddedHist(empty2,"DYJetsToLL","sr","h_zp_jigm")
     hsbtt = bkgs.getAddedHist(empty3,"TT","sb","h_zp_jigm")
-    #hsrtt = bkgs.getAddedHist(empty6,"TT","sr","h_zp_jigm")
     hsbzz = bkgs.getAddedHist(empty4,"ZZTo2L2Q","sb","h_zp_jigm")
-    #hsrzz = bkgs.getAddedHist(empty7,"ZZTo2L2Q","sr","h_zp_jigm")
     hsbwz = bkgs.getAddedHist(empty5,"WZTo2L2Q","sb","h_zp_jigm")
-    #hsrwz = bkgs.getAddedHist(empty8,"WZTo2L2Q","sr","h_zp_jigm")
     hsbvv = hsbzz.Clone()
     hsbvv.Add(hsbwz)
-    #hsrvv = hsrzz.Clone()
-    #hsrvv.Add(hsrwz)
 
     if not validation:
         hdatsb = data.getAddedHist(empty9,"sb","h_zp_jigm")
@@ -181,25 +184,34 @@ if __name__=='__main__':
     #hdatsbsub.GetXaxis().SetRangeUser(1500,5000)
     #hdatsb.GetXaxis().SetRangeUser(1500,5000)
 
-    vvsbxmax,vvsbymax = getMaxXY(hsbvv)
-    ttsbxmax,ttsbymax = getMaxXY(hsbtt)
-    dysbxmax,dysbymax = getMaxXY(hsbdy)
-    dysrxmax,dysrymax = getMaxXY(hsrdy)
-    datsbxmax,datsbymax = getMaxXY(hdatsb)
+    vvsbmaxbin,vvsbxmax,vvsbymax = getMaxXY(hsbvv)
+    ttsbmaxbin,ttsbxmax,ttsbymax = getMaxXY(hsbtt)
+    dysbmaxbin,dysbxmax,dysbymax = getMaxXY(hsbdy)
+    dysrmaxbin,dysrxmax,dysrymax = getMaxXY(hsrdy)
+    datsbmaxbin,datsbxmax,datsbymax = getMaxXY(hdatsb)
 
-    #print("max of the vv sb: ",vvsbymax)
-    #print(" x of the vv max: ",vvsbxmax)
-    #print("max of the tt sb: ",ttsbymax)
-    #print(" x of the tt max: ",ttsbxmax)
-    #print("max of the dy sb: ",dysbymax)
-    #print(" x of the dy max: ",dysbxmax)
-    #print("max of the dy sr: ",dysrymax)
-    #print(" x of the dy max: ",dysrxmax)
-    #print("max of data sb:   ",datsbymax)
-    #print(" x of dat sb max: ",datsbxmax)
-    #print("\n")
-    #print("\n")
+    maxvals = [datsbxmax,dysrxmax,dysbxmax,ttsbxmax,vvsbxmax]
 
+    vvsbminbin,vvsbxmin = getMinXY(hsbvv,0.1)
+    ttsbminbin,ttsbxmin = getMinXY(hsbtt,0.1)
+    dysbminbin,dysbxmin = getMinXY(hsbdy,0.1)
+    dysrminbin,dysrxmin = getMinXY(hsrdy,0.1)
+    datsbminbin,datsbxmin = getMinXY(hdatsb,0.1)
+
+    print(" x of the vv max: ",vvsbxmax)
+    print(" x of the tt max: ",ttsbxmax)
+    print(" x of the dy max: ",dysbxmax)
+    print(" x of the dy max: ",dysrxmax)
+    print(" x of dat sb max: ",datsbxmax)
+    print("\n")
+    print("\n")
+    print("x of the vv sb threshold min: ",vvsbxmin)
+    print("x of the tt sb threshold min: ",ttsbxmin)
+    print("x of the dy sb threshold min: ",dysbxmin)
+    print("x of the dy sr threshold min: ",dysrxmin)
+    print("x of data sb threshold min:   ",datsbxmin)
+    print("\n")
+    print("\n")
     
 
     ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
@@ -207,20 +219,20 @@ if __name__=='__main__':
 
     #Do fits, make shit
     print("================= doing dy sb fit =================")
-    sbfit = ROOT.expFit(hsbdy,"sbl","R0+",1500,5000)
-    uncbands = ROOT.expFitErrBands(hsbdy,"sbl","R0+",2,1500,5000)
+    sbfit = ROOT.expFit(hsbdy,"sbl","R0+",dysbxmax,dysbxmin)#5000)
+    uncbands = ROOT.expFitErrBands(hsbdy,"sbl","R0+",2,dysbxmax,dysbxmin)#5000)
     print("================= doing dy sr fit ==================")
-    srdyunc = ROOT.expFitErrBands(hsrdy,"sbl","R0+",2,1500,4000)
-    srfit = ROOT.expFit(hsrdy,"srl","R0+",1500,4000)#be aware, diff range from err and sb
+    srdyunc = ROOT.expFitErrBands(hsrdy,"sbl","R0+",2,dysrxmax,dysrxmin)#4000)
+    srfit = ROOT.expFit(hsrdy,"srl","R0+",dysrxmax,dysrxmin)#4000)#be aware, diff range from err and sb
     print("================== doing tt sb fit ==================")
-    sbttfit = ROOT.expFit(hsbtt,"sbl","R0+",1500,3000)
-    sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","R0+",2,1500,3000)
+    sbttfit = ROOT.expFit(hsbtt,"sbl","R0+",ttsbxmax,ttsbxmin)#3000)
+    sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","R0+",2,ttsbxmax,ttsbxmin)#3000)
     print("================== doing VV sb fit ==================")
-    sbvvfit = ROOT.expFit(hsbvv,"sbl","R0+",1600,3000)
-    sbvvunc = ROOT.expFitErrBands(hsbvv,"sbl","R0+",1,1600,3000)
+    sbvvfit = ROOT.expFit(hsbvv,"sbl","R0+",vvsbxmax,vvsbxmin)#3000)
+    sbvvunc = ROOT.expFitErrBands(hsbvv,"sbl","R0+",1,vvsbxmax,vvsbxmin)#3000)
     print("================= doing data sb fit =================")
-    sbdatfit = ROOT.expFit(hdatsb,"sbl","R0+",1500,5000)
-    sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","R0+",2,1500,5000)
+    sbdatfit = ROOT.expFit(hdatsb,"sbl","R0+",datsbxmax,datsbxmin)#5000)
+    sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","R0+",2,datsbxmax,datsbxmin)#5000)
     print("================= doing alpha ratio fit =============")
     alpha = ROOT.alphaRatioMakerExp(hsbdy,hsrdy)
 
