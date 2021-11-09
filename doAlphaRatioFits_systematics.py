@@ -233,6 +233,7 @@ if __name__=='__main__':
     sbvvunc.SetFillColor(2)
     sbvvunc.SetMarkerSize(0)
     sbdatunc.SetMarkerSize(0)
+    #sbdatunc.SetFillColor(2)
     hdatsb.SetLineColor(ROOT.kBlack)
     #hsbdy.GetXaxis().SetRangeUser(1500,5000)
     #hsrdy.GetXaxis().SetRangeUser(1500,5000)
@@ -243,9 +244,11 @@ if __name__=='__main__':
     #hdatsbsub.GetXaxis().SetRangeUser(1500,5000)
     #hdatsb.GetXaxis().SetRangeUser(1500,5000)
 
-    #Build a stack of MC backgrounds
+    #Let's get colorful
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
     bkgcols  = go.colsFromPalette(bkgnames,ROOT.kLake)
+
+    #Bkg hists stacks
     hsbkg = ROOT.THStack("hsbkg","")
     hsbdyc = hsbdy.Clone()
     hsbdyc.SetFillColor(bkgcols[0])
@@ -253,31 +256,67 @@ if __name__=='__main__':
     hsbttc = hsbtt.Clone()
     hsbttc.SetFillColor(bkgcols[1])
     hsbttc.SetLineColor(bkgcols[1])
-    hsbwzc = hsbwz.Clone() 
-    hsbwzc.SetFillColor(bkgcols[2])
-    hsbwzc.SetLineColor(bkgcols[2])
-    hsbzzc = hsbwz.Clone() 
-    hsbzzc.SetFillColor(bkgcols[3])
-    hsbzzc.SetLineColor(bkgcols[3])
-    hsbkg.Add(hsbzzc)
-    hsbkg.Add(hsbwzc)
+    hsbvvc = hsbvv.Clone() 
+    hsbvvc.SetFillColor(bkgcols[2])
+    hsbvvc.SetLineColor(bkgcols[2])
+    hsbkg.Add(hsbvvc)
     hsbkg.Add(hsbttc)
     hsbkg.Add(hsbdyc)
 
+    #Bkg Fit stacks
+    hsbkgfit = ROOT.THStack("hsbkgfits","")
+    sbdyfitc = uncbands.Clone()
+    sbttfitc = sbttunc.Clone()
+    sbvvfitc = sbvvunc.Clone()
+    sbdyfitc.SetFillColor(bkgcols[0])
+    sbdyfitc.SetLineColor(bkgcols[0])
+    sbttfitc.SetFillColor(bkgcols[1])
+    sbttfitc.SetLineColor(bkgcols[1])
+    sbvvfitc.SetFillColor(bkgcols[2])
+    sbvvfitc.SetLineColor(bkgcols[2])
+    hsbkgfit.Add(sbvvfitc)
+    hsbkgfit.Add(sbttfitc)
+    hsbkgfit.Add(sbdyfitc)
+
     #Build an added MC hist histogram for errors
     hbkg = hsbdy.Clone()
-    hbkg.Add(hsbzz)
-    hbkg.Add(hsbwz)
     hbkg.Add(hsbtt)
+    hbkg.Add(hsbvv)
 
+
+    #Build an added MC fit hist
+    hfits = sbdyfitc.Clone()
+    hfits.Add(sbttfitc)
+    hfits.Add(sbvvfitc)
+    
     #Build the data/stackbkg ratio
     hdivnom = hdatsb.Clone()
     hdivnom.Divide(hdatsb,hbkg)
+    hdivnom.SetMarkerStyle(8)
+    hdivnom.SetMarkerSize(.5)
+    hdivnom.GetYaxis().SetRangeUser(0,2)
+    hdivnom.GetYaxis().SetTitle("data/MC")
+    hdivnom.GetYaxis().SetTitleSize(0.15)
+    hdivnom.GetYaxis().SetTitleOffset(0.3)
+    hdivnom.GetYaxis().SetLabelSize(0.12)
+    hdivnom.GetYaxis().SetLabelOffset(0.017)
+    hdivnom.GetYaxis().SetNdivisions(503)
+    hdivnom.GetXaxis().SetLabelSize(0.10)
+    hdivnom.GetXaxis().SetLabelOffset(0.017)
 
-    #Build a stack of the fit estimations
-    
-
-    
+    hdivfit = hdatsb.Clone()
+    hdivfit.Divide(hfits)
+    hdivfit.SetMarkerStyle(8)
+    hdivfit.SetMarkerSize(.5)
+    hdivfit.GetYaxis().SetRangeUser(0,2)
+    hdivfit.GetYaxis().SetTitle("data/MC")
+    hdivfit.GetYaxis().SetTitleSize(0.15)
+    hdivfit.GetYaxis().SetTitleOffset(0.3)
+    hdivfit.GetYaxis().SetLabelSize(0.12)
+    hdivfit.GetYaxis().SetLabelOffset(0.017)
+    hdivfit.GetYaxis().SetNdivisions(503)
+    hdivfit.GetXaxis().SetLabelSize(0.10)
+    hdivfit.GetXaxis().SetLabelOffset(0.017)
 
     #Make the first TCanvas. This is the shape fits
     tc = ROOT.TCanvas("tc","shapes",1100,800)
@@ -305,9 +344,12 @@ if __name__=='__main__':
     label2.AddText(srregionstring)#higgs mass
     label2.SetFillColor(0)
 
-        
+    #Define a line
+    ratline = ROOT.TLine(hdivnom.GetBinLowEdge(1),1,hdivnom.GetBinWidth(1)*hdivnom.GetNbinsX(),1)
+    
     #Draw
     histmax = 15.
+    histstackmax = 60.
     ROOT.gStyle.SetOptFit(0)
     ROOT.gStyle.SetOptStat(0)
     islog = True
@@ -381,32 +423,10 @@ if __name__=='__main__':
     l111.AddEntry(sbdatfit,"2 Param Exp fit","l")
     l111.AddEntry(sbdatunc,str(sigmabars)+" $\sigma$ uncertainty","f")
     l111.SetBorderSize(0)
-
-    #bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
-    #bkgcols  = go.colsFromPalette(bkgnames,ROOT.kLake)
-    
-    #hsbkg = ROOT.THStack("hsbkg","")
-    #hsbdyc = hsbdy.Clone()
-    #hsbdyc.SetFillColor(bkgcols[0])
-    #hsbdyc.SetLineColor(bkgcols[0])
-    #hsbttc = hsbtt.Clone()
-    #hsbttc.SetFillColor(bkgcols[1])
-    #hsbttc.SetLineColor(bkgcols[1])
-    #hsbwzc = hsbwz.Clone() 
-    #hsbwzc.SetFillColor(bkgcols[2])
-    #hsbwzc.SetLineColor(bkgcols[2])
-    #hsbzzc = hsbwz.Clone() 
-    #hsbzzc.SetFillColor(bkgcols[3])
-    #hsbzzc.SetLineColor(bkgcols[3])
-    #hsbkg.Add(hsbzzc)
-    #hsbkg.Add(hsbwzc)
-    #hsbkg.Add(hsbttc)
-    #hsbkg.Add(hsbdyc)
     l111.AddEntry(hsbdyc,"DYJetsToLL","f")
     l111.AddEntry(hsbttc,"TT","f")
-    l111.AddEntry(hsbwzc,"WZ","f")
-    l111.AddEntry(hsbwzc,"ZZ","f")
-    hsbkg.SetMaximum(50.)
+    l111.AddEntry(hsbvvc,"VV","f")
+    hsbkg.SetMaximum(60.)
     hsbkg.SetMinimum(0.)
 
     hsbkg.Draw("HIST")
@@ -432,13 +452,6 @@ if __name__=='__main__':
     p23.cd()
     setLogAxis(p23,islog)
     plotMzp(p23,hsbvv,islog,0.001)
-
-    #print("   Maximum: ",hsbvv.GetMaximum())
-    #print("   Bin width: ",hsbvv.GetBinWidth(1))
-    #print("   Maximum Bin: ",hsbvv.GetMaximumBin())
-    #print("   Maximum Bin Center: ",hsbvv.GetBinCenter(hsbvv.GetMaximumBin()))
-    #print("   Maximum Bin Width: ",hsbvv.GetBinWidth(hsbvv.GetMaximumBin()))
-    #print("   Maximum Bin Low Edge: ",hsbvv.GetBinLowEdge(hsbvv.GetMaximumBin()))
     CMS_lumi.CMS_lumi(p23,4,13)
     sbvvunc.Draw("e4,same,c")
     sbvvfit.Draw("SAME")
@@ -452,7 +465,6 @@ if __name__=='__main__':
     l23.SetBorderSize(0)
     l23.Draw()
     p23.Update()
-
 
     tc.cd()
     p13.Draw()
@@ -492,6 +504,7 @@ if __name__=='__main__':
     tc1.cd()
     pdstacknom.Draw()
     pdstacknom.cd()
+    hsbkg.SetMaximum(histstackmax)
     hsbkg.Draw("HIST")
     xax = hsbkg.GetXaxis()
     yax = hsbkg.GetYaxis()
@@ -504,11 +517,44 @@ if __name__=='__main__':
     yax.SetLabelOffset(0.015)
     CMS_lumi.CMS_lumi(pdstacknom,4,13)
     hdatsb.Draw("same,e1")
+
     tc1.cd()
     pdrationom.Draw()
     pdrationom.cd()
     hdivnom.Draw()
+    ratline.Draw()
+
     tc1.cd()
+    pdstackfit.Draw()
+    pdstackfit.cd()
+    hsbkgfit.SetMaximum(histstackmax)
+    hsbkgfit.Draw("HIST,C")
+    xax = hsbkgfit.GetXaxis()
+    yax = hsbkgfit.GetYaxis()
+    xax.SetTitle("M_{Z'}")
+    xax.SetTitleSize(0.05)
+    xax.SetLabelSize(0.035)
+    yax.SetTitle("Events / 200 GeV")
+    yax.SetTitleSize(0.05)
+    yax.SetLabelSize(0.04)
+    yax.SetLabelOffset(0.015)
+    CMS_lumi.CMS_lumi(pdstackfit,4,13)
+    hdatsb.Draw("same,e1")
+
+    tc1.cd()
+    pdratiofit.Draw()
+    pdratiofit.cd()
+    hdivfit.Draw()
+    ratline.Draw()
+
+    #tc.cd()
+    #pdstackdat.Draw()
+    #pdstackdat.cd()
+    #setLogAxis(pdstackdat,True)
+    #CMS_lumi.CMS_lumi(pdstackdat,4,13)
+    #sbdatunc.Draw("c,e")
+    #hdatsb.Draw("same,e1")
+    
     
     stackshapes = go.makeOutFile('Run2_2017_2018','alpha_stacks_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc1.SaveAs(stackshapes)
