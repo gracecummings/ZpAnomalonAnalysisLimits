@@ -138,6 +138,13 @@ if __name__=='__main__':
     empty9 = empty.Clone()
     empty10 = empty.Clone()
 
+    if not validation:
+        hdatsb = data.getAddedHist(empty9,"sb","h_zp_jigm")
+    if validation:
+        hdatsb = data.getAddedHistData(empty9,"sb","h_zp_jigm")
+        hdatvr = data.getAddedHistData(empty10,"vr","h_zp_jigm")
+
+    hdatsbsub = hdatsb.Clone()    
     hsbdy = bkgs.getAddedHist(empty,"DYJetsToLL","sb","h_zp_jigm")
     hsrdy = bkgs.getAddedHist(empty2,"DYJetsToLL","sr","h_zp_jigm")
     hsbtt = bkgs.getAddedHist(empty3,"TT","sb","h_zp_jigm")
@@ -145,13 +152,7 @@ if __name__=='__main__':
     hsbwz = bkgs.getAddedHist(empty5,"WZTo2L2Q","sb","h_zp_jigm")
     hsbvv = hsbzz.Clone()
     hsbvv.Add(hsbwz)
-
-    if not validation:
-        hdatsb = data.getAddedHist(empty9,"sb","h_zp_jigm")
-    if validation:
-        hdatsb = data.getAddedHistData(empty9,"sb","h_zp_jigm")
-        hdatvr = data.getAddedHistData(empty10,"vr","h_zp_jigm")
-    hdatsbsub = hdatsb.Clone()
+    
 
     #rebin
     hsbdy.Rebin(rebindiv)
@@ -164,7 +165,6 @@ if __name__=='__main__':
     #Apply the normalization
     hsbdy.Scale(dynorm)
     hsrdy.Scale(dynorm)
-    
 
     vvsbmaxbin,vvsbxmax,vvsbymax = getMaxXY(hsbvv)
     ttsbmaxbin,ttsbxmax,ttsbymax = getMaxXY(hsbtt)
@@ -180,32 +180,18 @@ if __name__=='__main__':
     dysrminbin,dysrxmin = getMinXY(hsrdy,0.1)
     datsbminbin,datsbxmin = getMinXY(hdatsb,0.1)
 
-    #print(" x of the vv max: ",vvsbxmax)
-    #print(" x of the tt max: ",ttsbxmax)
-    #print(" x of the dy max: ",dysbxmax)
-    #print(" x of the dy max: ",dysrxmax)
-    #print(" x of dat sb max: ",datsbxmax)
-    #print("\n")
-    #print("\n")
-    #print("x of the vv sb threshold min: ",vvsbxmin)
-    #print("x of the tt sb threshold min: ",ttsbxmin)
-    #print("x of the dy sb threshold min: ",dysbxmin)
-    #print("x of the dy sr threshold min: ",dysrxmin)
-    #print("x of data sb threshold min:   ",datsbxmin)
-    #print("\n")
-    #print("\n")
+    print("dy sr limits of fit: ",dysrxmax,dysrxmin)
     
-
     ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
     ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
 
-    #Do fits, make shit
+    #Do bkg shape fits
     print("================= doing dy sb fit =================")
     sbfit = ROOT.expFit(hsbdy,"sbl","QR0+",dysbxmax,dysbxmin)#5000)
     uncbands = ROOT.expFitErrBands(hsbdy,"Qsbl","R0+",sigmabars,dysbxmax,dysbxmin)#5000)
     print("================= doing dy sr fit ==================")
-    srdyunc = ROOT.expFitErrBands(hsrdy,"sbl","QR0+",sigmabars,dysrxmax,dysrxmin)#4000)
-    srfit = ROOT.expFit(hsrdy,"srl","QR0+",dysrxmax,dysrxmin)#4000)#be aware, diff range from err and sb
+    srdyunc = ROOT.expFitErrBands(hsrdy,"sbl","R0+",sigmabars,dysrxmax,dysrxmin)#4000)
+    srfit = ROOT.expFit(hsrdy,"srl","QR0+",dysrxmax,dysrxmin)#4000)
     print("================== doing tt sb fit ==================")
     sbttfit = ROOT.expFit(hsbtt,"sbl","QR0+",ttsbxmax,ttsbxmin)#3000)
     sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","QR0+",sigmabars,ttsbxmax,ttsbxmin)#3000)
@@ -214,9 +200,21 @@ if __name__=='__main__':
     sbvvunc = ROOT.expFitErrBands(hsbvv,"sbl","QR0+",sigmabars,vvsbxmax,vvsbxmin)#3000)
     print("================= doing data sb fit =================")
     sbdatfit = ROOT.expFit(hdatsb,"sbl","QR0+",datsbxmax,datsbxmin)#5000)
-    sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","QR0+",sigmabars,datsbxmax,datsbxmin)#5000)
+    sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","R0+",sigmabars,datsbxmax,datsbxmin)#5000)
     print("================= doing alpha ratio fit =============")
-    alpha = ROOT.alphaRatioMakerExp(hsbdy,hsrdy)
+    alpha = ROOT.alphaRatioMakerExp(hsbdy,hsrdy,dysbxmax,dysbxmin,dysrxmax,dysrxmin)
+
+    #Do the subtractions
+    hdatsbsub.Add(sbttunc,-1)
+    hdatsbsub.Add(sbvvunc,-1)
+    sbdatuncsub = sbdatunc.Clone()
+    sbdatuncsub.SetFillColor(0)
+    sbdatuncsub.Add(sbttunc,-1)
+    sbdatuncsub.Add(sbvvunc,-1)
+
+    print("=========doing sb extrapolation fit==================")
+    extrap  = ROOT.alphaExtrapolation(hsbdy,hsrdy,sbdatuncsub,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
+    extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,sbdatuncsub,1,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
 
 
     #Set some paremeter for plotting
@@ -285,7 +283,6 @@ if __name__=='__main__':
     hbkg.Add(hsbtt)
     hbkg.Add(hsbvv)
 
-
     #Build an added MC fit hist
     hfits = sbdyfitc.Clone()
     hfits.Add(sbttfitc)
@@ -320,6 +317,48 @@ if __name__=='__main__':
     hdivfit.GetXaxis().SetLabelSize(0.10)
     hdivfit.GetXaxis().SetLabelOffset(0.017)
 
+    hdivdat = hdatsb.Clone()
+    hdivdat.Divide(hdatsb,sbdatunc)
+    hdivdat.SetMarkerStyle(8)
+    hdivdat.SetMarkerSize(.5)
+    hdivdat.GetYaxis().SetRangeUser(0,2)
+    hdivdat.GetYaxis().SetTitle("data/dataFit")
+    hdivdat.GetYaxis().SetTitleSize(0.15)
+    hdivdat.GetYaxis().SetTitleOffset(0.3)
+    hdivdat.GetYaxis().SetLabelSize(0.12)
+    hdivdat.GetYaxis().SetLabelOffset(0.017)
+    hdivdat.GetYaxis().SetNdivisions(503)
+    hdivdat.GetXaxis().SetLabelSize(0.10)
+    hdivdat.GetXaxis().SetLabelOffset(0.017)
+
+    hdivdatdysb = sbdatuncsub.Clone()
+    hdivdatdysb.Divide(sbdatuncsub,hsbdy)
+    hdivdatdysb.SetMarkerStyle(8)
+    hdivdatdysb.SetMarkerSize(.5)
+    hdivdatdysb.GetYaxis().SetRangeUser(0,2)
+    hdivdatdysb.GetYaxis().SetTitle("dataFit/DY")
+    hdivdatdysb.GetYaxis().SetTitleSize(0.15)
+    hdivdatdysb.GetYaxis().SetTitleOffset(0.3)
+    hdivdatdysb.GetYaxis().SetLabelSize(0.12)
+    hdivdatdysb.GetYaxis().SetLabelOffset(0.017)
+    hdivdatdysb.GetYaxis().SetNdivisions(503)
+    hdivdatdysb.GetXaxis().SetLabelSize(0.10)
+    hdivdatdysb.GetXaxis().SetLabelOffset(0.017)
+
+    hdivextrapdysr = extrphist.Clone()
+    hdivextrapdysr.Divide(extrphist,hsrdy)
+    hdivextrapdysr.SetMarkerStyle(8)
+    hdivextrapdysr.SetMarkerSize(.5)
+    hdivextrapdysr.GetYaxis().SetRangeUser(0,2)
+    hdivextrapdysr.GetYaxis().SetTitle("extrap/DY")
+    hdivextrapdysr.GetYaxis().SetTitleSize(0.15)
+    hdivextrapdysr.GetYaxis().SetTitleOffset(0.3)
+    hdivextrapdysr.GetYaxis().SetLabelSize(0.12)
+    hdivextrapdysr.GetYaxis().SetLabelOffset(0.017)
+    hdivextrapdysr.GetYaxis().SetNdivisions(503)
+    hdivextrapdysr.GetXaxis().SetLabelSize(0.10)
+    hdivextrapdysr.GetXaxis().SetLabelOffset(0.017)
+
     #Make the first TCanvas. This is the shape fits
     tc = ROOT.TCanvas("tc","shapes",1100,800)
     p11 = ROOT.TPad("p11","dysr",0,0,0.33,.5)
@@ -335,6 +374,13 @@ if __name__=='__main__':
     l22 = ROOT.TLegend(0.55,0.65,0.9,0.8)
     l23 = ROOT.TLegend(0.55,0.65,0.9,0.8)
     l111 = ROOT.TLegend(0.55,0.4,0.9,0.8)
+    ldysbcomps = ROOT.TLegend(0.55,0.4,0.9,0.8)
+    ldysbcomps.SetBorderSize(0)
+    ldysbcompf = ROOT.TLegend(0.55,0.4,0.9,0.8)
+    ldysbcompf.SetBorderSize(0)
+    ldatfitcomp = ROOT.TLegend(0.55,0.4,0.9,0.8)
+    ldatfitcomp.SetBorderSize(0)
+    
 
     #Define the labels
     label = ROOT.TPaveText(.5,.4,.9,.5,"NBNDC")
@@ -345,6 +391,14 @@ if __name__=='__main__':
     label2.AddText(srstring)#higgs mass
     label2.AddText(srregionstring)#higgs mass
     label2.SetFillColor(0)
+    labelsbs = ROOT.TPaveText(.5,.25,.9,.35,"NBNDC")
+    labelsbs.AddText("Sideband")
+    labelsbs.AddText("Stacked MC")
+    labelsbs.SetFillColor(0)
+    labelsbf = ROOT.TPaveText(.5,.25,.9,.35,"NBNDC")
+    labelsbf.AddText("Sideband")
+    labelsbf.AddText("Stacked SB MC Fits")
+    labelsbf.SetFillColor(0)
 
     #Define a line
     ratline = ROOT.TLine(hdivnom.GetBinLowEdge(1),1,hdivnom.GetBinWidth(1)*hdivnom.GetNbinsX(),1)
@@ -519,6 +573,12 @@ if __name__=='__main__':
     yax.SetLabelOffset(0.015)
     CMS_lumi.CMS_lumi(pdstacknom,4,13)
     hdatsb.Draw("same,e1")
+    ldysbcomps.AddEntry(hsbdyc,"DYJetsToLL","f")
+    ldysbcomps.AddEntry(hsbttc,"TT","f")
+    ldysbcomps.AddEntry(hsbvvc,"VV","f")
+    ldysbcomps.AddEntry(hdatsb,"Data SB","ep")
+    ldysbcomps.Draw()
+    labelsbs.Draw()
 
     tc1.cd()
     pdrationom.Draw()
@@ -542,6 +602,12 @@ if __name__=='__main__':
     yax.SetLabelOffset(0.015)
     CMS_lumi.CMS_lumi(pdstackfit,4,13)
     hdatsb.Draw("same,e1")
+    ldysbcompf.AddEntry(sbdyfitc,"DYJetsToLL - fit","f")
+    ldysbcompf.AddEntry(sbttfitc,"TT - fit","f")
+    ldysbcompf.AddEntry(sbvvfitc,"VV - fit","f")
+    ldysbcompf.AddEntry(hdatsb,"Data SB","ep")
+    ldysbcompf.Draw()
+    labelsbf.Draw()
 
     tc1.cd()
     pdratiofit.Draw()
@@ -560,7 +626,16 @@ if __name__=='__main__':
     sbdatfit.Draw("same,L")
     hdatsb.Draw("same,e")
     CMS_lumi.CMS_lumi(pdstackdat,4,13)
+    ldatfitcomp.AddEntry(hdatsb,"Data SB","ep")
+    ldatfitcomp.AddEntry(sbdatfit,"Fit to Data SB","l")
+    ldatfitcomp.AddEntry(sbdatunc,"1 $\sigma$ uncertainty","f")
+    ldatfitcomp.Draw()
 
+    tc1.cd()
+    pdratiodat.Draw()
+    pdratiodat.cd()
+    hdivdat.Draw()
+    ratline.Draw()
     
     
     stackshapes = go.makeOutFile('Run2_2017_2018','alpha_stacks_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
@@ -573,68 +648,35 @@ if __name__=='__main__':
     pd132 = ROOT.TPad("pd132","alphaextra",.67,.25,1,1)
     pd221 = ROOT.TPad("pd212","sbratio",0,0,0.33,.25)
     pd232 = ROOT.TPad("pd232","etrapratio",.67,0,1,.25)
-    hdatsbsub.Add(sbttunc,-1)
-    hdatsbsub.Add(sbvvunc,-1)
-    sbdatuncsub = sbdatunc.Clone()
-    sbdatuncsub.SetFillColor(0)
-    sbdatuncsub.Add(sbttunc,-1)
-    sbdatuncsub.Add(sbvvunc,-1)
 
-    #print("Integral of data sub sideband ",hdatsbsub.Integral())
-    #print("Integral of data sideband     ",hdatsb.Integral())
-    #print("The dy sb value in bin 8         : ",hsbdy.GetBinContent(8))
-    #print("The subtacted data value in bin 8: ",sbdatuncsub.GetBinContent(8))
-    #print("The dy sb value in bin 9         : ",hsbdy.GetBinContent(9))
-    #print("The subtacted data value in bin 9: ",sbdatuncsub.GetBinContent(9))
-    #print("The dy sb value in bin 10         : ",hsbdy.GetBinContent(10))
-    #print("The subtacted data value in bin 10: ",sbdatuncsub.GetBinContent(10))
-    
     tc2.cd()
     pd112.Draw()
     pd112.cd()
-    CMS_lumi.CMS_lumi(pd112,4,13)
     hsbdy.SetFillColor(bkgcols[0])
-    hsbdy.GetXaxis().SetRangeUser(1500,5000)
+    hsbdy.SetLineColor(bkgcols[0])
+    #hsbdy.GetXaxis().SetRangeUser(1500,5000)
     hsbdy.Draw("hist")
-    sbdatuncsub.GetXaxis().SetRangeUser(1500,5000)
+    #sbdatuncsub.GetXaxis().SetRangeUser(1500,5000)
     sbdatuncsub.Draw("hist,same,c")
-    
+    CMS_lumi.CMS_lumi(pd112,4,13)
+    lsubcomp = ROOT.TLegend(0.30,0.6,0.93,0.8)
+    lsubcomp.SetBorderSize(0)
+    lsubcomp.AddEntry(sbdatuncsub,"SB Data fit w/ tt+vv sub","l")
+    lsubcomp.AddEntry(hsbdy,"DY MC SB","f")
+    lsubcomp.Draw()
 
-    #####old stuff#####
-    #print("=================doing sb data fit==============")
-    #sbdatsubfit = ROOT.expFit(hdatsbsub,"sbl","R0+",1500,2500)
-    #sbdatsubunc = ROOT.expFitErrBands(hdatsbsub,"sbl","QR0+",2,1500,2500)
-    #sbdatsubunc.SetFillColor(2)
-    #sbdatsubunc.SetMarkerSize(0)
-    #sbfit.SetFillColor(bkgcols[0])
-    #sbfit.SetLineColor(bkgcols[0])
-    #sbfit.SetFillStyle(1001)
-    #hsbdy.SetFillColor(bkgcols[0])
-    #hsbdy.SetLineColor(bkgcols[0])
-    #plotMzp(pd112,hdatsbsub,isData=True)
-    #sbfit.Draw("SAMEC")
-    #CMS_lumi.CMS_lumi(pd112,4,13)
-    #hsbdy.Draw("HISTSAME")
-    #sbdatsubunc.Draw("e3,same,c")
-    #sbdatsubfit.Draw("SAME")
-    #hdatsbsub.GetXaxis().SetRangeUser(1500,5000)
-    #hdatsbsub.Draw("SAME")
-
-    #lstack = ROOT.TLegend(0.40,0.6,0.93,0.8`)
-    #lstack.AddEntry(hdatsbsub,"Data SB, VV tt subtracted","ep")
-    #lstack.AddEntry(sbdatsubfit,"2 Param Exp fit","l")
-    #lstack.AddEntry(sbdatsubunc,"2 $\sigma$ uncertainty","f")
-    #lstack.AddEntry(sbfit,"DY MC Fit","f")
-    #lstack.AddEntry(hsbdy,"DY SB MC","f")
-    #lstack.SetBorderSize(0)
-    #lstack.Draw()
     tc2.cd()
 
     pd221.Draw()
     pd221.cd()
-    hsbdiv = hdatsbsub.Clone()
-    hsbdiv.Divide(hdatsbsub,hsbdy)
-    hsbdiv.Draw()
+    hdivdatdysb.Draw()
+    ratline.Draw()
+    tc2.cd()
+
+    pd232.Draw()
+    pd232.cd()
+    hdivextrapdysr.Draw()
+    ratline.Draw()
     tc2.cd()
 
     tc2.cd()
@@ -649,12 +691,10 @@ if __name__=='__main__':
     pd132.cd()
     hsrdy.SetFillColor(bkgcols[0])
     hsrdy.SetLineColor(bkgcols[0])
-    hdatsbsub1 = hdatsbsub.Clone()#check errors
-    print("=========doing sb extrapolation fit==================")
-    extrap  = ROOT.alphaExtrapolation(hsbdy,hsrdy,hdatsbsub1)
-    extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,hdatsbsub1,1)
-    hsrdy.GetXaxis().SetRangeUser(1500,5000)
-    hsrdy.GetYaxis().SetRangeUser(0,20)
+
+    #for b,bb in
+    #hsrdy.GetXaxis().SetRangeUser(1500,5000)
+    #hsrdy.GetYaxis().SetRangeUser(0,20)
     hsrdy.Draw("HIST")
     extrap.Draw("SAME")
     CMS_lumi.CMS_lumi(pd132,4,13)
