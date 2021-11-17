@@ -2,11 +2,11 @@ import ROOT
 import glob
 import os
 import sys
-#import gecorg as go
 import gecorg_test as go
 import numpy as np
 import pandas as pd
 import configparser
+import argparse
 
 def writeDataCard(processes,rootFileName,channel):
     signame = processes["processnames"][0]
@@ -48,15 +48,29 @@ def writeDataCard(processes,rootFileName,channel):
     
 
 if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m","--metcut", type=float,help = "met cut of samples")
+    parser.add_argument("-z","--zptcut", type=float,help = "zpt cut of samples")
+    parser.add_argument("-j","--hptcut", type=float,help = "hpt cut of samples")
+    parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
+    args = parser.parse_args()
+    
+    zptcut  = str(args.zptcut)#'150.0'
+    hptcut  = str(args.hptcut)#'300.0'
+    metcut  = str(args.metcut)#'200.0'
+    btagwp  = str(args.btagwp)#'0.8'
 
-    #will replace with command line options
-    zptcut  = '150.0'
-    hptcut  = '300.0'
-    metcut  = '200.0'
-    btagwp  = '0.8'
+    #zptcut  = '150.0'
+    #hptcut  = '300.0'
+    #metcut  = '200.0'
+    #btagwp  = '0.8'
+
     chan    = 'mumu'
     sigxs   = 1.0
     rebindiv = 2
+
+    limrangelow = 1400
+    limrangehigh = 3000
 
     config = configparser.RawConfigParser()
     config.optionxform = str
@@ -65,9 +79,9 @@ if __name__=='__main__':
     systs = config.sections()
 
     ####load in the files with the nominal distributions
-    bkgs = go.backgrounds(config.get('btag','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('btag','strnom'))
-    sig  = go.signal(config.get('btag','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get('btag','strnom'))
-    dyEst = ROOT.TFile(config.get('btag','pathnom')+'Run2_2017_2018_dy_extraploation'+config.get('btag','strnom')+'_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
+    sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get('nominal','strnom'))
+    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'Run2_2017_2018_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
     ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
@@ -93,10 +107,10 @@ if __name__=='__main__':
     hdat.SetName("data_obs")
     htt.Rebin(rebindiv)
     hvv.Rebin(rebindiv)
-    hdat.GetXaxis().SetRangeUser(1500,5000)
-    htt.GetXaxis().SetRangeUser(1500,5000)
-    hvv.GetXaxis().SetRangeUser(1500,5000)
-    hdy.GetXaxis().SetRangeUser(1500,5000)
+    hdat.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    htt.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    hvv.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    hdy.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
 
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.prepsigsr
@@ -122,7 +136,7 @@ if __name__=='__main__':
         hsig.SetName(signame)
         hsig.Scale(sig["scale"])
         hsig.Rebin(rebindiv)
-        hsig.GetXaxis().SetRangeUser(1500,5000)
+        hsig.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
         prepRootFile.cd() 
         htt.Write()
         hvv.Write()
@@ -135,20 +149,28 @@ if __name__=='__main__':
                     }
 
         for syst in systs:
+            if syst == 'nominal':
+                continue
             print("------- Looking at systematic ",syst)
 
-            appcode = config.get(syst,'applist').split(',')
-            applist = [float(x) for x in appcode]
-            systdict[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
             
             systbkgsup  = go.backgrounds(config.get(syst,'pathup'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strup'))
             systbkgsdwn = go.backgrounds(config.get(syst,'pathdwn'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strdwn'))
             systsigup   = go.signal(config.get(syst,'pathsigup'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get(syst,'strup'))
             systsigdwn  = go.signal(config.get(syst,'pathsigdwn'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get(syst,'strdwn'))
 
+            if len(systbkgsup.bkgs["DYJetsToLL"][18]["sb"][0]) < 1:
+                print("        There are no DYJets entires for this systematic.")
+                print("        moving on. This systematic will not included.")
+                continue
+            
+            appcode = config.get(syst,'applist').split(',')
+            applist = [float(x) for x in appcode]
+            systdict[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
+            
             if rebindiv == 2:
-                dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strup')+'_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
-                dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+                dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strup')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+                dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
             ####Make it useful
             sigup  = systsigup.prepsigsr
@@ -191,12 +213,12 @@ if __name__=='__main__':
             httdwn.Rebin(rebindiv)
             hvvup.Rebin(rebindiv)
             hvvdwn.Rebin(rebindiv)
-            httup.GetXaxis().SetRangeUser(1500,5000)
-            httdwn.GetXaxis().SetRangeUser(1500,5000)
-            hvvup.GetXaxis().SetRangeUser(1500,5000)
-            hvvdwn.GetXaxis().SetRangeUser(1500,5000)
-            hdyup.GetXaxis().SetRangeUser(1500,5000)
-            hdydwn.GetXaxis().SetRangeUser(1500,5000)
+            httup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            httdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            hvvup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            hvvdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            hdyup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            hdydwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
             
             #Signal
             hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
@@ -204,14 +226,14 @@ if __name__=='__main__':
             hsigup.SetName(signame+"_"+syst+"Up")
             hsigup.Scale(sigup[s]["scale"])
             hsigup.Rebin(rebindiv)
-            hsigup.GetXaxis().SetRangeUser(1500,5000)
+            hsigup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
             
             hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
             hsigdwn = hsigdwnori.Clone()
             hsigdwn.SetName(signame+"_"+syst+"Down")
             hsigdwn.Scale(sigdwn[s]["scale"])
             hsigdwn.Rebin(rebindiv)
-            hsigdwn.GetXaxis().SetRangeUser(1500,5000)
+            hsigdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
 
             #Write the histograms
             prepRootFile.cd()
