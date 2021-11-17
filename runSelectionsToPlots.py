@@ -6,13 +6,13 @@ if __name__=='__main__':
     #steps to run
     #assumes you have run the whole thing at the start of the day
     #steps = {"selections":True,"uncs":True,"ratios":True,"opts":True}
-    steps = {"topiary":False,"selections":False,"uncs":False,"ratios":False,"opts":False,"cutflow":True,"alphaNorm":False,"alphaR":False}
+    steps = {"topiary":False,"selections":False,"uncs":False,"ratios":False,"opts":False,"cutflow":False,"alphaNorm":False,"alphaR":False,"datacards":False,"limitplots":True}
     
     #cut list, Zpt, Hpt, met,btagger,btagwp
     cutlist = [['150.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
-               #['150.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
+               ['150.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['100.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
-               #['100.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
+               ['100.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['200.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['100.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['125.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
@@ -20,9 +20,9 @@ if __name__=='__main__':
                ['175.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['200.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['125.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
-               #['125.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
+               ['125.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['175.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
-               #['175.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
+               ['175.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ['200.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                ]
 
@@ -188,4 +188,10 @@ if __name__=='__main__':
             print("Creating cutflow table")
             subprocess.run(["python","doCutFlow.py","-m",cut[2],"-z",cut[0],"-j",cut[1],"-wp",cut[4],"-date",str(date.today()),"-r","sideband"])
             #subprocess.run(["python","doCutFlowSig.py","-L",era[1],"-x","10.0","-m",cut[2],"-z",cut[0],"-j",cut[1],"-wp",cut[4],"-date",str(date.today()),"-y",era[0]])
+
+        if steps["datacards"]:
+            subprocess.run(["python", "makeDataCardsAndRootFiles.py","-z",cut[0],"-j",cut[1],"-m",cut[2],"-wp",cut[4]])
+
+        if steps["limitplots"]:
+            subprocess.run(["python", "makeLimiPlot.py","-z",cut[0],"-j",cut[1],"-m",cut[2],"-wp",cut[4]])
             

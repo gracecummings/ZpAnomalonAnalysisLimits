@@ -7,7 +7,8 @@ import CMS_lumi
 import gecorg_test as go
 import numpy as np
 import pandas as pd
-import itertools
+import argparse
+
 #import configparser
 
 tdrstyle.setTDRStyle()
@@ -15,27 +16,53 @@ CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
 CMS_lumi.writeExtraText = 0
 #CMS_lumi.extraText = "Simulation Preliminary"
 
+#def makeBaseDataframe(filelist):
+#    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("NS")[-1]),-1.0] for x in filelist]
+#    limsdf = pd.DataFrame(limsinfo,columns = ['mzp','mnd','mns','limit'])
+#    return limsdf
+
 def makeBaseDataframe(filelist):
-    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("NS")[-1]),-1.0] for x in filelist]
+    #for x in filelist:
+    #    print("Initial name: ",x.split("/")[-1].split(".")[0].split("Combine")[-1])
+    #    print("Just Sig Parts: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0])
+    #    print("Attempt Zp: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("Zp")[-1].split("ND")[0])
+    #    print("Attempt ND: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("ND")[-1].split("NS")[0])
+    #    print("Attempt NS: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("NS")[-1])
+    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("NS")[-1]),-1.0] for x in filelist]
     limsdf = pd.DataFrame(limsinfo,columns = ['mzp','mnd','mns','limit'])
     return limsdf
     
 
 
 if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m","--metcut", type=float,help = "met cut of samples")
+    parser.add_argument("-z","--zptcut", type=float,help = "zpt cut of samples")
+    parser.add_argument("-j","--hptcut", type=float,help = "hpt cut of samples")
+    parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
+    args = parser.parse_args()
 
-    zptcut  = '150.0'
-    hptcut  = '300.0'
-    metcut  = '200.0'
-    btagwp  = '0.8'
+    zptcut  = str(args.zptcut)#'150.0'
+    hptcut  = str(args.hptcut)#'300.0'
+    metcut  = str(args.metcut)#'200.0'
+    btagwp  = str(args.btagwp)#'0.8'
+
+    
+    #zptcut  = '150.0'
+    #hptcut  = '300.0'
+    #metcut  = '200.0'
+    #btagwp  = '0.8'
     chan    = 'mumu'
     sigxs   = 1.0
 
     #limitpath= "limholder/limWithNothing/h"
-    limitpath= "limholder/limsNoJECs/h"
+    #limitpath= "limholder/limsNoJECs/h"
     #limitpath= "limholder/limsNoJECBlownUpLumi/h"
     #limitpath = "limholder/limsWithJECs/h"
-    lims = glob.glob(limitpath+"*")
+    #limitpath = "limholder/limsJEC100GeVBins/h"
+    limitpath = "analysis_output_ZpAnomalon/2021-11-17/h"
+    lims = glob.glob(limitpath+"*"+"Zptcut"+zptcut+"_Hptcut"+hptcut+"_metcut"+metcut+"_btagwp"+btagwp+".txt*")
+    descrip ='nottathing' 
     zpbinwidth = 500
     ndbinwidth = 200
 
@@ -90,7 +117,7 @@ if __name__=='__main__':
     hlim.SetContour(len(coldiv),coldiv)
     
     for combout in lims:
-        signame = combout.split("/")[-1].split(".")[0].split("Combine")[-1]
+        signame = combout.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0]
         mzpstr = signame.split("Zp")[-1].split("ND")[0]
         mndstr = signame.split("ND")[-1].split("NS")[0]
         mnsstr = signame.split("NS")[-1]
@@ -163,4 +190,6 @@ if __name__=='__main__':
         tg.Delete()
         tc1.Clear()
 
+    pklname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_'+descrip+'_'+str(limsdf['mns'][0]),'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    limsdf.to_pickle(pklname)
 

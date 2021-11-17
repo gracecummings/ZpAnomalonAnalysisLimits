@@ -40,7 +40,8 @@ def writeDataCard(processes,rootFileName,channel):
         sval = [x if x != 0 else "-" for x in vals]
         cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst),processes["syst"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
-    #After here, put some sort of interation through a list of systematics
+
+    card.write("* autoMCStats 1\n")
     card.close()
 
 #def gatherSystematics(confsecsyst):
@@ -132,9 +133,22 @@ if __name__=='__main__':
         ####Nominal Signal
         hsigori = sig["tfile"].Get("h_zp_jigm")
         hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
+
+        #####Debug of bin uncertainties
+        #print("Looking at signal errors and uncertainties before scaling")
+        #for ibin in range(hsigori.GetNbinsX()+1):
+        #    print(" Bin Content: ",hsigori.GetBinContent(ibin))
+        #    print(" Bin Error: ",hsigori.GetBinError(ibin))
+
         hsig = hsigori.Clone()
         hsig.SetName(signame)
         hsig.Scale(sig["scale"])
+
+       # print("Looking at signal errors and uncertainties after scaling")
+       # for ibin in range(hsig.GetNbinsX()+1):
+       #     print(" Bin Content: ",hsig.GetBinContent(ibin))
+       #     print(" Bin Error: ",hsig.GetBinError(ibin))
+
         hsig.Rebin(rebindiv)
         hsig.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
         prepRootFile.cd() 
