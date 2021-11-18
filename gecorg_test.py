@@ -159,10 +159,10 @@ def prepBkg(bkgfiles,bkgnames,bkg_colors,ini_file,lumi,flag="yes"):
             #orders smallest HT to largest
             bkg.sort(key = orderDY)
             #normscale = np.load('BkgInputsNominalJECBtag/Run2_2017_2018_dynormalization_systnominal_btagnom_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
-            #normscale = np.load('BkgInputs/Run2_2017_2018_dynormalization_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
-            #print("applying a normalization,watch out")
-            normscale = 1
-            print("Put back in derived norm")
+            normscale = np.load('pfMETNominal_CorrCounting_Optimization/Run2_2017_2018_dynormalization_systnominal_btagnom_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+            print("applying a normalization,watch out")
+            #normscale = 1
+            #print("Put back in derived norm")
         elif bkg_channel == "TT":
             #sorts in alphabetical order 
             bkg.sort()                                                     
