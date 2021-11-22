@@ -22,13 +22,22 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    if (fChain == 0) return;
    Long64_t nentries = fChain->GetEntriesFast();
    Long64_t nbytes = 0, nb = 0;
+
    fChain->SetBranchStatus("*",0);
+   fChain->SetBranchStatus("GenMET",1);
+   fChain->SetBranchStatus("GenMETPhi",1);
    fChain->SetBranchStatus("TriggerPass",1);
    fChain->SetBranchStatus("JetsAK8Clean*",1);
-   fChain->SetBranchStatus("JetsAK8",1);//turn off
+   //fChain->SetBranchStatus("JetsAK8",1);//turn off
    fChain->SetBranchStatus("Muons*",1);
-   fChain->SetBranchStatus("METclean*",1);
-   fChain->SetBranchStatus("METPhiclean",1);
+   //fChain->SetBranchStatus("METclean*",1);
+   //fChain->SetBranchStatus("METPhiclean",1);
+   fChain->SetBranchStatus("MET",1);
+   fChain->SetBranchStatus("METPhi",1);
+   fChain->SetBranchStatus("METUp",1);
+   fChain->SetBranchStatus("METPhiUp",1);
+   fChain->SetBranchStatus("METDown",1);
+   fChain->SetBranchStatus("METPhiDown",1);
    fChain->SetBranchStatus("SelectedMuons*",1);
    fChain->SetBranchStatus("ZCandidates*",1);
    fChain->SetBranchStatus("SelectedElectrons*",1);
@@ -357,9 +366,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      //if (jentry == 20) {
-      //break;
-      //}
+      if (jentry == 20) {
+	break;
+      }
      
 
       //Trigger decisions
@@ -536,7 +545,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	if (passTrig) {
 	zee +=1;
 	}
-	/*
+	///*
 	std::vector<TLorentzVector>::iterator eit;
 	for (eit = SelectedElectrons->begin(); eit != SelectedElectrons->end();++eit) { 
 	  if (eit->Pt() > lptmax) {
@@ -556,8 +565,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    passZ = true;
 	  }
 	}
-	*/}
-      
+	}
       if (nZmumu == 0 && nZee > 0 && nZeu > 0 && anchan == 3) {
 	//011
 	channel = 3.;
@@ -571,7 +579,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	if (passTrig) {
 	zemu += 1;
 	}
-      }
+	}
+   //*/
   
       //Z Candidate Build
       //For old ntuples
@@ -708,12 +717,28 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       */
 
       //MET
-      double ptmiss     = fChain->GetLeaf("METclean")->GetValue(0);
-      double ptmiss_phi = fChain->GetLeaf("METPhiclean")->GetValue();
+      //double ptmiss     = fChain->GetLeaf("METclean")->GetValue(0);
+      //double ptmiss_phi = fChain->GetLeaf("METPhiclean")->GetValue();
+      double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
+      double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue();
+      if (jecsys == 1) {//jecup
+	ptmiss     = METUp->at(1);//idx i is the jec met
+	ptmiss_phi = METPhiUp->at(1);
+      }
+      else if (jecsys == -1) {//jecdown
+	ptmiss     = METDown->at(1);
+	ptmiss_phi = METPhiDown->at(1);
+      }
       double ptmiss_px  = ptmiss*std::cos(ptmiss_phi);
       double ptmiss_py  = ptmiss*std::sin(ptmiss_phi);
       TVector3 met3     = TVector3(ptmiss_px,ptmiss_py,0.0);
 
+      std::cout<<"This is the jec syst multiplier: "<<jecsys<<std::endl;
+      std::cout<<"This is the value of the nominal MET:       "<<fChain->GetLeaf("MET")->GetValue(0)<<std::endl;
+      std::cout<<"This is the value of the METUp:             "<<METUp->at(1)<<std::endl;
+      std::cout<<"This is the value of the METDown:           "<<METDown->at(1)<<std::endl;
+      std::cout<<"This is the value of the MET you are using: "<<ptmiss<<std::endl;
+      
       //recursive jigsaw
       // /*
       LABcontra.ClearEvent();
@@ -804,6 +829,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::cout<<"Passing h  req:      "<<counthpass<<std::endl;
    std::cout<<"Passing    req:      "<<countpass<<std::endl;
 
+   /*
    std::cout<<"Events with zmumu        "<<zmumu<<std::endl;
    std::cout<<"Events with zmumuzee     "<<zmumuzee<<std::endl;
    std::cout<<"Events with zmumuzemu    "<<zmumuzemu<<std::endl;
@@ -815,7 +841,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::cout<<"Events with no reclustered fat jets, but a Z "<<znorecfat<<std::endl;
    std::cout<<"Events with no orignal  fat jets, but a Z    "<<znounrecfat<<std::endl;
    std::cout<<"Events with no fat jets, but a Z             "<<znofat<<std::endl;
-
+   */
    htrigpass->SetBinContent(1,counttrigpass);
    hZpass->SetBinContent(1,countzpass);
    hHpass->SetBinContent(1,counthpass);
