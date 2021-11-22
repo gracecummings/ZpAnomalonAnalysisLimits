@@ -4,6 +4,7 @@
 #include "JetCorrectionUncertainty.h"
 #include "JetCorrectorParameters.h"
 #include <TLeaf.h>
+#include <TVector.h>
 #include <TH1.h>
 #include <TString.h>
 #include <iostream>
@@ -17,12 +18,14 @@ using std::string;
 RestFrames::RFKey ensure_autoload(1);
 using namespace RestFrames;
 
-void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year,int anchan,int jecsys)
+void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year,int anchan, TVector metsys)
+//void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year, int anchan, std::vector<int>  *metsys)
 {
    if (fChain == 0) return;
    Long64_t nentries = fChain->GetEntriesFast();
    Long64_t nbytes = 0, nb = 0;
 
+   int jecsys = metsys[1];
    fChain->SetBranchStatus("*",0);
    fChain->SetBranchStatus("GenMET",1);
    fChain->SetBranchStatus("GenMETPhi",1);
@@ -722,7 +725,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
       double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue();
       if (jecsys == 1) {//jecup
-	ptmiss     = METUp->at(1);//idx i is the jec met
+	ptmiss     = METUp->at(1);//idx 1 is the jec met
 	ptmiss_phi = METPhiUp->at(1);
       }
       else if (jecsys == -1) {//jecdown
@@ -733,11 +736,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double ptmiss_py  = ptmiss*std::sin(ptmiss_phi);
       TVector3 met3     = TVector3(ptmiss_px,ptmiss_py,0.0);
 
-      std::cout<<"This is the jec syst multiplier: "<<jecsys<<std::endl;
-      std::cout<<"This is the value of the nominal MET:       "<<fChain->GetLeaf("MET")->GetValue(0)<<std::endl;
-      std::cout<<"This is the value of the METUp:             "<<METUp->at(1)<<std::endl;
-      std::cout<<"This is the value of the METDown:           "<<METDown->at(1)<<std::endl;
-      std::cout<<"This is the value of the MET you are using: "<<ptmiss<<std::endl;
+      //met jes syst debug
+      //std::cout<<"This is the jec syst multiplier: "<<jecsys<<std::endl;
+      //std::cout<<"This is the value of the nominal MET:       "<<fChain->GetLeaf("MET")->GetValue(0)<<std::endl;
+      //std::cout<<"This is the value of the METUp:             "<<METUp->at(1)<<std::endl;
+      //std::cout<<"This is the value of the METDown:           "<<METDown->at(1)<<std::endl;
+      //std::cout<<"This is the value of the MET you are using: "<<ptmiss<<std::endl;
       
       //recursive jigsaw
       // /*

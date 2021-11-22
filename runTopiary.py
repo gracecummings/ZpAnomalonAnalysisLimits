@@ -3,6 +3,7 @@ import glob
 import argparse
 import os
 import sys
+import numpy as np
 import gecorg_test as go
 from datetime import date
 
@@ -96,6 +97,12 @@ if __name__=="__main__":
     if args.downsystematics:
         syststring = "systjecdwn"
         systind = -1
+
+    sysvec = ROOT.TVector(6)
+    sysvec[0] = 0
+    sysvec[1] = systind
+    #sysvecfill = np.array([0,systind])
+    #sysvec.Use(sysvecfill)
         
     outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
     print( "Making topiary of ",samp)
@@ -113,10 +120,12 @@ if __name__=="__main__":
     ROOT.gSystem.Load("TreeMakerTopiary.so")
     ROOT.gInterpreter.Declare('#include "TreeMakerTopiary.h"')
 
-    #topiary = ROOT.TreeMakerTopiary(inChain,samptype,checkedyear,channel)
-    topiary = ROOT.TreeMakerTopiary(inChain,samptype,topyear,channel,systind)
-    topiary.Loop(outFile,origevnts,samptype,topyear,channel,systind)
 
+    #topiary = ROOT.TreeMakerTopiary(inChain,samptype,topyear,channel,systind)
+    #topiary.Loop(outFile,origevnts,samptype,topyear,channel,systind)
+
+    topiary = ROOT.TreeMakerTopiary(inChain,samptype,topyear,channel,sysvec)
+    topiary.Loop(outFile,origevnts,samptype,topyear,channel,sysvec)
 
 
 
