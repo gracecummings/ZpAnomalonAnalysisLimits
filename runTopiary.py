@@ -31,8 +31,12 @@ parser = argparse.ArgumentParser()
 if __name__=="__main__":
     parser.add_argument("-s","--sample",help="sample name")
     parser.add_argument("-c","--channel",help="string for channel: mumu,ee, or emu")
-    parser.add_argument("-upjec","--upsystematics",type=bool,help="if you want jec up systematics output")
-    parser.add_argument("-dwnjec","--downsystematics",type=bool,help="if you want jec down systematics output")
+    parser.add_argument("-upjec","--upjecsystematics",type=bool,help="if you want jec up systematics output")
+    parser.add_argument("-dwnjec","--downjecsystematics",type=bool,help="if you want jec down systematics output")
+    parser.add_argument("-upjer","--upjersystematics",type=bool,help="if you want jer up systematics output")
+    parser.add_argument("-dwnjer","--downjersystematics",type=bool,help="if you want jer down systematics output")
+    parser.add_argument("-upuncl","--upunclsystematics",type=bool,help="if you want unclustered met  up systematics output")
+    parser.add_argument("-dwnuncl","--downunclsystematics",type=bool,help="if you want unclustered met down systematics output")
     args = parser.parse_args() 
     samp = args.sample
     samptype = -1
@@ -89,26 +93,44 @@ if __name__=="__main__":
 
 
     #Systematics?
-    syststring = "systnominal"
-    systind    = 0
-    if args.upsystematics:
+    syststring  = "systnominal"
+    systjerind  = 0
+    systjecind  = 0
+    systunclind = 0
+    if args.upjecsystematics:
         syststring = "systjecup"
-        systind = 1
-    if args.downsystematics:
+        systjecind = 1
+    if args.downjecsystematics:
         syststring = "systjecdwn"
-        systind = -1
+        systjecind = -1
+    if args.upjersystematics:
+        syststring = "systjerup"
+        systjerind = 1
+    if args.downjersystematics:
+        syststring = "systjerdwn"
+        systjerind = -1
+    if args.upunclsystematics:
+        syststring = "systunclup"
+        systunclind = 1
+    if args.downunclsystematics:
+        syststring = "systuncldwn"
+        systunclind = -1
 
     sysvec = ROOT.TVector(6)
-    sysvec[0] = 0
-    sysvec[1] = systind
-    #sysvecfill = np.array([0,systind])
-    #sysvec.Use(sysvecfill)
+    sysvec[0] = systjerind
+    sysvec[1] = systjecind
+    sysvec[5] = systunclind
+
+    if sysvec.Norm1() > 1.0:
+        print("Too many systematic flags at one time, stopping this maddness")
+        exit()
+
         
     outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
     print( "Making topiary of ",samp)
     print("     Sample type ",samptype)
     print("     Sample Year ",year)
-    print("     Topiary Year ",topyear)
+    print("     Topiary Year ",topyear)#This is a debug
     print("    ",channelprint)
     print("     Systematics ",syststring)
     print("     Events in TChain: ",inChain.GetEntries())
