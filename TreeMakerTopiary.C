@@ -176,15 +176,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
 
    //Uncertainty + Scale Factor Stuff
-   //idea: iterate through the vector of systematics
    //The index of the nonzero place is the ssytematic explored
-   //The value is if it is updown
+   //The sign of it is up/down
    int systs = metsys.GetNoElements();
    int systidx = -999;
-   std::cout<<"The size of the input systematic vector: "<<systs<<std::endl;
    if (metsys.Norm1() == 1.0) {
      for (int i = 0;i < systs; ++i) {
-       if (i != 0) {
+       if (metsys[i] != 0) {
 	 systidx = i;
 	 break;
        }
@@ -745,14 +743,21 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //double ptmiss_phi = fChain->GetLeaf("METPhiclean")->GetValue();
       double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
       double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue();
-      if (jecsys == 1) {//jecup
-	ptmiss     = METUp->at(1);//idx 1 is the jec met
-	ptmiss_phi = METPhiUp->at(1);
+
+      if (systidx > -1){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
+	if (metsys[systidx] > 0) {//Checks up or down
+	  ptmiss = METUp->at(systidx);//The index of the corresponding met in the ntuple is the same
+	  ptmiss_phi = METPhiUp->at(systidx);
+	}
+	else if (metsys[systidx] < 0) {
+	  ptmiss = METDown->at(systidx);
+	  ptmiss_phi = METPhiDown->at(systidx);
+	}
+	else {
+	  continue;
+	}
       }
-      else if (jecsys == -1) {//jecdown
-	ptmiss     = METDown->at(1);
-	ptmiss_phi = METPhiDown->at(1);
-      }
+
       double ptmiss_px  = ptmiss*std::cos(ptmiss_phi);
       double ptmiss_py  = ptmiss*std::sin(ptmiss_phi);
       TVector3 met3     = TVector3(ptmiss_px,ptmiss_py,0.0);
