@@ -283,7 +283,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    //Info and holders
    hnskimed->SetBinContent(1,nentries);
    hnorigevnts->SetBinContent(1,totalOriginalEvents);
-
    float zmwinlow = 70.;
    float zmwinhi  = 110.;
    float hptcut   = 250.;
@@ -388,9 +387,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      if (jentry == 20) {
-	break;
-      }
+      //if (jentry == 20) {
+      //break;
+      //}
      
 
       //Trigger decisions
@@ -481,13 +480,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  evntwkf_hold = ewknlosf*qcdnnlosf*qcdnlosf;
 	}
       }
-      
+
       //Z exploration
       unsigned int nselmu = SelectedMuons->size();
       unsigned int nselel = SelectedElectrons->size();
-      unsigned int nZmumu = ZCandidatesMuMu->size();
-      unsigned int nZee = ZCandidatesEE->size();
-      unsigned int nZeu = ZCandidatesEU->size();
+      //unsigned int nZmumu = ZCandidatesMuMu->size();
+      //unsigned int nZee = ZCandidatesEE->size();
+      //unsigned int nZeu = ZCandidatesEU->size();
 
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
@@ -499,7 +498,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       TLorentzVector theZ;
       double baseZdiff = 99999;
       //Channel Flags
-      ///*
+      /*
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	//in binary 100, 4 in decimal
 	channel = 4.;//4 in decimal
@@ -602,11 +601,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	zemu += 1;
 	}
 	}
-   //*/
+   */
   
       //Z Candidate Build
       //For old ntuples
-      /*
+      ///*
       if (nselmu > 0 && nselel == 0) {
       	mumuchan = true;
 	std::vector<TLorentzVector>::iterator muit;
@@ -632,7 +631,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	}
       }
       //*/
-      
+
       //Higgs Candidate Build
       //JetBranch = JetsAK8Clean;
       //unsigned long nfat = JetsAK8->size();
@@ -744,7 +743,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
       double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue();
 
-      if (systidx > -1){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
+      if (systidx > -1 && sampleType != 0){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
 	if (metsys[systidx] > 0) {//Checks up or down
 	  ptmiss = METUp->at(systidx);//The index of the corresponding met in the ntuple is the same
 	  ptmiss_phi = METPhiUp->at(systidx);
