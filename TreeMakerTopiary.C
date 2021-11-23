@@ -25,7 +25,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    Long64_t nentries = fChain->GetEntriesFast();
    Long64_t nbytes = 0, nb = 0;
 
-   int jecsys = metsys[1];
+   
+
    fChain->SetBranchStatus("*",0);
    fChain->SetBranchStatus("GenMET",1);
    fChain->SetBranchStatus("GenMETPhi",1);
@@ -175,6 +176,26 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
 
    //Uncertainty + Scale Factor Stuff
+   //idea: iterate through the vector of systematics
+   //The index of the nonzero place is the ssytematic explored
+   //The value is if it is updown
+   int systs = metsys.GetNoElements();
+   int systidx = -999;
+   std::cout<<"The size of the input systematic vector: "<<systs<<std::endl;
+   if (metsys.Norm1() == 1.0) {
+     for (int i = 0;i < systs; ++i) {
+       if (i != 0) {
+	 systidx = i;
+	 break;
+       }
+     }
+   std::cout<<"The index for systematics is: "<<systidx<<std::endl;
+   std::cout<<"The value we are applying is: "<<metsys[systidx]<<std::endl;
+   }
+   
+   //
+   int jecsys = metsys[1];//metsys is a 6D vector. JER, JES ...
+   
    TString uncfile = "badstring";
    TString btagfile = "badstring";
    if (sampleType == 3) {//ttbar
