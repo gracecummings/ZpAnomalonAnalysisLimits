@@ -117,6 +117,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double gzCandidate_eta;
    double gzCandidate_m;
    double channelflag;
+   double metusable;
+   double metphiusable;
 
    //Define the skimmed skim  output file and tree
    TFile* trimFile = new TFile(outputFileName.c_str(),"recreate");
@@ -174,6 +176,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *gzCand_phi = trimTree->Branch("gzCandidate_phi",&gzCandidate_phi,"gzCandidate_phi/D");
    TBranch *gzCand_eta = trimTree->Branch("gzCandidate_eta",&gzCandidate_eta,"gzCandidate_eta/D");
    TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
+   TBranch *metu       = trimTree->Branch("metsuable",&metusable,"metusable/D");
+   TBranch *metu_phi   = trimTree->Branch("metphiusable",&metphiusable,"metphiusable/D");
 
    //Uncertainty + Scale Factor Stuff
    //The index of the nonzero place is the ssytematic explored
@@ -387,9 +391,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      //if (jentry == 20) {
-      //break;
-      //}
+      if (jentry == 20) {
+	break;
+      }
      
 
       //Trigger decisions
@@ -833,6 +837,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	gzCandidate_phi = theGenZ.Phi();
 	gzCandidate_eta = theGenZ.Eta();
 	gzCandidate_m   = theGenZ.M();
+	metusable = ptmiss;
+	metphiusable = ptmiss_phi;
 	channelflag = channel;
 	counthpass += 1;
       }
