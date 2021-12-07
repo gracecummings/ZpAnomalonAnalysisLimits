@@ -391,9 +391,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      //if (jentry == 20) {
-      //break;
-      //}
+      if (jentry == 200) {
+	break;
+      }
      
 
       //Trigger decisions
@@ -432,9 +432,16 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //If more triggers are used, will need to
       //iterate over a vector of good indices
       trgval = TriggerPass->at(trgidx);
-      if (trgval == 1) {
+      if (trgval == 1 && anchan != 1) {//if not the emu channel, check trigger
 	passTrig = true;
 	counttrigpass += 1;
+      }
+      else if (anchan == 1) {//if emu channel, have it pass trigger, but there is no trigger
+	//std::cout<<"++++++new events+++++++"<<std::endl;
+	//std::cout<<"This trig values for the emu channel: "<<passTrig<<std::endl;
+	//std::cout<<"This is the trigger idx looked at: "<<ourtrg<<std::endl;
+	//std::cout<<"This is the trigger value looked at: "<<trgval<<std::endl;
+	passTrig = true;
       }
 
 
@@ -488,9 +495,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //Z exploration
       unsigned int nselmu = SelectedMuons->size();
       unsigned int nselel = SelectedElectrons->size();
-      //unsigned int nZmumu = ZCandidatesMuMu->size();
-      //unsigned int nZee = ZCandidatesEE->size();
-      //unsigned int nZeu = ZCandidatesEU->size();
+      unsigned int nZmumu = ZCandidatesMuMu->size();
+      unsigned int nZee = ZCandidatesEE->size();
+      unsigned int nZeu = ZCandidatesEU->size();
 
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
@@ -502,7 +509,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       TLorentzVector theZ;
       double baseZdiff = 99999;
       //Channel Flags
-      /*
+      ///*
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	//in binary 100, 4 in decimal
 	channel = 4.;//4 in decimal
@@ -601,15 +608,25 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       if (nZmumu == 0 && nZee == 0 && nZeu > 0 && anchan == 1) {
 	//001
 	channel = 1.;
-	if (passTrig) {
-	zemu += 1;
+	std::vector<TLorentzVector>::iterator zit;
+	for (zit = ZCandidatesEU->begin(); zit != ZCandidatesEU->end(); ++zit) {
+	  double massZdiff = std::abs(91.1876 - zit->M());
+	  if ((massZdiff < baseZdiff) && (zit->M() > zmwinlow) && (zit->M() < zmwinhi)) {
+	    baseZdiff = massZdiff;
+	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
+	    passZ = true;
+	    //if (passTrig) {
+	    zemu += 1;
+	    //std::cout<<"Found a good emu Z!"<<std::endl;
+	    //}
+	  }
 	}
-	}
-   */
+      }
+   //*/
   
       //Z Candidate Build
       //For old ntuples
-      ///*
+      /*
       if (nselmu > 0 && nselel == 0) {
       	mumuchan = true;
 	std::vector<TLorentzVector>::iterator muit;
@@ -784,11 +801,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       mEstNS = NS.GetMass();
       //*/
 
-      if (passZ && passTrig && mumuchan) {
+      if (passZ && passTrig && (channel == anchan)) {
 	countzpass +=1 ;
       }
 
-      if (passh && passZ && passTrig && mumuchan) {
+      if (passh && passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan 
       //if (passh && passZ ) {//Removed Z Channel Requirement
 	hCandidate = theh;
 	hCandidate_pt  = theh.Pt();
@@ -845,12 +862,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
-      if (passZ && passh && passTrig && sampleType !=0 && mumuchan) {
+      if (passZ && passh && passTrig && sampleType !=0 && (channel == anchan)) {
       //if (passZ && passh && sampleType !=0) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;
 	}
-      if (passZ && passh && passTrig && sampleType == 0 && passFil && mumuchan) {
+      if (passZ && passh && passTrig && sampleType == 0 && passFil && (channel == anchan)) {
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;
