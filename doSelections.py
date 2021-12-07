@@ -57,6 +57,7 @@ if __name__=='__main__':
     parser.add_argument("-c","--comboregion",type=bool,help = "do you want combined SR and SB?")
     parser.add_argument("-v","--validation",type=bool,help = "validation region bounds?")
     parser.add_argument("-syst","--systematics",type=str)
+    parser.add_argument("-channel","--chan",type=str)
     args = parser.parse_args()
 
     samp   = args.sample
@@ -70,8 +71,9 @@ if __name__=='__main__':
     comb   = args.comboregion
     valid  = args.validation
     systl  = args.systematics
+    channel = args.chan
 
-    inputfiles = glob.glob(args.date+'/'+samp+'*_topiary*.root')
+    inputfiles = glob.glob(args.date+'/'+samp+'*_topiary_'+channel+'*.root')
     #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+args.date+'/'+samp+'*_topiary*systnominal*.root')
    # inputfiles = glob.glob(args.date+'/'+samp+'*_topiary*systnominal*.root')
 
@@ -82,7 +84,7 @@ if __name__=='__main__':
         jectype = front.split("_")[-1]
         samp = front.split("_topiary")[0]
         #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+args.date+'/'+samp+'*_topiary*'+jectype+'*.root')
-        inputfiles = glob.glob(args.date+'/'+samp+'*_topiary*'+jectype+'*.root')
+        inputfiles = glob.glob(args.date+'/'+samp+'*_topiary_'+channel+'_'+jectype+'*.root')
     
         print("Doing selections on:")
         print("    ",inputfiles[:1])
