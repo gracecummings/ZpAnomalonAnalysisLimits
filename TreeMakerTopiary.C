@@ -705,7 +705,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  double jecsysfac = 1 + jecsys*unc;
 	  fat = fat*jecsysfac;
 	  double masshdiff = std::abs(125.18 - fsd);
-	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
+	  if ((masshdiff < basehdiff)) {//&& (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
 	    basehdiff = masshdiff;
 	    theh = fat;
 	    hsd = fsd;

@@ -93,13 +93,13 @@ if __name__=='__main__':
         print("    ",jectype)
         stype,year = go.sampleType(samp)
 
-        if not valid:
-            if sr and stype != 0:
-                print("    using signal region selections")
-            elif comb and stype != 0:
-                print("    using full region selections")
-            else:
-                print("    using sideband selections")
+        #if not valid:
+        #    if sr and stype != 0:
+        #        print("    using signal region selections")
+        #    elif comb and stype != 0:
+        #        print("    using full region selections")
+        #    else:
+        #        print("    using sideband selections")
 
         if valid:
             print("    Doing validation of alpha method cuts")
@@ -172,15 +172,26 @@ if __name__=='__main__':
                 if sr:
                     fdf = srdf
                     region = "signalr"
+                    print("    using signal region selections")
                 elif comb:
                     fdf = btdf
                     region = "totalr"
+                    print("    using full region selections")
                 else:
                     fdf = sbdf
                     region = "sideband"
+                    print("    using sideband selections")
+            elif stype == 0 and ("emu" in channel) and sr:
+                fdf = srdf
+                region = "signalr"
+                print("    using signal region selections")
+            elif stype == 0 and ("emu" in channel) and comb:
+                fdf = btdf
+                region = "totalr"
+                print("    using full region selections")
             else:
                 fdf = sbdf
-
+                print("    using sideband selections")
         if valid:
             if sr:
                 fdf = srdf

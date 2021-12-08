@@ -127,7 +127,8 @@ if __name__=="__main__":
         exit()
 
         
-    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
+    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
+    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#Needs to become dynamic with cuts
     print( "Making topiary of ",samp)
     print("     Sample type ",samptype)
     print("     Sample Year ",year)
