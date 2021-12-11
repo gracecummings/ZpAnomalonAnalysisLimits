@@ -15,6 +15,21 @@ CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
 CMS_lumi.writeExtraText = 1
 CMS_lumi.extraText = "Simulation Preliminary"
 
+def makeTPadOfFitGOF(fit,normfits = False):
+    lims = [0.6,0.3,.9,0.45]
+    if normfits:
+        lims = [0.17,0.8,0.52,0.9]
+    chi2 = fit.GetChisquare()
+    ndof = fit.GetNDF()
+    fitlabel = ROOT.TPaveText(lims[0],lims[1],lims[2],lims[3],"NBNDC")
+    #print("chi 2 ",chi2)
+    #print("\Chi^2 = {0} , ndof = {1}".format(round(chi2,2),ndof))
+    fitlabel.AddText("\Chi^2 = {0} , ndof = {1}".format(round(chi2,2),ndof))
+    fitlabel.AddText("\Chi^2 / ndof = {0}".format(round(chi2/ndof,4)))
+    fitlabel.SetFillColor(0)
+    return chi2,ndof,fitlabel
+
+
 def setLogAxis(pad,islog):
     if islog:
         pad.SetLogy()
@@ -184,9 +199,16 @@ if __name__=='__main__':
     dynormprefit = bkgfit.GetParameters()[17] 
     dynormpostfit = totnormfit.GetParameters()[17]
 
-    print("Prefit Normalization:  ",dynormprefit)
-    print("Postfit Normalization: ",dynormpostfit)
+    print("MC only Normalization:  ",dynormprefit)
+    print("Data sideband Normalization: ",dynormpostfit)
 
+    #Get Some fit info
+    dychi2f,dyndoff,dyfitpavetext = makeTPadOfFitGOF(dyfit)
+    ttchi2f,ttndoff,ttfitpavetext = makeTPadOfFitGOF(ttfit)
+    vvchi2f,vvndoff,vvfitpavetext = makeTPadOfFitGOF(vvfit)
+    mcnormchi2,mcnormdof,mcnormtpavetext = makeTPadOfFitGOF(bkgfit,normfits=True)
+    normchi2,normdof,normtpavetext = makeTPadOfFitGOF(totnormfit,normfits=True)
+    
     #Save the normalization
     normfilename = go.makeOutFile('Run2_2017_2018','dynormalization_'+systr+'_'+rstr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     normfile     = open(normfilename,'wb')
@@ -285,6 +307,7 @@ if __name__=='__main__':
     CMS_lumi.CMS_lumi(p11,4,13)
     dyfit.Draw('same')
     dyleg.Draw()
+    dyfitpavetext.Draw()
     p11.Update()
     
     tc.cd()
@@ -294,6 +317,7 @@ if __name__=='__main__':
     CMS_lumi.CMS_lumi(p12,4,13)
     ttfit.Draw("same")
     ttleg.Draw()
+    ttfitpavetext.Draw()
     p12.Update()
 
     tc.cd()
@@ -303,6 +327,7 @@ if __name__=='__main__':
     CMS_lumi.CMS_lumi(p13,4,13)
     vvfit.Draw("same")
     vvleg.Draw()
+    vvfitpavetext.Draw()
     p13.Update()
     tc.cd()
     
@@ -342,6 +367,7 @@ if __name__=='__main__':
     stackleg.AddEntry(sbdatfit,"Data SB","ep")
     stackleg.Draw()
     unnormlabel.Draw()
+    mcnormtpavetext.Draw()
     brl.Draw()
     brh.Draw()
     srl.Draw()
