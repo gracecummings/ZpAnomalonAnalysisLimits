@@ -14,6 +14,20 @@ CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
 CMS_lumi.writeExtraText = 1
 CMS_lumi.extraText = "Simulation Preliminary"
 
+def makeTPadOfFitGOF(fit,normfits = False):
+    lims = [0.6,0.3,.9,0.45]
+    if normfits:
+        lims = [0.17,0.8,0.52,0.9]
+    chi2 = fit.GetChisquare()
+    ndof = fit.GetNDF()
+    fitlabel = ROOT.TPaveText(lims[0],lims[1],lims[2],lims[3],"NBNDC")
+    #print("chi 2 ",chi2)
+    #print("\Chi^2 = {0} , ndof = {1}".format(round(chi2,2),ndof))
+    fitlabel.AddText("\Chi^2 = {0} , ndof = {1}".format(round(chi2,2),ndof))
+    fitlabel.AddText("\Chi^2 / ndof = {0}".format(round(chi2/ndof,4)))
+    fitlabel.SetFillColor(0)
+    return chi2,ndof,fitlabel
+
 def setLogAxis(pad,islog):
     if islog:
         pad.SetLogy()
@@ -103,8 +117,8 @@ if __name__=='__main__':
 
     #Get the samples
     pathbkg    = config.get(systname,systclass)
-    pathdata   = 'pfMETNominal_CorrCounting_Optimization/'
-    datastr = 'systnominal_btagnom'
+    pathdata   = config.get(systname,systclass)
+    #datastr = 'systnominal_btagnom'
     
     if validation:
         rstr = "validationblind"
@@ -115,12 +129,17 @@ if __name__=='__main__':
         srstring = "55 < m_{hcand,SD} < 70"
         srregionstring = "Validation Region"
     else:
-        dynorm = np.load(pathbkg+'Run2_2017_2018_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
+        dynorm = np.load(pathbkg+'/Run2_2017_2018_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
         bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
-        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp)
+        if systname != 'btag':
+            data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))#has both up and down data here, not just one
+        else:
+            data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp)#has both up and down data here, not just one
         sbstring = "30 < m_{hcand,SD} < 70"
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
+
+    print(data.data)
         
     print("Using the DY normalization factor: ",dynorm)
     
@@ -180,7 +199,7 @@ if __name__=='__main__':
     dysrminbin,dysrxmin = getMinXY(hsrdy,0.1)
     datsbminbin,datsbxmin = getMinXY(hdatsb,0.1)
 
-    print("dy sr limits of fit: ",dysrxmax,dysrxmin)
+    print("tt sb limits of fit: ",ttsbxmax,ttsbxmin)
     
     ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
     ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
@@ -193,7 +212,7 @@ if __name__=='__main__':
     srdyunc = ROOT.expFitErrBands(hsrdy,"sbl","R0+",sigmabars,dysrxmax,dysrxmin)#4000)
     srfit = ROOT.expFit(hsrdy,"srl","QR0+",dysrxmax,dysrxmin)#4000)
     print("================== doing tt sb fit ==================")
-    sbttfit = ROOT.expFit(hsbtt,"sbl","QR0+",ttsbxmax,ttsbxmin)#3000)
+    sbttfit = ROOT.expFit(hsbtt,"sbl","R0+",ttsbxmax,ttsbxmin)#3000)
     sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","QR0+",sigmabars,ttsbxmax,ttsbxmin)#3000)
     print("================== doing VV sb fit ==================")
     sbvvfit = ROOT.expFit(hsbvv,"sbl","QR0+",vvsbxmax,vvsbxmin)#3000)
@@ -204,6 +223,13 @@ if __name__=='__main__':
     print("================= doing alpha ratio fit =============")
     alpha = ROOT.alphaRatioMakerExp(hsbdy,hsrdy,dysbxmax,dysbxmin,dysrxmax,dysrxmin)
 
+    #Get Fit info
+    dysbchi2,dysbndof,dysbfitgofpad = makeTPadOfFitGOF(sbfit)
+    dysrchi2,dysrndof,dysrfitgofpad = makeTPadOfFitGOF(srfit)
+    ttsbchi2,ttsbndof,ttsbfitgofpad = makeTPadOfFitGOF(sbttfit)
+    vvsbchi2,vvsbndof,vvsbfitgofpad = makeTPadOfFitGOF(sbvvfit)
+    datsbchi2,datsbndof,datsbfitgofpad = makeTPadOfFitGOF(sbdatfit)
+    
     #Do the subtractions
     hdatsbsub.Add(sbttunc,-1)
     hdatsbsub.Add(sbvvunc,-1)
@@ -373,7 +399,7 @@ if __name__=='__main__':
     l11 = ROOT.TLegend(0.55,0.65,0.9,0.8)
     l22 = ROOT.TLegend(0.55,0.65,0.9,0.8)
     l23 = ROOT.TLegend(0.55,0.65,0.9,0.8)
-    l111 = ROOT.TLegend(0.55,0.4,0.9,0.8)
+    l111 = ROOT.TLegend(0.55,0.45,0.9,0.8)
     ldysbcomps = ROOT.TLegend(0.55,0.4,0.9,0.8)
     ldysbcomps.SetBorderSize(0)
     ldysbcompf = ROOT.TLegend(0.55,0.4,0.9,0.8)
@@ -383,15 +409,15 @@ if __name__=='__main__':
     
 
     #Define the labels
-    label = ROOT.TPaveText(.5,.4,.9,.5,"NBNDC")
+    label = ROOT.TPaveText(.35,.5,.9,.6,"NBNDC")
     label.AddText(sbstring)
     label.AddText("150 < m_{hcand,SD}")
     label.SetFillColor(0)
-    label2 = ROOT.TPaveText(.5,.4,.9,.5,"NBNDC")
+    label2 = ROOT.TPaveText(.35,.5,.9,.6,"NBNDC")
     label2.AddText(srstring)#higgs mass
     label2.AddText(srregionstring)#higgs mass
     label2.SetFillColor(0)
-    labelsbs = ROOT.TPaveText(.5,.25,.9,.35,"NBNDC")
+    labelsbs = ROOT.TPaveText(.5,.35,.9,.35,"NBNDC")
     labelsbs.AddText("Sideband")
     labelsbs.AddText("Stacked MC")
     labelsbs.SetFillColor(0)
@@ -426,6 +452,7 @@ if __name__=='__main__':
     l21.SetBorderSize(0)
     l21.Draw()
     label.Draw()
+    dysbfitgofpad.Draw()
     p21.Update()
      
     tc.cd()
@@ -446,6 +473,7 @@ if __name__=='__main__':
     
 
     label2.Draw()
+    dysrfitgofpad.Draw()
     p11.Update()
 
     tc.cd()
@@ -467,6 +495,7 @@ if __name__=='__main__':
     l22.AddEntry(sbttunc,str(sigmabars)+" $\sigma$ uncertainty","f")
     l22.SetBorderSize(0)
     l22.Draw()
+    ttsbfitgofpad.Draw()
     p22.Update()
 
 
@@ -501,6 +530,7 @@ if __name__=='__main__':
     hdatsb.Draw("SAME,E1")
     CMS_lumi.CMS_lumi(p12,4,13)
     p12.Update()
+    datsbfitgofpad.Draw()
     l111.Draw()
     
     tc.cd()
@@ -520,6 +550,7 @@ if __name__=='__main__':
     l23.AddEntry(sbvvunc,"1 $\sigma$ uncertainty","f")
     l23.SetBorderSize(0)
     l23.Draw()
+    vvsbfitgofpad.Draw()
     p23.Update()
 
     tc.cd()
