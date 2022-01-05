@@ -345,10 +345,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TFile * fnow = 0;
    std::vector<string> trig18mu = {"HLT_Mu55_v"};
    std::vector<string> trig17mu = {"HLT_Mu50_v"};
-   std::vector<string> trig16mu = {""};
-   std::vector<string> trig18e = {""};
-   std::vector<string> trig17e = {""};
-   std::vector<string> trig16e = {""};
+   std::vector<string> trig16mu = {"HLT_Mu50_v"};
+   std::vector<string> trig18e = {"HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig17e = {"HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig16e = {"HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
    std::vector<std::vector<string>> trig18 = {{"no"},{"emu"},trig18e,{"no"},trig18mu};
    std::vector<std::vector<string>> trig17 = {{"no"},{"emu"},trig17e,{"no"},trig17mu};
    std::vector<std::vector<string>> trig16 = {{"no"},{"emu"},trig16e,{"no"},trig16mu};
@@ -391,9 +391,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      //if (jentry == 200) {
-      //break;
-      //}
+      if (jentry == 200) {
+	break;
+      }
      
 
       //Trigger decisions
@@ -401,8 +401,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       string token;
       ourtrg = trigs[year-16][anchan][0];//add iteration for more triggers
       if (year == 16) {
-	std::cout<<"Find you 2016 triggers, moron"<<std::endl;
-	break;
+	//std::cout<<"Find you 2016 triggers, moron"<<std::endl;
+	std::cout<<"2016 triggers are added, break is removed"<<std::endl;
+	//break;
       }
       if (jentry == 0) {
 	//This is where you would add the iteration over last nested vector
@@ -627,8 +628,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //Z Candidate Build
       //For old ntuples
       /*
-      if (nselmu > 0 && nselel == 0) {
+      if (nselmu > 0 && nselel == 0 && anchan == 4) {
       	mumuchan = true;
+	channel = 4;
 	std::vector<TLorentzVector>::iterator muit;
 	for (muit = SelectedMuons->begin(); muit != SelectedMuons->end();++muit) { //might need to move after Z
 	  if (muit->Pt() > lptmax) {
@@ -705,7 +707,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  double jecsysfac = 1 + jecsys*unc;
 	  fat = fat*jecsysfac;
 	  double masshdiff = std::abs(125.18 - fsd);
-	  if ((masshdiff < basehdiff)) {//&& (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
+	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
 	    basehdiff = masshdiff;
 	    theh = fat;
 	    hsd = fsd;
