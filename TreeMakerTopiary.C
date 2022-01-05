@@ -260,7 +260,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      uncfile = "JEC/Fall17_17Nov2017F_V32_DATA/Fall17_17Nov2017F_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 16) {
-     std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
+     uncfile = "JEC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK8PFPuppi.txt";
+     //std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2016sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2016uncUp")));
      hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2016uncDown")));
@@ -270,7 +271,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hbtagsf->SetDirectory(0);
      btagsf.Close();
    }
-
+   if (year == 160) {
+     uncfile = "JEC/Summer16_07Aug2017BCD_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 161) {
+     uncfile = "JEC/Summer16_07Aug2017EF_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 162) {
+     uncfile = "JEC/Summer16_07Aug2017GH_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
    std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
    std::cout<<"Using btagsf file  "<<btagfile<<std::endl;
 

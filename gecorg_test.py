@@ -54,7 +54,23 @@ def sampleType(sampstring,givejecs=False):
         year = 17
     if "2016" in sampstring:
         year = 16
-
+        if givejecs:
+            if "Run2016B" in sampstring:
+                year = 160
+            if "Run2016C" in sampstring:
+                year = 160
+            if "Run2016D" in sampstring:
+                year = 160
+            if "Run2016E" in sampstring: 
+                year = 161
+            if "Run2016F" in sampstring:
+                year = 161
+            if "Run2016G" in sampstring:
+                year = 162
+            if "Run2016H" in sampstring:
+                year = 162
+    if "Summer16" in sampstring:
+        year = 16
     return samptype,year
 
 def makeOutFile(sampstring,descrip,ftype,zptcut,hptcut,metcut,btagwp):
@@ -123,9 +139,9 @@ def prepSig(sigfiles,sig_colors,sig_xsec,lumi):
     for s,sig in enumerate(sigfiles):
         sig_dict = {}                                                                                   
         sig_dict["tfile"] = ROOT.TFile(sig)                                                             
-        sig_samplesize    = str(sig_dict["tfile"].Get('hnevents').GetString())
+        sig_samplesize    = 0.0#str(sig_dict["tfile"].Get('hnevents').GetString())
         if float(sig_samplesize) == 0.0:
-            #print("Fix your hack for ntuple signal counting, setting sample size to 35000")
+            print("Fix your hack for ntuple signal counting, setting sample size to 35000")
             sig_samplesize = "35000.0"###HACK
         sig_dict["scale"] = findScale(float(sig_samplesize),sig_xsec,lumi)
         sig_dict["name"]  = nameSignal(sig)
@@ -159,10 +175,10 @@ def prepBkg(bkgfiles,bkgnames,bkg_colors,ini_file,lumi,flag="yes"):
             #orders smallest HT to largest
             bkg.sort(key = orderDY)
             #normscale = np.load('BkgInputsNominalJECBtag/Run2_2017_2018_dynormalization_systnominal_btagnom_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
-            normscale = np.load('pfMETNominal_CorrCounting_Optimization/Run2_2017_2018_dynormalization_systnominal_btagnom_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
-            print("applying a normalization,watch out")
-            #normscale = 1
-            #print("Put back in derived norm")
+            #normscale = np.load('pfMETNominal_CorrCounting_Optimization/Run2_2017_2018_dynormalization_systnominal_btagnom_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+            #print("applying a normalization,watch out")
+            normscale = 1
+            print("Put back in derived norm")
         elif bkg_channel == "TT":
             #sorts in alphabetical order 
             bkg.sort()                                                     
@@ -474,20 +490,26 @@ class run2:
         self.run18sb = glob.glob(str(path)+'/Run2018*upout_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run17sr = glob.glob(str(path)+'/Run2017*upout_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run18sr = glob.glob(str(path)+'/Run2018*upout_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.run17tr = glob.glob(str(path)+'/Run2017*upout_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.run18tr = glob.glob(str(path)+'/Run2018*upout_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
         #gather errors
         self.run17sberrs = glob.glob(str(path)+'/Run2017*selected_errors_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run18sberrs = glob.glob(str(path)+'/Run2018*selected_errors_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run17srerrs = glob.glob(str(path)+'/Run2017*selected_errors_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run18srerrs = glob.glob(str(path)+'/Run2018*selected_errors_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.run17trerrs = glob.glob(str(path)+'/Run2017*selected_errors_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.run18trerrs = glob.glob(str(path)+'/Run2018*selected_errors_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
 
         self.data = {18:
                       {"sb":[self.run18sb,self.run18sberrs],
                        "sr":[self.run18sr,self.run18srerrs],
+                       "tr":[self.run18tr,self.run18trerrs],
                        },
                       17:
                       {"sb":[self.run17sb,self.run17sberrs],
                        "sr":[self.run17sr,self.run17srerrs],
+                       "tr":[self.run17tr,self.run17trerrs],
                        }
                       }
 
