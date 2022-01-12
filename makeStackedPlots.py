@@ -21,6 +21,16 @@ def regionFormatter(regionstr):
     formatted = regdict[regionstr]
     return formatted
 
+def lumiFormatter(yearlist):
+    lumidict = {16:35.9,17:41.53,18:59.74}
+    lumi = 0
+    for year in yearlist:
+        lumi += lumidict[year]
+  
+    lumistr = str(lumi)+" fb^{-1}"
+    return lumistr
+    
+
 
 if __name__=='__main__':
     #build module objects
@@ -75,9 +85,13 @@ if __name__=='__main__':
     if len(years) >= 2:#dynorms only matter for composite years
         dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
 
-    #Colors and Naming
+    #Colors, Naming, general style
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
     bkgcols  = go.colsFromPalette(bkgnames,ROOT.kLake)
+    tdrstyle.setTDRStyle()
+    CMS_lumi.lumi_13TeV = lumiFormatter(years)
+    CMS_lumi.writeExtraText = 1
+    CMS_lumi.extraText = "Simulation Preliminary"
 
     #Gather plots
     testyear = years[0]#picks first year in list, so desired year if only one
@@ -186,6 +200,7 @@ if __name__=='__main__':
         #Prepare first pad for stack
         p1.Draw()
         p1.cd()
+        
 
         #Draw the stack
         hsbkg.Draw("HIST")#add PFC for palette drawing
@@ -194,6 +209,8 @@ if __name__=='__main__':
         hsbkg.GetXaxis().SetTitleOffset(0.85)
         hsbkg.GetYaxis().SetTitle("Events")
         hsbkg.GetYaxis().SetTitleSize(0.05)
+        CMS_lumi.CMS_lumi(p1,4,13)
+        p1.Update()
         
         #Save the plot
         pngname = go.makeOutFile(hname,'ratio_'+regname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
