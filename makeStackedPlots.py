@@ -61,6 +61,7 @@ if __name__=='__main__':
     pathplots = args.directory
     systr = args.syst
     plot_data = args.data
+    sigdivsor = 7
     
     #Select Plotting years and region
     years = [16,17,18]
@@ -75,7 +76,8 @@ if __name__=='__main__':
     #Gather Input
     bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,systr)
-    #sigs = go.
+    sigs =  go.signal(pathplots,zptcut,hptcut,metcut,btagwp,sig_xsec,years,systr)
+    
     dynorm = 1
     if len(years) >= 2:#dynorms only matter for composite years
         dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
@@ -96,6 +98,10 @@ if __name__=='__main__':
     testfile = bkgs.bkgs["DYJetsToLL"][testyear]["sb"][0][0]#stacked plots should always have DY
     testtfile = ROOT.TFile(testfile)
     keys = testtfile.GetListOfKeys()
+    siginfo = sigs.getPreppedSig(reg,sig_xsec,years)
+    sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
+    siginfo = sorted(siginfo,key = lambda sig: (sig["mzp"],sig["mnd"])) 
+
 
     #names and param. To Do: expand to include plot limits for linear scale
     titles = {
@@ -130,6 +136,7 @@ if __name__=='__main__':
     #make the plots
     for key in keys:
         hname = key.GetName()
+        print("working to make stacked plot of ",hname)
         
         #Make holder histograms
         h = testtfile.Get(hname)
@@ -183,7 +190,7 @@ if __name__=='__main__':
         hbkg.Add(hdy)
 
         #legend
-        leg = ROOT.TLegend(0.60,0.50,0.88,0.80)
+        leg = ROOT.TLegend(0.5,0.45,0.88,0.80)
         leg.SetBorderSize(0)
         leg.AddEntry(hdy,"DYJetsToLL","f")
         leg.AddEntry(htt,"TT","f")
@@ -207,8 +214,6 @@ if __name__=='__main__':
             hdiv = hdat.Clone()
             hdiv.Divide(hdat,hbkg)
 
-        #Signal
-
         #Plotting itself
         tc = ROOT.TCanvas("tc",hname,600,800)
         p1 = ROOT.TPad("p1","stack_"+hname,0,stkpadydims[0],1.0,stkpadydims[1])
@@ -217,7 +222,8 @@ if __name__=='__main__':
         p2 = ROOT.TPad("p2","signif_"+hname,0,ratpadydims[0],1.0,ratpadydims[1])
         p2.SetRightMargin(.05)
         p2.SetLeftMargin(0.15)
-        p2.SetBottomMargin(0.2)
+        p2.SetBottomMargin(0.25)
+        p2.SetTopMargin(0.05)
 
         #Prepare first pad for stack
         p1.Draw()
@@ -227,10 +233,38 @@ if __name__=='__main__':
         hsbkg.Draw("HIST")#add PFC for palette drawing
         hsbkg.GetXaxis().SetTitle(titles[hname][0])
         hsbkg.GetXaxis().SetTitleSize(0.05)
-        hsbkg.GetXaxis().SetTitleOffset(0.85)
+        hsbkg.GetXaxis().SetTitleOffset(1.1)
+        hsbkg.GetXaxis().SetLabelSize(0.04)
         hsbkg.GetYaxis().SetTitle("Events")
         hsbkg.GetYaxis().SetTitleSize(0.05)
+        hsbkg.GetYaxis().SetLabelSize(0.04)
         CMS_lumi.CMS_lumi(p1,4,13)
+
+        #Draw the Signal
+        for s,sig in enumerate(siginfo):
+            name = sig["name"]
+            signame = 'holder'
+            if "Tune" in name:
+                strippedname = name.split("_Tune")[0]
+                signame = strippedname.replace("-","")
+            else:
+                signame = name.replace("-","")
+
+            hsig = sig["tfile"].Get(hname)
+            hsig.Rebin(titles[hname][3])
+            hsig.Scale(sig['scale'])
+            hsig.SetLineColor(sigcolors[s])
+            hsig.SetStats(0)
+
+        
+            if s == 0:
+                hsig.Draw("histsame")
+                leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
+            elif s % sigdivsor == 0:
+                hsig.Draw("histsame")
+                leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
+            p1.cd()
+
         leg.Draw()
         p1.Update()
         tc.cd()
@@ -242,7 +276,20 @@ if __name__=='__main__':
             p2.Draw()
             p2.cd()
             hdiv.Draw()
-            tc.cd()
+            hdiv.GetXaxis().SetTitle("bin center")
+            hdiv.GetXaxis().SetTitleSize(0.11)
+            hdiv.GetXaxis().SetTitleOffset(0.65)
+            hdiv.GetXaxis().SetLabelSize(0.075)
+            hdiv.GetYaxis().SetTitle("data/MC")
+            hdiv.GetYaxis().SetTitleSize(0.11)
+            hdiv.GetYaxis().SetTitleOffset(.45)
+            hdiv.GetYaxis().SetLabelSize(0.08)
+            hdiv.GetYaxis().SetLabelOffset(0.02)
+            hdiv.GetYaxis().SetNdivisions(503)
+            hdiv.SetMinimum(0.)
+            hdiv.SetMaximum(2.)
+
+        tc.cd()
         
         #Save the plot
         pngname = go.makeOutFile(hname,'ratio_'+regname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))

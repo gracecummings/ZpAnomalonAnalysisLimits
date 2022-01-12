@@ -136,12 +136,13 @@ def gatherBkg(bkg_dir,descrip,zptcut,hptcut,metcut,btagwp,year):
 
 def prepSig(sigfiles,sig_colors,sig_xsec,lumi):
     sig_info = []
+    print("Fix your hack for ntuple signal counting, setting sample size to 35000")
     for s,sig in enumerate(sigfiles):
         sig_dict = {}                                                                                   
         sig_dict["tfile"] = ROOT.TFile(sig)                                                             
         sig_samplesize    = 0.0#str(sig_dict["tfile"].Get('hnevents').GetString())
         if float(sig_samplesize) == 0.0:
-            print("Fix your hack for ntuple signal counting, setting sample size to 35000")
+            
             sig_samplesize = "35000.0"###HACK
         sig_dict["scale"] = findScale(float(sig_samplesize),sig_xsec,lumi)
         sig_dict["name"]  = nameSignal(sig)
@@ -448,7 +449,6 @@ class backgrounds:
         xspairs = self.config.items(samp)
         #print(xspairs)
         bkgdfs  = []
-        
         for year in years:
             if year == 16:
                 lumi = 35.9
@@ -607,7 +607,7 @@ class run2:
 
 
 class signal:
-    def __init__(self,path,zptcut,hptcut,metcut,btagwp,xs,lumi,systr=""):
+    def __init__(self,path,zptcut,hptcut,metcut,btagwp,xs,years = [16,17,18],systr=""):
         self.path = path
         self.zptcut = zptcut
         self.hptcut = hptcut
@@ -617,16 +617,43 @@ class signal:
 
         if systr != "":
             systr = "_"+systr
+
+        lumidict = {16:35.9,17:41.53,18:59.74}
+        lumi = 0
+        for year in years:
+            lumi += lumidict[year]
+
         
-        #gather signal plots
+        
+        #gather signas
         self.sigsr = glob.glob(str(path)+'/*Zp*_upout_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.sigsb = glob.glob(str(path)+'/*Zp*_upout_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-        self.sigfl = glob.glob(str(path)+'/*Zp*_upout_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.sigtr = glob.glob(str(path)+'/*Zp*_upout_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+
+        self.sigs ={"sb":self.sigsb,
+                    "sr":self.sigsr,
+                    "tr":self.sigtr,
+                    }
         
-        sig_colors = colsFromPalette(self.sigsr,ROOT.kCMYK)
+        #sig_colors = colsFromPalette(self.sigsr,ROOT.kCMYK)
         
         #prep signals
-        self.prepsigsr = prepSig(self.sigsr,sig_colors,xs,lumi)
+        #self.prepsigsr = prepSig(self.sigsr,sig_colors,xs,lumi)
+        
+    def getPreppedSig(self,region,xs,years=[16,17,18]):
+        signal = self.sigs[region]
+        sig_colors = colsFromPalette(signal,ROOT.kCMYK)
+        lumidict = {16:35.9,17:41.53,18:59.74}
+        l = 0
+        for year in years:
+            l += lumidict[year]
+
+        print("for signal you are using a lumi of ",l)
+        print("for signal you are using the region ",region)
+    
+        preppedsig = prepSig(signal,sig_colors,xs,l)
+        return preppedsig
+
 
 class validation:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp):
