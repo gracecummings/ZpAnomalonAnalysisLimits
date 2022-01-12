@@ -103,7 +103,6 @@ if __name__=='__main__':
 
     #Gather plots
     testyear = years[0]#picks first year in list, so desired year if only one
-    print(testyear)
     testfile = bkgs.bkgs["DYJetsToLL"][testyear]["sb"][0][0]#stacked plots should always have DY
     testtfile = ROOT.TFile(testfile)
     keys = testtfile.GetListOfKeys()
@@ -116,7 +115,7 @@ if __name__=='__main__':
         "h_z_pt":["Z p_{T}",0,40,1],
         "h_z_eta":["\eta_{Z}",0,60,1],
         "h_z_phi":["\phi_{Z}",0,40,2],
-        "h_z_phiw":["\phi_{Z}",0,40/10,2],
+        "h_z_phiw":["\phi_{Z}",0,40,2],
         "h_z_m":["m_{Z}",0,30,1],
         "h_h_pt":["Higgs p_{T}",0,60,1],
         "h_h_eta":["\eta_{Higss}",0,100,1],
