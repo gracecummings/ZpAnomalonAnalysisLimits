@@ -400,9 +400,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      if (jentry == 200) {
-	break;
-      }
+      //if (jentry == 200) {
+      //break;
+      //}
      
 
       //Trigger decisions
@@ -411,7 +411,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       ourtrg = trigs[year-16][anchan][0];//add iteration for more triggers
       if (year == 16) {
 	//std::cout<<"Find you 2016 triggers, moron"<<std::endl;
-	std::cout<<"2016 triggers are added, break is removed"<<std::endl;
+	//std::cout<<"2016 triggers are added, break is removed"<<std::endl;
 	//break;
       }
       if (jentry == 0) {

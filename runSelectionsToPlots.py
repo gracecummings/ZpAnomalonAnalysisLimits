@@ -6,7 +6,7 @@ if __name__=='__main__':
     #steps to run
     #assumes you have run the whole thing at the start of the day
     #steps = {"selections":True,"uncs":True,"ratios":True,"opts":True}
-    steps = {"topiary":False,"selections":False,"uncs":False,"ratios":False,"opts":False,"cutflow":False,"alphaNorm":False,"alphaR":False,"datacards":False,"limitplots":False}
+    steps = {"topiary":False,"selections":True,"uncs":False,"ratios":False,"opts":False,"cutflow":False,"alphaNorm":False,"alphaR":False,"datacards":False,"limitplots":False}
     
     #cut list, Zpt, Hpt, met,btagger,btagwp
     cutlist = [#['150.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
@@ -14,7 +14,7 @@ if __name__=='__main__':
                #['100.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                #['100.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                #['200.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
-               ######['100.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
+               ['100.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                #['125.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                #['150.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                #['175.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
@@ -24,7 +24,7 @@ if __name__=='__main__':
                #['175.0','300.0','50.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                #['175.0','300.0','100.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
                #['200.0','300.0','75.0','DeepMassDecorrelTagZHbbvsQCD','0.8'],
-               ['100.0','0.0','0.0','DeepMassDecorrelTagZHbbvsQCD','0.0'],#ttbar background
+               ####['100.0','0.0','0.0','DeepMassDecorrelTagZHbbvsQCD','0.0'],#ttbar background
                ]
 
     lumi = "41.53"
@@ -38,25 +38,25 @@ if __name__=='__main__':
     plots = ['h_z_pt']#['h_h_pt','h_z_pt','h_met','h_nd_jigm','h_zp_jigm','h_h_sd','h_btag']
 
     #topiary sample list: dateforfolder, samplename
-    samplelist = [['','Run2016B-17Jul2018_ver2-v1.SingleMuon'],
-                  [''.'Run2016C-17Jul2018-v1.SingleMuon'],
-                  [''.'Run2016D-17Jul2018-v1.SingleMuon'],
-                  [''.'Run2016E-17Jul2018-v1.SingleMuon'],
-                  [''.'Run2016F-17Jul2018-v1.SingleMuon'],
-                  [''.'Run2016G-17Jul2018-v1.SingleMuon'],
-                  ['','Run2016H-17Jul2018-v1.SingleMuon'],
-                  ['','Summer16v3.DYJetsToLL_M-50_HT-100to200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
-                  ['','Summer16v3.DYJetsToLL_M-50_HT-200to400_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
-                  ['','Summer16v3.DYJetsToLL_M-50_HT-400to600_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
-                  ['','Summer16v3.DYJetsToLL_M-50_HT-600to800_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
-                  ['','Summer16v3.DYJetsToLL_M-50_HT-800to1200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
-                  ['','Summer16v3.DYJetsToLL_M-50_HT-1200to2500_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
-                  ['','Summer16v3.DYJetsToLL_M-50_HT-2500toInf_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
-                  ['','Summer16v3.TTTo2L2Nu_TuneCP5_PSweights_13TeV-powheg-pythia8_'],
-                  ['','Summer16v3.TTToHadronic_TuneCP5_PSweights_13TeV-powheg-pythia8'],
-                  ['','Summer16v3.TTToSemiLeptonic_TuneCP5_PSweights_13TeV-powheg-pythia8'],
-                  ['','Summer16v3.WZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],
-                  ['','Summer16v3.ZZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],
+    samplelist = [['analysis_output_ZpAnomalon/2022-01-11','Run2016B-17Jul2018_ver2-v1.SingleMuon'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Run2016C-17Jul2018-v1.SingleMuon'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Run2016D-17Jul2018-v1.SingleMuon'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Run2016E-17Jul2018-v1.SingleMuon'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Run2016F-17Jul2018-v1.SingleMuon'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Run2016G-17Jul2018-v1.SingleMuon'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Run2016H-17Jul2018-v1.SingleMuon'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.DYJetsToLL_M-50_HT-100to200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.DYJetsToLL_M-50_HT-200to400_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.DYJetsToLL_M-50_HT-400to600_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.DYJetsToLL_M-50_HT-600to800_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.DYJetsToLL_M-50_HT-800to1200_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.DYJetsToLL_M-50_HT-1200to2500_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.DYJetsToLL_M-50_HT-2500toInf_TuneCUETP8M1_13TeV-madgraphMLM-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.TTTo2L2Nu_TuneCP5_PSweights_13TeV-powheg-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.TTToHadronic_TuneCP5_PSweights_13TeV-powheg-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.TTToSemiLeptonic_TuneCP5_PSweights_13TeV-powheg-pythia8'],
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.WZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],#ok
+                  ['analysis_output_ZpAnomalon/2022-01-11','Summer16v3.ZZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8'],#ok
                   ##['pfMET_nominal','Run2017B-31Mar2018-v1.SingleMuon'],
                   ##['pfMET_nominal','Run2017C-31Mar2018-v1.SingleMuon'],
                   ##['pfMET_nominal','Run2017D-31Mar2018-v1.SingleMuon'],
@@ -84,6 +84,7 @@ if __name__=='__main__':
                   ##['pfMET_nominal','Run2018A-17Sep2018-v1.SingleMuon'],
                   ##['pfMET_nominal','Run2018D-22Jan2019-v2.SingleMuon'],#ttbar background
                   ##['pfMET_nominal','Autumn18.TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
+
                   ##['pfMET_nominal','Autumn18.TTToHadronic_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
                   ##['pfMET_nominal','Autumn18.TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8'],##ttbar bg
                   ##['analysis_output_ZpAnomalon/2021-12-09','Autumn18.DYJetsToLL_M-50_HT-100to200_TuneCP5_PSweights_13TeV-madgraphMLM-pythia8'],
@@ -166,22 +167,25 @@ if __name__=='__main__':
         #do selections
         if steps["selections"]:
             for samp in samplelist:
-                #subprocess.run(["python","quickSelectionMinimal.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0]])
+                #subprocess.run(["python","quickSelectionMinimal.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0]])
                 
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0]])
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-sr","True"])
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-c","True"])
+                subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-c","mumu"])
+
+                if "Run" in samp[1]:
+                    continue
+                subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-sr","True","-c","mumu"])
+                subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-tot","True","-c","mumu"])
 
                 #####ttbar background
-                subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","0.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-c","True","-channel","mumu"])
+                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","0.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-tot","True","-c","mumu"])
 
                 ####btagging sf
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-syst","btagdwn"])
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-sr","True","-syst","btagdwn"])
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-c","True","-syst","btagdwn"])
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-syst","btagup"])
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-sr","True","-syst","btagup"])
-                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-date",samp[0],"-c","True","-syst","btagup"])
+                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-syst","btagdwn"])
+                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-sr","True","-syst","btagdwn"])
+                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-tot","True","-syst","btagdwn"])
+                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-syst","btagup"])
+                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-sr","True","-syst","btagup"])
+                #subprocess.run(["python","doSelections.py","-f",samp[1],"-zpt",cut[0],"-hpt",cut[1],"-met",cut[2],"-sdm","30.0","-b",cut[3],"-wp",cut[4],"-d",samp[0],"-tot","True","-syst","btagup"])
                 
         if steps["alphaNorm"]:
             print("    Doing alpha method normalization")
@@ -222,4 +226,3 @@ if __name__=='__main__':
 
         if steps["limitplots"]:
             subprocess.run(["python", "makeLimiPlot.py","-z",cut[0],"-j",cut[1],"-m",cut[2],"-wp",cut[4]])
-            

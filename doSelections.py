@@ -5,7 +5,7 @@ import numpy as np
 import boost_histogram as bh
 import argparse
 import glob
-import gecorg as go
+import gecorg_test as go
 
 
 parser = argparse.ArgumentParser()
@@ -52,12 +52,12 @@ if __name__=='__main__':
     parser.add_argument("-hpt","--hPtCut",type=float,default = 250.0,help = "pT cut on h")
     parser.add_argument("-met","--metPtCut",type=float,default = 50.0,help = "pT cut on met")
     parser.add_argument("-sdm","--sdmCut",type=float,default = 10.0,help = "lowest soft drop mass cut")
-    parser.add_argument("-date","--date",type=str,help = "where are your topiary plots?")
+    parser.add_argument("-d","--directory",type=str,help = "where are your topiary plots?")
     parser.add_argument("-sr","--signalregion",type=bool,help = "do you want a signal region plot?")
-    parser.add_argument("-c","--comboregion",type=bool,help = "do you want combined SR and SB?")
+    parser.add_argument("-tot","--comboregion",type=bool,help = "do you want combined SR and SB?")
     parser.add_argument("-v","--validation",type=bool,help = "validation region bounds?")
     parser.add_argument("-syst","--systematics",type=str)
-    parser.add_argument("-channel","--chan",type=str)
+    parser.add_argument("-c","--chan",type=str)
     args = parser.parse_args()
 
     samp   = args.sample
@@ -72,10 +72,11 @@ if __name__=='__main__':
     valid  = args.validation
     systl  = args.systematics
     channel = args.chan
+    topdir = args.directory
 
-    inputfiles = glob.glob(args.date+'/'+samp+'*_topiary_'+channel+'*.root')
-    #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+args.date+'/'+samp+'*_topiary*systnominal*.root')
-   # inputfiles = glob.glob(args.date+'/'+samp+'*_topiary*systnominal*.root')
+    inputfiles = glob.glob(topdir+'/'+samp+'*_topiary_'+channel+'*.root')
+    #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+topdir+'/'+samp+'*_topiary*systnominal*.root')
+   # inputfiles = glob.glob(topdir+'/'+samp+'*_topiary*systnominal*.root')
 
     for fjec in inputfiles:
         #for jet systematics
@@ -83,8 +84,8 @@ if __name__=='__main__':
         front = samp.split("_Zpt")[0]
         jectype = front.split("_")[-1]
         samp = front.split("_topiary")[0]
-        #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+args.date+'/'+samp+'*_topiary*'+jectype+'*.root')
-        inputfiles = glob.glob(args.date+'/'+samp+'*_topiary_'+channel+'_'+jectype+'*.root')
+        #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+topdir+'/'+samp+'*_topiary*'+jectype+'*.root')
+        inputfiles = glob.glob(topdir+'/'+samp+'*_topiary_'+channel+'_'+jectype+'*.root')
     
         print("Doing selections on:")
         print("    ",inputfiles[:1])
@@ -255,7 +256,7 @@ if __name__=='__main__':
 
         print("    number of passing events straight ",len(fdf))
         print("    number of passing events weighted ",eventweights.sum())
-        print("    max Zp mass estimator: ",fdf['ZPrime_mass_est'].max())
+        #print("    max Zp mass estimator: ",fdf['ZPrime_mass_est'].max())
 
         #lets make some histograms.
         rootfilename  = go.makeOutFile(samp,'upout_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))#need to update for btagger
@@ -288,9 +289,16 @@ if __name__=='__main__':
         rootOutFile["h_dphi_zmet"]  = np.histogram(deltaphizmetdf,bins=100,range=(0,3.14159),weights=eventweights)
         rootOutFile["h_dphi_hmet"]  = np.histogram(deltaphihmetdf,bins=100,range=(0,3.14159),weights=eventweights)
         rootOutFile["h_dr_zh"]      = np.histogram(deltaRzhdf,bins=30,range=(0,6),weights=eventweights)
-        rootOutFile["h_dr_lmuh"]      = np.histogram(deltaRlmuhdf,bins=30,range=(0,6),weights=eventweights)
-        rootOutFile["h_dr_slmuh"]      = np.histogram(deltaRslmuhdf,bins=30,range=(0,6),weights=eventweights)
-        rootOutFile["h_dr_slmulmu"]      = np.histogram(deltaRslmulmudf,bins=30,range=(0,6),weights=eventweights)
+        rootOutFile["h_dr_lmuh"]    = np.histogram(deltaRlmuhdf,bins=30,range=(0,6),weights=eventweights)
+        rootOutFile["h_dr_slmuh"]   = np.histogram(deltaRslmuhdf,bins=30,range=(0,6),weights=eventweights)
+        rootOutFile["h_dr_slmulmu"] = np.histogram(deltaRslmulmudf,bins=30,range=(0,6),weights=eventweights)
+        ###new 2022-01-11
+        rootOutFile["h_LMu_pt"]     = np.histogram(fdf['LMuCandidate_pt'],bins=50,range=(0,500),weights=eventweights)
+        rootOutFile["h_sLMu_pt"]     = np.histogram(fdf['sLMuCandidate_pt'],bins=50,range=(0,500),weights=eventweights)
+        rootOutFile["h_LMu_phi"]    = np.histogram(fdf['LMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
+        rootOutFile["h_sLMu_phi"]    = np.histogram(fdf['sLMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
+        rootOutFile["h_LMu_eta"]    = np.histogram(fdf['LMuCandidate_eta'],bins=30,range=(-5,5),weights=eventweights)
+        rootOutFile["h_sLMu_eta"]    = np.histogram(fdf['sLMuCandidate_eta'],bins=30,range=(-5,5),weights=eventweights)
 
         zpterrs      = boostUnc(fdf['ZCandidate_pt'],eventweights,80,0,800)
         zetaerrs     = boostUnc(fdf['ZCandidate_eta'],eventweights,30,-5,5)
@@ -316,7 +324,13 @@ if __name__=='__main__':
         drzherrs       = boostUnc(deltaRzhdf,eventweights,30,0,6)
         drlmuherrs     = boostUnc(deltaRlmuhdf,eventweights,30,0,6)
         drslmuherrs    = boostUnc(deltaRslmuhdf,eventweights,30,0,6)
-        drslmulmuerrs    = boostUnc(deltaRslmulmudf,eventweights,30,0,6)
+        drslmulmuerrs  = boostUnc(deltaRslmulmudf,eventweights,30,0,6)
+        lmupterrs      = boostUnc(fdf['LMuCandidate_pt'],eventweights,50,0,500)
+        smupterrs      = boostUnc(fdf['sLMuCandidate_pt'],eventweights,50,0,500)
+        lmuphierrs     = boostUnc(fdf['LMuCandidate_phi'],eventweights,30,-3.14159,3.14159)
+        smuphierrs     = boostUnc(fdf['sLMuCandidate_phi'],eventweights,30,-3.14159,3.14159)
+        lmuetaerrs     = boostUnc(fdf['LMuCandidate_eta'],eventweights,30,-5,5)
+        smuetaerrs     = boostUnc(fdf['sLMuCandidate_eta'],eventweights,30,-5,5)
         
         unc_arrays = [zpterrs,
                       zetaerrs,
@@ -343,7 +357,12 @@ if __name__=='__main__':
                       drlmuherrs,
                       drslmuherrs,
                       drslmulmuerrs,
-                      
+                      lmupterrs,
+                      smupterrs,
+                      lmuphierrs,
+                      smuphierrs,
+                      lmuetaerrs,
+                      smuetaerrs,
         ]
 
         unc_names = ['h_z_pt',
@@ -371,6 +390,12 @@ if __name__=='__main__':
                      'h_dr_lmuh',
                      'h_dr_slmuh',
                      'h_dr_slmulmu',
+                     'h_LMu_pt',
+                     'h_sLMu_pt',
+                     'h_LMu_phi',
+                     'h_sLMu_phi',
+                     'h_LMu_eta',
+                     'h_sLMu_eta',
         ]
 
         max_length = len(max(unc_arrays,key = lambda ar : len(ar)))

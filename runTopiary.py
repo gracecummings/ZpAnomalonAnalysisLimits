@@ -62,14 +62,22 @@ if __name__=="__main__":
         sys.exit()
     origevnts = 0
 
+    #First set of print statements
+    print( "Making topiary of ",samp)
+    print("     Sample type ",samptype)
+    print("     Sample Year ",year)
+    print("     Topiary Year ",topyear)#This is a debug
+    print("    ",channelprint)
+
     #Prepare your TChain
     if samptype != 1 and ".root" not in samp:
     #if ".root" not in samp:#should also take multi file signal
         #for non-signal samples
         inChain = ROOT.TChain("PreSelection")
-        #inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
-        inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
+        inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
+        #inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
         for f in inputs:
+            #print(f)
             inChain.Add(f)
             tf = ROOT.TFile.Open(f)
             origevnts += tf.Get("hnevents").GetBinContent(1)
@@ -127,13 +135,13 @@ if __name__=="__main__":
         exit()
 
         
-    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
-    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#Needs to become dynamic with cuts
-    print( "Making topiary of ",samp)
-    print("     Sample type ",samptype)
-    print("     Sample Year ",year)
-    print("     Topiary Year ",topyear)#This is a debug
-    print("    ",channelprint)
+    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
+    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#Needs to become dynamic with cuts
+    #print( "Making topiary of ",samp)
+    #print("     Sample type ",samptype)
+    #print("     Sample Year ",year)
+    #print("     Topiary Year ",topyear)#This is a debug
+    #print("    ",channelprint)
     print("     Systematics ",syststring)
     print("     Events in TChain: ",inChain.GetEntries())
     print(("     Original data set had {0} events in type.").format(origevnts))
