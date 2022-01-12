@@ -48,11 +48,49 @@ if __name__=='__main__':
     #Gather Imput
     bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,systr)
+    #sigs = go.
 
     #Select Plotting years
     years = [16,17,18]
     if year:
         years = [year]
 
+    #Include data?
 
-    
+    #Colors
+
+    #Gather plots
+    testyear = years[0]#picks first year in list, so desired year if only one
+    testfile = bkgs.bkgs["DYJetsToLL"][testyear]["sb"][0][0]#stacked plots should always have DY
+    testtfile = ROOT.TFile(testfile)
+    keys = testtfile.GetListOfKeys()
+
+    #names
+    titles = {
+        "h_z_pt":"Z p_{T}",
+        "h_z_eta":"\eta_{Z}",
+        "h_z_phi":"\phi_{Z}",
+        "h_z_phiw":"\phi_{Z}",
+        "h_z_m":"m_{Z}",
+        "h_h_pt":"Higgs p_{T}",
+        "h_h_eta":"\eta_{Higss}",
+        "h_h_phi":"\phi_{Higgs}",
+        "h_h_phiw":"\phi_{Higgs}",
+        "h_h_m":"m_{h}",
+        "h_h_sd":"Higgs Soft Drop Mass",
+        "h_met":"p_{T}^{miss}",
+        "h_met_phi":"\phi p_{T}^{miss}",
+        "h_met_phiw":"\phi p_{T}^{miss}",
+        "h_zp_jigm":"Jigsaw Mass Estimator Z'",
+        "h_nd_jigm":"Jigsaw Mass Estimator ND",
+        "h_ns_jigm":"Jigsaw Mass Estimator NS",
+        "h_weights":"event weights",
+        "h_btag":"btag operating point",
+        "h_dphi_zh":"\Delta\phi_{ZH}",
+        "h_dphi_zmet":"\Delta\phi_{ZMET}",
+        "h_dphi_hmet":"\Delta\phi_{HMET}",
+        "h_dr_zh":"\Delta R(ZH)",
+        "h_dr_lmuh":"\Delta R(lmu,H)",
+        "h_dr_slmuh":"\Delta R(slmu,H)",
+        "h_dr_slmulmu":"\Delta R(slmu,lmu)",
+    }
