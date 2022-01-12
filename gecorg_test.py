@@ -536,18 +536,24 @@ class run2:
         self.systr = systr
 
         #gather data files
+        self.run16sb = glob.glob(str(path)+'/Run2016*upout_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run17sb = glob.glob(str(path)+'/Run2017*upout_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run18sb = glob.glob(str(path)+'/Run2018*upout_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.run16sr = glob.glob(str(path)+'/Run2016*upout_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run17sr = glob.glob(str(path)+'/Run2017*upout_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run18sr = glob.glob(str(path)+'/Run2018*upout_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.run16tr = glob.glob(str(path)+'/Run2016*upout_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run17tr = glob.glob(str(path)+'/Run2017*upout_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         self.run18tr = glob.glob(str(path)+'/Run2018*upout_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
         #gather errors
+        self.run16sberrs = glob.glob(str(path)+'/Run2016*selected_errors_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run17sberrs = glob.glob(str(path)+'/Run2017*selected_errors_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run18sberrs = glob.glob(str(path)+'/Run2018*selected_errors_sideband_'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.run16srerrs = glob.glob(str(path)+'/Run2016*selected_errors_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run17srerrs = glob.glob(str(path)+'/Run2017*selected_errors_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run18srerrs = glob.glob(str(path)+'/Run2018*selected_errors_signalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.run16trerrs = glob.glob(str(path)+'/Run2016*selected_errors_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run17trerrs = glob.glob(str(path)+'/Run2017*selected_errors_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
         self.run18trerrs = glob.glob(str(path)+'/Run2018*selected_errors_totalr*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
 
@@ -560,10 +566,15 @@ class run2:
                       {"sb":[self.run17sb,self.run17sberrs],
                        "sr":[self.run17sr,self.run17srerrs],
                        "tr":[self.run17tr,self.run17trerrs],
+                       },
+                     16:
+                      {"sb":[self.run16sb,self.run16sberrs],
+                       "sr":[self.run16sr,self.run16srerrs],
+                       "tr":[self.run16tr,self.run16trerrs],
                        }
                       }
 
-    def getAddedHist(self,hist,region,hname,years = [17,18]):
+    def getAddedHist(self,hist,region,hname,years = [16,17,18]):
         data = self.data
         datadfs = []
 
