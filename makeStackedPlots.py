@@ -61,11 +61,6 @@ if __name__=='__main__':
     pathplots = args.directory
     systr = args.syst
     plot_data = args.data
-
-    #Generic plotting parameters
-    stkpadydims = [0.0,1.]
-    ratpadydims = [0.0,0.0]
-    tcanvasdims = [600,800]
     
     #Select Plotting years and region
     years = [16,17,18]
@@ -92,6 +87,9 @@ if __name__=='__main__':
     CMS_lumi.lumi_13TeV = lumiFormatter(years)
     CMS_lumi.writeExtraText = 1
     CMS_lumi.extraText = "Simulation Preliminary"
+    stkpadydims = [0.0,1.]
+    ratpadydims = [0.0,0.0]
+    tcanvasdims = [600,800]
 
     #Gather plots
     testyear = years[0]#picks first year in list, so desired year if only one
@@ -176,14 +174,26 @@ if __name__=='__main__':
         hsbkg.Add(hdy)
 
         #Make added hist for ratio plotting
+        hbkg = hzz.Clone()
+        hbkg.Add(hwz)
+        hbkg.Add(hzz)
+        hbkg.Add(htt)
+        hbkg.Add(hdy)
         
         #Data Histograms
         if plot_data:
             #Make the data histograms
+            hdat = data.getAddedHist(empty6,reg,hname,years=years)
+            hdat.SetMarkerStyle(8)
+            hdat.SetMarkerSize(0.5)
+            hdat.SetMarkerColor(ROOT.kBlack)
+
             stkpadydims = [0.3,1.]
             ratpadydims = [0.0,0.3]
 
-        #Division for ratio plots
+            #Division for ratio plots
+            hdiv = hdat.Clone()
+            hdiv.Divide(hdat,hbkg)
 
         #Signal
 
@@ -211,6 +221,16 @@ if __name__=='__main__':
         hsbkg.GetYaxis().SetTitleSize(0.05)
         CMS_lumi.CMS_lumi(p1,4,13)
         p1.Update()
+        tc.cd()
+
+        if plot_data:
+            p1.cd()
+            hdat.Draw("histsame,pe")
+            tc.cd()
+            p2.Draw()
+            p2.cd()
+            hdiv.Draw()
+            tc.cd()
         
         #Save the plot
         pngname = go.makeOutFile(hname,'ratio_'+regname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
