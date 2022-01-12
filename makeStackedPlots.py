@@ -26,9 +26,16 @@ def lumiFormatter(yearlist):
     lumi = 0
     for year in yearlist:
         lumi += lumidict[year]
-  
+
+    lumi = round(lumi,2)
     lumistr = str(lumi)+" fb^{-1}"
     return lumistr
+
+def yearFormatter(yearlist):
+    yearstr =''
+    for year in yearlist:
+        yearstr = yearstr+str(year)
+    return yearstr
     
 
 
@@ -50,16 +57,16 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     #Get command line parameters
-    sig_xsec      = args.xsec
-    zptcut        = args.zptcut
-    hptcut        = args.hptcut
-    metcut        = args.metcut
-    btagwp        = args.btagwp
-    year          = args.year
-    regname       = args.region
-    lumi          = 0
+    sig_xsec  = args.xsec
+    zptcut    = args.zptcut
+    hptcut    = args.hptcut
+    metcut    = args.metcut
+    btagwp    = args.btagwp
+    year      = args.year
+    regname   = args.region
+    lumi      = 0
     pathplots = args.directory
-    systr = args.syst
+    systr     = args.syst
     plot_data = args.data
     sigdivsor = 7
     
@@ -67,6 +74,7 @@ if __name__=='__main__':
     years = [16,17,18]
     if year:
         years = [int(year)]
+    yearstr = yearFormatter(years)
     reg = regionFormatter(regname)
     if plot_data:
         print('Plotting the data!')
@@ -80,7 +88,7 @@ if __name__=='__main__':
     
     dynorm = 1
     if len(years) >= 2:#dynorms only matter for composite years
-        dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
+        dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
 
     #Colors, Naming, general style
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
@@ -91,10 +99,11 @@ if __name__=='__main__':
     CMS_lumi.extraText = "Simulation Preliminary"
     stkpadydims = [0.0,1.]
     ratpadydims = [0.0,0.0]
-    tcanvasdims = [600,800]
+    tcanvasdims = [600,560]
 
     #Gather plots
     testyear = years[0]#picks first year in list, so desired year if only one
+    print(testyear)
     testfile = bkgs.bkgs["DYJetsToLL"][testyear]["sb"][0][0]#stacked plots should always have DY
     testtfile = ROOT.TFile(testfile)
     keys = testtfile.GetListOfKeys()
@@ -102,13 +111,12 @@ if __name__=='__main__':
     sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
     siginfo = sorted(siginfo,key = lambda sig: (sig["mzp"],sig["mnd"])) 
 
-
     #names and param. To Do: expand to include plot limits for linear scale
     titles = {
         "h_z_pt":["Z p_{T}",0,40,1],
         "h_z_eta":["\eta_{Z}",0,60,1],
         "h_z_phi":["\phi_{Z}",0,40,2],
-        "h_z_phiw":["\phi_{Z}",0,40,2],
+        "h_z_phiw":["\phi_{Z}",0,40/10,2],
         "h_z_m":["m_{Z}",0,30,1],
         "h_h_pt":["Higgs p_{T}",0,60,1],
         "h_h_eta":["\eta_{Higss}",0,100,1],
@@ -159,6 +167,7 @@ if __name__=='__main__':
         hwz  = bkgs.getAddedHist(empty5,"WZTo2L2Q",reg,hname,years = years)
 
         #colors
+
         hdy.Scale(dynorm)
         hdy.SetFillColor(bkgcols[0])
         hdy.SetLineColor(bkgcols[0])
@@ -209,13 +218,17 @@ if __name__=='__main__':
             leg.AddEntry(hdat,"Data")
             stkpadydims = [0.3,1.]
             ratpadydims = [0.0,0.3]
+            tcanvasdims = [600,800]
 
             #Division for ratio plots
             hdiv = hdat.Clone()
             hdiv.Divide(hdat,hbkg)
 
+            #ratline = ROOT.TLine(hbkg.GetBinLowEdge(1),1,hbkg.GetBinWidth(1)*titles[hname][3]*hbkg.GetNbinsX(),1)
+            ratline = ROOT.TLine(hbkg.GetBinLowEdge(1),1,hbkg.GetBinLowEdge(hbkg.GetNbinsX())+hbkg.GetBinWidth(hbkg.GetNbinsX()),1)
+
         #Plotting itself
-        tc = ROOT.TCanvas("tc",hname,600,800)
+        tc = ROOT.TCanvas("tc",hname,tcanvasdims[0],tcanvasdims[1])
         p1 = ROOT.TPad("p1","stack_"+hname,0,stkpadydims[0],1.0,stkpadydims[1])
         p1.SetLeftMargin(0.15)
         p1.SetRightMargin(0.05)
@@ -288,11 +301,12 @@ if __name__=='__main__':
             hdiv.GetYaxis().SetNdivisions(503)
             hdiv.SetMinimum(0.)
             hdiv.SetMaximum(2.)
+            ratline.Draw()
 
         tc.cd()
         
         #Save the plot
-        pngname = go.makeOutFile(hname,'ratio_'+regname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        pngname = go.makeOutFile(hname,'ratio_'+yearstr+'_'+regname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         tc.SaveAs(pngname)
 
 
