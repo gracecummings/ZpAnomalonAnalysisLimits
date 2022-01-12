@@ -294,6 +294,7 @@ class backgrounds:
             systr = "_"+systr
 
         #gather background MC files
+        #2017
         self.f17dyjetsb = glob.glob(str(path)+'/Fall17.DYJetsToLL_M-50_HT*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.f17dyjetsr = glob.glob(str(path)+'/Fall17.DYJetsToLL_M-50_HT*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.f17dyjettr = glob.glob(str(path)+'/Fall17.DYJetsToLL_M-50_HT*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
@@ -306,6 +307,8 @@ class backgrounds:
         self.f17zzsb = glob.glob(str(path)+'/Fall17.ZZTo2L2Q*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.f17zzsr = glob.glob(str(path)+'/Fall17.ZZTo2L2Q*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.f17zztr = glob.glob(str(path)+'/Fall17.ZZTo2L2Q*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+
+        #2018
         self.a18dyjetsb = glob.glob(str(path)+'/Autumn18.DYJetsToLL_M-50_HT*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.a18dyjetsr = glob.glob(str(path)+'/Autumn18.DYJetsToLL_M-50_HT*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.a18dyjettr = glob.glob(str(path)+'/Autumn18.DYJetsToLL_M-50_HT*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
@@ -318,6 +321,21 @@ class backgrounds:
         self.a18zzsb = glob.glob(str(path)+'/Autumn18.ZZTo2L2Q*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.a18zzsr = glob.glob(str(path)+'/Autumn18.ZZTo2L2Q*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.a18zztr = glob.glob(str(path)+'/Autumn18.ZZTo2L2Q*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+
+        #2016
+        self.s16dyjetsb = glob.glob(str(path)+'/Summer16v3.DYJetsToLL_M-50_HT*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16dyjetsr = glob.glob(str(path)+'/Summer16v3.DYJetsToLL_M-50_HT*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16dyjettr = glob.glob(str(path)+'/Summer16v3.DYJetsToLL_M-50_HT*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16ttsb = glob.glob(str(path)+'/Summer16v3.TTT*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16ttsr = glob.glob(str(path)+'/Summer16v3.TTT*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16tttr = glob.glob(str(path)+'/Summer16v3.TTT*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16wzsb = glob.glob(str(path)+'/Summer16v3.WZTo2L2Q*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16wzsr = glob.glob(str(path)+'/Summer16v3.WZTo2L2Q*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16wztr = glob.glob(str(path)+'/Summer16v3.WZTo2L2Q*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16zzsb = glob.glob(str(path)+'/Summer16v3.ZZTo2L2Q*_upout_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16zzsr = glob.glob(str(path)+'/Summer16v3.ZZTo2L2Q*_upout_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16zztr = glob.glob(str(path)+'/Summer16v3.ZZTo2L2Q*_upout_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+
 
 
         #gather errors
@@ -346,6 +364,20 @@ class backgrounds:
         self.a18zzsberrs = glob.glob(str(path)+'/Autumn18.ZZTo2L2Q*_selected_errors_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.a18zzsrerrs = glob.glob(str(path)+'/Autumn18.ZZTo2L2Q*_selected_errors_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
         self.a18zztrerrs = glob.glob(str(path)+'/Autumn18.ZZTo2L2Q*_selected_errors_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        
+        self.s16dyjetsberrs = glob.glob(str(path)+'/Summer16v3.DYJetsToLL_M-50_HT*_selected_errors_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16dyjetsrerrs = glob.glob(str(path)+'/Summer16v3.DYJetsToLL_M-50_HT*_selected_errors_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16dyjettrerrs = glob.glob(str(path)+'/Summer16v3.DYJetsToLL_M-50_HT*_selected_errors_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16ttsberrs = glob.glob(str(path)+'/Summer16v3.TTT*_selected_errors_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16ttsrerrs = glob.glob(str(path)+'/Summer16v3.TTT*_selected_errors_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16tttrerrs = glob.glob(str(path)+'/Summer16v3.TTT*_selected_errors_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16wzsberrs = glob.glob(str(path)+'/Summer16v3.WZTo2L2Q*_selected_errors_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16wzsrerrs = glob.glob(str(path)+'/Summer16v3.WZTo2L2Q*_selected_errors_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16wztrerrs = glob.glob(str(path)+'/Summer16v3.WZTo2L2Q*_selected_errors_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16zzsberrs = glob.glob(str(path)+'/Summer16v3.ZZTo2L2Q*_selected_errors_sideband'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16zzsrerrs = glob.glob(str(path)+'/Summer16v3.ZZTo2L2Q*_selected_errors_signalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+        self.s16zztrerrs = glob.glob(str(path)+'/Summer16v3.ZZTo2L2Q*_selected_errors_totalr'+systr+'_DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'*')
+
 
         self.bkgs = {"DYJetsToLL":
                 {18:
@@ -356,6 +388,10 @@ class backgrounds:
                  {"sb":[self.f17dyjetsb,self.f17dyjetsberrs],
                   "sr":[self.f17dyjetsr,self.f17dyjetsrerrs],
                   "tr":[self.f17dyjettr,self.f17dyjettrerrs]},
+                 16:
+                 {"sb":[self.s16dyjetsb,self.s16dyjetsberrs],
+                  "sr":[self.s16dyjetsr,self.s16dyjetsrerrs],
+                  "tr":[self.s16dyjettr,self.s16dyjettrerrs]},
                 },
                 "TT":
                 {18:
@@ -366,6 +402,10 @@ class backgrounds:
                  {"sb":[self.f17ttsb,self.f17ttsberrs],
                   "sr":[self.f17ttsr,self.f17ttsrerrs],
                   "tr":[self.f17tttr,self.f17tttrerrs]},
+                 16:
+                 {"sb":[self.s16ttsb,self.s16ttsberrs],
+                  "sr":[self.s16ttsr,self.s16ttsrerrs],
+                  "tr":[self.s16tttr,self.s16tttrerrs]},
                 },
                 "WZTo2L2Q":
                 {18:
@@ -376,6 +416,10 @@ class backgrounds:
                  {"sb":[self.f17wzsb,self.f17wzsberrs],
                   "sr":[self.f17wzsr,self.f17wzsrerrs],
                   "tr":[self.f17wztr,self.f17wztrerrs]},
+                 16:
+                 {"sb":[self.s16wzsb,self.s16wzsberrs],
+                  "sr":[self.s16wzsr,self.s16wzsrerrs],
+                  "tr":[self.s16wztr,self.s16wztrerrs]},
                 },
                 "ZZTo2L2Q":
                 {18:
@@ -386,6 +430,10 @@ class backgrounds:
                  {"sb":[self.f17zzsb,self.f17zzsberrs],
                   "sr":[self.f17zzsr,self.f17zzsrerrs],
                   "tr":[self.f17zztr,self.f17zztrerrs]},
+                 16:
+                 {"sb":[self.s16zzsb,self.s16zzsberrs],
+                  "sr":[self.s16zzsr,self.s16zzsrerrs],
+                  "tr":[self.s16zztr,self.s16zztrerrs]},
                 }
         }
 
@@ -395,13 +443,15 @@ class backgrounds:
         self.config.read_file(fp)
 
         
-    def getAddedHist(self,hist,samp,region,hname,years = [17,18]):
+    def getAddedHist(self,hist,samp,region,hname,years = [16,17,18]):
         bkg = self.bkgs[samp]
         xspairs = self.config.items(samp)
         #print(xspairs)
         bkgdfs  = []
         
         for year in years:
+            if year == 16:
+                lumi = 35.9
             if year == 17:
                 lumi = 41.53
             if year == 18:
