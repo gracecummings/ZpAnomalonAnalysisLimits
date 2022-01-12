@@ -99,32 +99,31 @@ if __name__=='__main__':
 
     #names and param. To Do: expand to include plot limits for linear scale
     titles = {
-        "h_z_pt":"Z p_{T}",
-        "h_z_eta":"\eta_{Z}",
-        "h_z_phi":"\phi_{Z}",
-        "h_z_phiw":"\phi_{Z}",
-        "h_z_m":"m_{Z}",
-        "h_h_pt":"Higgs p_{T}",
-        "h_h_eta":"\eta_{Higss}",
-        "h_h_phi":"\phi_{Higgs}",
-        "h_h_phiw":"\phi_{Higgs}",
-        "h_h_m":"m_{h}",
-        "h_h_sd":"Higgs Soft Drop Mass",
-        "h_met":"p_{T}^{miss}",
-        "h_met_phi":"\phi p_{T}^{miss}",
-        "h_met_phiw":"\phi p_{T}^{miss}",
-        "h_zp_jigm":"Jigsaw Mass Estimator Z'",
-        "h_nd_jigm":"Jigsaw Mass Estimator ND",
-        "h_ns_jigm":"Jigsaw Mass Estimator NS",
-        "h_weights":"event weights",
-        "h_btag":"btag operating point",
-        "h_dphi_zh":"\Delta\phi_{ZH}",
-        "h_dphi_zmet":"\Delta\phi_{ZMET}",
-        "h_dphi_hmet":"\Delta\phi_{HMET}",
-        "h_dr_zh":"\Delta R(ZH)",
-        "h_dr_lmuh":"\Delta R(lmu,H)",
-        "h_dr_slmuh":"\Delta R(slmu,H)",
-        "h_dr_slmulmu":"\Delta R(slmu,lmu)",
+        "h_z_pt":["Z p_{T}",0,40,1],
+        "h_z_eta":["\eta_{Z}",0,60,1],
+        "h_z_phi":["\phi_{Z}",0,40,2],
+        "h_z_phiw":["\phi_{Z}",0,40,2],
+        "h_z_m":["m_{Z}",0,30,1],
+        "h_h_pt":["Higgs p_{T}",0,60,1],
+        "h_h_eta":["\eta_{Higss}",0,100,1],
+        "h_h_phi":["\phi_{Higgs}",0,40,2],
+        "h_h_phiw":["\phi_{Higgs}",0,40,2],
+        "h_h_m":["m_{h}",0,25,1],
+        "h_h_sd":["Higgs Soft Drop Mass",0,25,1],
+        "h_met":["p_{T}^{miss}",0,100,1],
+        "h_met_phi":["\phi p_{T}^{miss}",0,40,2],
+        "h_met_phiw":["\phi p_{T}^{miss}",0,40,2],
+        "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,25,2],
+        "h_nd_jigm":["Jigsaw Mass Estimator ND",0,60,1],
+        "h_ns_jigm":["Jigsaw Mass Estimator NS",0,60,1],
+        "h_btag":["btag operating point",0,60,1],
+        "h_dphi_zh":["\Delta\phi_{ZH}",0,60,2],
+        "h_dphi_zmet":["\Delta\phi_{ZMET}",0,60,2],
+        "h_dphi_hmet":["\Delta\phi_{HMET}",0,60,2],
+        "h_dr_zh":["\Delta R(ZH)",0,100,1],
+        "h_dr_lmuh":["\Delta R(lmu,H)",0,100,1],
+        "h_dr_slmuh":["\Delta R(slmu,H)",0,60,1],
+        "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,60,1],
     }
 
 
@@ -144,9 +143,6 @@ if __name__=='__main__':
         empty4 = empty.Clone()
         empty5 = empty.Clone()
         empty6 = empty.Clone()
-        empty7 = empty.Clone()
-        empty8 = empty.Clone()
-        empty9 = empty.Clone()
 
         #Gather histograms
         hdat = data.getAddedHist(empty1,reg,hname,years = years)
@@ -159,35 +155,51 @@ if __name__=='__main__':
         hdy.Scale(dynorm)
         hdy.SetFillColor(bkgcols[0])
         hdy.SetLineColor(bkgcols[0])
+        hdy.Rebin(titles[hname][3])
         htt.SetFillColor(bkgcols[1])
         htt.SetLineColor(bkgcols[1])
+        htt.Rebin(titles[hname][3])
         hwz.SetFillColor(bkgcols[2])
         hwz.SetLineColor(bkgcols[2])
+        hwz.Rebin(titles[hname][3])
         hzz.SetFillColor(bkgcols[3])
         hzz.SetLineColor(bkgcols[3])
-
+        hzz.Rebin(titles[hname][3])
+        
         #Bkg Stack for Plotting
         hsbkg = ROOT.THStack("hsbkg","")
         hsbkg.Add(hzz)
         hsbkg.Add(hwz)
         hsbkg.Add(htt)
         hsbkg.Add(hdy)
-
+        hsbkg.SetMinimum(titles[hname][1])
+        hsbkg.SetMaximum(titles[hname][2])
+        
         #Make added hist for ratio plotting
         hbkg = hzz.Clone()
         hbkg.Add(hwz)
         hbkg.Add(hzz)
         hbkg.Add(htt)
         hbkg.Add(hdy)
+
+        #legend
+        leg = ROOT.TLegend(0.60,0.50,0.88,0.80)
+        leg.SetBorderSize(0)
+        leg.AddEntry(hdy,"DYJetsToLL","f")
+        leg.AddEntry(htt,"TT","f")
+        leg.AddEntry(hwz,"WZTo2L2Q","f")
+        leg.AddEntry(hzz,"ZZTo2L2Q","f")
         
         #Data Histograms
         if plot_data:
             #Make the data histograms
             hdat = data.getAddedHist(empty6,reg,hname,years=years)
+            hdat.Rebin(titles[hname][3])
+            hdat.SetBinErrorOption(1)
             hdat.SetMarkerStyle(8)
-            hdat.SetMarkerSize(0.5)
+            hdat.SetMarkerSize(0.7)
             hdat.SetMarkerColor(ROOT.kBlack)
-
+            leg.AddEntry(hdat,"Data")
             stkpadydims = [0.3,1.]
             ratpadydims = [0.0,0.3]
 
@@ -210,16 +222,16 @@ if __name__=='__main__':
         #Prepare first pad for stack
         p1.Draw()
         p1.cd()
-        
 
         #Draw the stack
         hsbkg.Draw("HIST")#add PFC for palette drawing
-        hsbkg.GetXaxis().SetTitle(titles[hname])
+        hsbkg.GetXaxis().SetTitle(titles[hname][0])
         hsbkg.GetXaxis().SetTitleSize(0.05)
         hsbkg.GetXaxis().SetTitleOffset(0.85)
         hsbkg.GetYaxis().SetTitle("Events")
         hsbkg.GetYaxis().SetTitleSize(0.05)
         CMS_lumi.CMS_lumi(p1,4,13)
+        leg.Draw()
         p1.Update()
         tc.cd()
 

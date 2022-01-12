@@ -50,9 +50,9 @@ def writeDataCard(processes,rootFileName,channel):
 if __name__=='__main__':
 
     #will replace with command line options
-    zptcut  = '150.0'
+    zptcut  = '100.0'
     hptcut  = '300.0'
-    metcut  = '200.0'
+    metcut  = '75.0'
     btagwp  = '0.8'
     chan    = 'mumu'
     sigxs   = 1.0
@@ -65,9 +65,10 @@ if __name__=='__main__':
     systs = config.sections()
 
     ####load in the files with the nominal distributions
-    bkgs = go.backgrounds(config.get('btag','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('btag','strnom'))
-    sig  = go.signal(config.get('btag','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get('btag','strnom'))
-    dyEst = ROOT.TFile(config.get('btag','pathnom')+'Run2_2017_2018_dy_extraploation'+config.get('btag','strnom')+'_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+    bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
+    sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get('nominal','strnom'))
+    print(config.get('nominal','pathnom')+'/Run2_2017_2018_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_2017_2018_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
 
     ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
@@ -76,6 +77,11 @@ if __name__=='__main__':
     empty1 = empty.Clone()
     empty2 = empty.Clone()
     empty3 = empty.Clone()
+    empty41 = empty.Clone()
+    empty42 = empty.Clone()
+    empty43 = empty.Clone()
+    empty44 = empty.Clone()
+    empty45 = empty.Clone()
     
     ####Getting the Estimations####
     hdat = empty.Clone()
@@ -83,8 +89,31 @@ if __name__=='__main__':
     htt = bkgs.getAddedHist(empty1,"TT","sr","h_zp_jigm")
     hzz  = bkgs.getAddedHist(empty2,"ZZTo2L2Q","sr","h_zp_jigm")
     hwz  = bkgs.getAddedHist(empty3,"WZTo2L2Q","sr","h_zp_jigm")
+    hdytr= bkgs.getAddedHist(empty41,"DYJetsToLL","sr","h_zp_jigm")
     hvv  = hzz.Clone()
     hvv.Add(hwz)
+
+    ####Troubleshooting
+    httchecksb = bkgs.getAddedHist(empty42,"TT","sb","h_zp_jigm")
+    hzzchecksb  = bkgs.getAddedHist(empty43,"ZZTo2L2Q","sb","h_zp_jigm")
+    hwzchecksb  = bkgs.getAddedHist(empty44,"WZTo2L2Q","sb","h_zp_jigm")
+    hdytrchecksb= bkgs.getAddedHist(empty45,"DYJetsToLL","sb","h_zp_jigm")
+
+    #print(bkgs.bkgs["DYJetsToLL"][17]["sb"][0])
+    #print(len(bkgs.bkgs["DYJetsToLL"][17]["sb"][0]))
+
+    print("The SR yields, no cut on M_Zp")
+    #print("   dyest: ",hdy.Integral())
+    print("  dyhist: ",hdytr.Integral())
+    print("   ttbar: ",htt.Integral())
+    print("      zz: ",hzz.Integral())
+    print("      wz: ",hwz.Integral())
+
+    print("The SB yields, no cut on M_Zp")
+    print("      dy: ",hdytrchecksb.Integral())
+    print("   ttbar: ",httchecksb.Integral())
+    print("      zz: ",hzzchecksb.Integral())
+    print("      wz: ",hwzchecksb.Integral())
 
     ####Rename and restucture
     htt.SetName("TT")
@@ -99,13 +128,15 @@ if __name__=='__main__':
     hdy.GetXaxis().SetRangeUser(1500,5000)
 
     for syst in systs:
+        if "nominal" == syst:
+            continue
         print("------- Looking at systematic ",syst)
         systbkgsup  = go.backgrounds(config.get(syst,'pathup'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strup'))
         systbkgsdwn = go.backgrounds(config.get(syst,'pathdwn'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strdwn'))
 
         if rebindiv == 2:
-            dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strup')+'_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
-            dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.root')
+            dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_2017_2018_dy_extraploation'+config.get(syst,'strup')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+            dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_2017_2018_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
 
 
         ####Prepping holders####
@@ -162,9 +193,9 @@ if __name__=='__main__':
         
         #Debug for background
         #Extra plots
-        dynormup = np.load(config.get(syst,'pathup')+'Run2_2017_2018_dynormalization_'+config.get(syst,'strup')+'_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
-        dynormnom = np.load(config.get(syst,'pathnom')+'Run2_2017_2018_dynormalization_'+config.get(syst,'strnom')+'_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
-        dynormdwn = np.load(config.get(syst,'pathdwn')+'Run2_2017_2018_dynormalization_'+config.get(syst,'strdwn')+'_signalblind_Zptcut150.0_Hptcut300.0_metcut200.0_btagwp0.8.npy')[0]
+        dynormup = np.load(config.get(syst,'pathup')+'/Run2_2017_2018_dynormalization_'+config.get(syst,'strup')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+        dynormnom = np.load(config.get(syst,'pathnom')+'/Run2_2017_2018_dynormalization_'+config.get(syst,'strnom')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+        dynormdwn = np.load(config.get(syst,'pathdwn')+'/Run2_2017_2018_dynormalization_'+config.get(syst,'strdwn')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
 
         print("DY norm up:  ",dynormup)
         print("DY norm nom: ",dynormnom)
