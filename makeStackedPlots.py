@@ -16,6 +16,11 @@ CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
 CMS_lumi.writeExtraText = 1
 CMS_lumi.extraText = "Simulation Preliminary"
 
+def regionFormatter(regionstr):
+    regdict = {'sideband':'sb','signalr':'sr','totalr':'tr'}
+    formatted = regdict[regionstr]
+    return formatted
+
 
 if __name__=='__main__':
     #build module objects
@@ -40,24 +45,30 @@ if __name__=='__main__':
     metcut        = args.metcut
     btagwp        = args.btagwp
     year          = args.year
-    reg           = args.region
+    regname       = args.region
     lumi          = 0
     pathplots = args.directory
     systr = args.syst
+    
+    #Select Plotting years and region
+    years = [16,17,18]
+    if year:
+        years = [int(year)]
+    reg = regionFormatter(regname)
 
-    #Gather Imput
+    #Gather Input
     bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     #sigs = go.
-
-    #Select Plotting years
-    years = [16,17,18]
-    if year:
-        years = [year]
+    dynorm = 1
+    #if len(years) >= 2:#dynorms only matter for composite years
+    #    dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
 
     #Include data?
 
-    #Colors
+    #Colors and Naming
+    bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
+    bkgcols  = go.colsFromPalette(bkgnames,ROOT.kLake)
 
     #Gather plots
     testyear = years[0]#picks first year in list, so desired year if only one
@@ -65,7 +76,7 @@ if __name__=='__main__':
     testtfile = ROOT.TFile(testfile)
     keys = testtfile.GetListOfKeys()
 
-    #names
+    #names and param. To Do: expand to include plot limits for linear scale
     titles = {
         "h_z_pt":"Z p_{T}",
         "h_z_eta":"\eta_{Z}",
@@ -94,3 +105,43 @@ if __name__=='__main__':
         "h_dr_slmuh":"\Delta R(slmu,H)",
         "h_dr_slmulmu":"\Delta R(slmu,lmu)",
     }
+
+
+    #make the plots
+    for key in keys:
+        hname = key.GetName()
+        
+        #Make holder histograms
+        h = testtfile.Get(hname)
+        if (not isinstance(h,ROOT.TH1)) or ('h_weights' in hname):
+            continue
+        empty = h.Clone()
+        empty.Reset("ICESM")#creates an empty hist with same structure
+        empty1 = empty.Clone()
+        empty2 = empty.Clone()
+        empty3 = empty.Clone()
+        empty4 = empty.Clone()
+        empty5 = empty.Clone()
+        empty6 = empty.Clone()
+        empty7 = empty.Clone()
+        empty8 = empty.Clone()
+        empty9 = empty.Clone()
+
+        #Gather histograms
+        hdat = data.getAddedHist(empty1,reg,hname,years = years)
+        hdy  = bkgs.getAddedHist(empty2,"DYJetsToLL",reg,hname,years = years)
+        htt  = bkgs.getAddedHist(empty3,"TT",reg,hname,years = years)
+        hzz  = bkgs.getAddedHist(empty4,"ZZTo2L2Q",reg,hname,years = years)
+        hwz  = bkgs.getAddedHist(empty5,"WZTo2L2Q",reg,hname,years = years)
+
+        hdy.Scale(dynorm)
+        hdy.SetFillColor(bkgcols[0])
+        hdy.SetLineColor(bkgcols[0])
+        htt.SetFillColor(bkgcols[1])
+        htt.SetLineColor(bkgcols[1])
+        hwz.SetFillColor(bkgcols[2])
+        hwz.SetLineColor(bkgcols[2])
+        hzz.SetFillColor(bkgcols[3])
+        hzz.SetLineColor(bkgcols[3])
+
+        
