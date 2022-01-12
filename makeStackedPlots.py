@@ -36,6 +36,7 @@ if __name__=='__main__':
     parser.add_argument("-r","--region",help="region of phase space: totalr,sideband, or signalr")
     parser.add_argument("-y","--year", type=float,help = "year of samples eg. 2017 -> 17")
     parser.add_argument("-s","--syst",type=str,help="systematic string")
+    parser.add_argument("-d","--data", type=bool,help = "plotting data?")
     args = parser.parse_args()
 
     #Get command line parameters
@@ -49,22 +50,30 @@ if __name__=='__main__':
     lumi          = 0
     pathplots = args.directory
     systr = args.syst
+    plot_data = args.data
+
+    #Generic plotting parameters
+    stkpadydims = [0.0,1.]
+    ratpadydims = [0.0,0.0]
+    tcanvasdims = [600,800]
     
     #Select Plotting years and region
     years = [16,17,18]
     if year:
         years = [int(year)]
     reg = regionFormatter(regname)
+    if plot_data:
+        print('Plotting the data!')
+    else:
+        print('You know you are not plotting data, right?')
 
     #Gather Input
     bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     #sigs = go.
     dynorm = 1
-    #if len(years) >= 2:#dynorms only matter for composite years
-    #    dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
-
-    #Include data?
+    if len(years) >= 2:#dynorms only matter for composite years
+        dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
 
     #Colors and Naming
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
@@ -134,6 +143,7 @@ if __name__=='__main__':
         hzz  = bkgs.getAddedHist(empty4,"ZZTo2L2Q",reg,hname,years = years)
         hwz  = bkgs.getAddedHist(empty5,"WZTo2L2Q",reg,hname,years = years)
 
+        #colors
         hdy.Scale(dynorm)
         hdy.SetFillColor(bkgcols[0])
         hdy.SetLineColor(bkgcols[0])
@@ -144,4 +154,49 @@ if __name__=='__main__':
         hzz.SetFillColor(bkgcols[3])
         hzz.SetLineColor(bkgcols[3])
 
+        #Bkg Stack for Plotting
+        hsbkg = ROOT.THStack("hsbkg","")
+        hsbkg.Add(hzz)
+        hsbkg.Add(hwz)
+        hsbkg.Add(htt)
+        hsbkg.Add(hdy)
+
+        #Make added hist for ratio plotting
         
+        #Data Histograms
+        if plot_data:
+            #Make the data histograms
+            stkpadydims = [0.3,1.]
+            ratpadydims = [0.0,0.3]
+
+        #Division for ratio plots
+
+        #Signal
+
+        #Plotting itself
+        tc = ROOT.TCanvas("tc",hname,600,800)
+        p1 = ROOT.TPad("p1","stack_"+hname,0,stkpadydims[0],1.0,stkpadydims[1])
+        p1.SetLeftMargin(0.15)
+        p1.SetRightMargin(0.05)
+        p2 = ROOT.TPad("p2","signif_"+hname,0,ratpadydims[0],1.0,ratpadydims[1])
+        p2.SetRightMargin(.05)
+        p2.SetLeftMargin(0.15)
+        p2.SetBottomMargin(0.2)
+
+        #Prepare first pad for stack
+        p1.Draw()
+        p1.cd()
+
+        #Draw the stack
+        hsbkg.Draw("HIST")#add PFC for palette drawing
+        hsbkg.GetXaxis().SetTitle(titles[hname])
+        hsbkg.GetXaxis().SetTitleSize(0.05)
+        hsbkg.GetXaxis().SetTitleOffset(0.85)
+        hsbkg.GetYaxis().SetTitle("Events")
+        hsbkg.GetYaxis().SetTitleSize(0.05)
+        
+        #Save the plot
+        pngname = go.makeOutFile(hname,'ratio_'+regname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        tc.SaveAs(pngname)
+
+
