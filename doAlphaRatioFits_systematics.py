@@ -9,11 +9,6 @@ import numpy as np
 import pandas as pd
 import configparser
 
-tdrstyle.setTDRStyle()
-CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
-CMS_lumi.writeExtraText = 1
-CMS_lumi.extraText = "Simulation Preliminary"
-
 def makeTPadOfFitGOF(fit,normfits = False):
     lims = [0.6,0.3,.9,0.45]
     if normfits:
@@ -94,13 +89,23 @@ if __name__=='__main__':
     parser.add_argument("-v","--validationregion", type=bool,help = "is this a validation region?")
     args = parser.parse_args()
 
+    #Years
+    years   = [16,17,18]
+    yearstr = go.yearFormatter(years)
+
     #Get systematic info
     config = configparser.RawConfigParser()
     config.optionxform = str
     fp = open('systematics.ini')
     config.read_file(fp)
     systs = config.sections()
-    
+
+    #Plotting sytle
+    tdrstyle.setTDRStyle()
+    CMS_lumi.lumi_13TeV = go.lumiFormatter(years)
+    CMS_lumi.writeExtraText = 1
+    CMS_lumi.extraText = "Simulation Preliminary"
+
     #Starting parameters
     zptcut  = str(args.zptcut)#'150.0'
     hptcut  = str(args.hptcut)#'300.0'
@@ -129,7 +134,10 @@ if __name__=='__main__':
         srstring = "55 < m_{hcand,SD} < 70"
         srregionstring = "Validation Region"
     else:
-        dynorm = np.load(pathbkg+'/Run2_2017_2018_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
+        if len(years) == 2:
+            dynorm = np.load(pathbkg+'/Run2_2017_2018_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
+        elif len(years) == 3:
+            dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
         bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
         if systname != 'btag':
             data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))#has both up and down data here, not just one
@@ -576,7 +584,7 @@ if __name__=='__main__':
     
 
     
-    figshapes = go.makeOutFile('Run2_2017_2018','alpha_shapes_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    figshapes = go.makeOutFile('Run2_'+yearstr,'alpha_shapes_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(figshapes)
 
     #Stacked Plots Canvas
@@ -669,7 +677,7 @@ if __name__=='__main__':
     ratline.Draw()
     
     
-    stackshapes = go.makeOutFile('Run2_2017_2018','alpha_stacks_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    stackshapes = go.makeOutFile('Run2_'+yearstr,'alpha_stacks_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc1.SaveAs(stackshapes)
     
     #Subtracted Background canvas
@@ -741,10 +749,10 @@ if __name__=='__main__':
     lstack1.SetBorderSize(0)
     lstack1.Draw()
 
-    datavis = go.makeOutFile('Run2_2017_2018','alpha_sub_tester_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    datavis = go.makeOutFile('Run2_'+yearstr,'alpha_sub_tester_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc2.SaveAs(datavis)
 
-    rootOutName = go.makeOutFile('Run2_2017_2018','dy_extraploation'+config.get(systname,syststr),'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    rootOutName = go.makeOutFile('Run2_'+yearstr,'dy_extraploation'+config.get(systname,syststr),'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootFile = ROOT.TFile(rootOutName,"recreate")
     extrphist.Write()
     rootFile.Close()
