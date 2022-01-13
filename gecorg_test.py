@@ -7,6 +7,23 @@ import pandas as pd
 import numpy as np
 from datetime import date
 
+def lumiFormatter(yearlist):
+    lumidict = {16:35.9,17:41.53,18:59.74}
+    lumi = 0
+    for year in yearlist:
+        lumi += lumidict[year]
+
+    lumi = round(lumi,2)
+    lumistr = str(lumi)+" fb^{-1}"
+    return lumistr
+
+def yearFormatter(yearlist):
+    yearstr =''
+    for year in yearlist:
+        yearstr = yearstr+str(year)
+    return yearstr
+
+
 def sampleType(sampstring,givejecs=False):
     #Make numerical code for type of sample
     if "Run" in sampstring:

@@ -10,10 +10,10 @@ import pandas as pd
 import configparser
 import argparse
 
-tdrstyle.setTDRStyle()
-CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
-CMS_lumi.writeExtraText = 1
-CMS_lumi.extraText = "Simulation Preliminary"
+#tdrstyle.setTDRStyle()
+#CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
+#CMS_lumi.writeExtraText = 1
+#CMS_lumi.extraText = "Simulation Preliminary"
 
 def makeTPadOfFitGOF(fit,normfits = False):
     lims = [0.6,0.3,.9,0.45]
@@ -64,40 +64,6 @@ def plotMsd(pad,hist,islog=False,logmin=0.1,isData=False):
     
     hist.Draw(drawopts)
 
-def makeRatios(hsbkg,hsdat):
-    hsumb = hsbkg.GetStack().Last()
-    binlist = np.zeros(hsumb.GetNbinsX()+1)
-    fill    = np.zeros(hsumb.GetNbinsX()+1)
-    ratiolist = np.zeros(hsumb.GetNbinsX()+1)
-    rerrlist = np.zeros(hsumb.GetNbinsX()+1)
-
-    for ibin in range(hsumb.GetNbinsX()+1):#CHECK
-        bincen = hsumb.GetBinCenter(ibin)
-        bkgmc  = hsumb.GetBinContent(ibin)
-        data   = hsdat.GetBinContent(ibin)
-        binlist[ibin] = bincen
-        if ibin != 0:
-            ratiolist[ibin] = -1
-            datunc = hsdat.GetBinError(ibin)
-            datval = hsdat.GetBinContent(ibin)
-            bkgval = hsumb.GetBinContent(ibin)
-            bkgerr = hsumb.GetBinError(ibin)
-            if bkgmc != 0 and data != 0:
-                ratiolist[ibin] = datval/bkgval
-                #rerrlist[ibin] = datval/bkgval*sqrt((datunc/data)**2+(bkguncs[hname][ibin-1]/bkgmc)**2)
-            if bkgmc == 0:
-                ratiolist[ibin] = -1
-                rerrlist[ibin] = 0
-            else:
-                ratiolist[ibin] = -1
-                rerrlist[ibin] = 0
-        
-        #remove underflow bin#hopefuly can get rid of this
-        ratiolist = np.delete(ratiolist,0)
-        binlist   = np.delete(binlist,0)
-        rerrlist  = np.delete(rerrlist,0)
-
-
 ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
 ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
 
@@ -113,14 +79,20 @@ if __name__=='__main__':
 
 
     #will replace with command line options
-    #pathbkg    = 'BkgInputsNominalJECBtagSyst/'
-    #pathdata   = 'DataInputsNominalJECBtagSyst/'
     pathbkg    = args.directory#'pfMETNominal/'
     pathdata   = args.directory#'pfMETNominal/'
     zptcut  = args.zptcut#'150.0'
     hptcut  = args.hptcut#'300.0'
     metcut  = args.metcut#'200.0'
     btagwp  = args.btagwp#'0.8'
+    years   = [16,17,18]
+    yearstr = go.yearFormatter(years)
+
+    tdrstyle.setTDRStyle()
+    CMS_lumi.lumi_13TeV = go.lumiFormatter(years)
+    CMS_lumi.writeExtraText = 1
+    CMS_lumi.extraText = "Simulation Preliminary"
+
 
     #ranges in question
     lsb = [30,70]
@@ -210,7 +182,7 @@ if __name__=='__main__':
     normchi2,normdof,normtpavetext = makeTPadOfFitGOF(totnormfit,normfits=True)
     
     #Save the normalization
-    normfilename = go.makeOutFile('Run2_2017_2018','dynormalization_'+systr+'_'+rstr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    normfilename = go.makeOutFile('Run2_'+yearstr,'dynormalization_'+systr+'_'+rstr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     normfile     = open(normfilename,'wb')
     np.save(normfile,np.array([dynormpostfit]))
     normfile.close()
@@ -331,7 +303,7 @@ if __name__=='__main__':
     p13.Update()
     tc.cd()
     
-    normshapes = go.makeOutFile('Run2_2017_2018','norm_shapes_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    normshapes = go.makeOutFile('Run2_'+yearstr,'norm_shapes_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(normshapes)
 
     tc1 = ROOT.TCanvas("tc1","stacked",1500,800)
@@ -461,11 +433,11 @@ if __name__=='__main__':
     tc1.Update()
 
 
-    stackedfit = go.makeOutFile('Run2_2017_2018','norm_stackfit_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    stackedfit = go.makeOutFile('Run2_'+yearstr,'norm_stackfit_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc1.SaveAs(stackedfit)
 
     
-    #ttbarhist = go.makeOutFile('Run2_2017_2018','ttbar_hist','.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    #ttbarhist = go.makeOutFile('Run2_'+yearstr,'ttbar_hist','.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
 
     #rootfile = ROOT.TFile(ttbarhist,"recreate")
     #htrtt.Write()
