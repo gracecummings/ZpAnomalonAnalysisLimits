@@ -77,7 +77,7 @@ if __name__=="__main__":
         inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
         #inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
         for f in inputs:
-            print(f)
+            #print(f)
             inChain.Add(f)
             tf = ROOT.TFile.Open(f)
             origevnts += tf.Get("hnevents").GetBinContent(1)

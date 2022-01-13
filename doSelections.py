@@ -213,7 +213,12 @@ if __name__=='__main__':
         deltaRzhdf     = deltaR(fdf['ZCandidate_phi'],fdf['hCandidate_phi'],fdf['ZCandidate_eta'],fdf['hCandidate_eta'])
         deltaRlmuhdf   = deltaR(fdf['LMuCandidate_phi'],fdf['hCandidate_phi'],fdf['LMuCandidate_eta'],fdf['hCandidate_eta'])
         deltaRslmuhdf   = deltaR(fdf['sLMuCandidate_phi'],fdf['hCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['hCandidate_eta'])
-        deltaRslmulmudf   = deltaR(fdf['sLMuCandidate_phi'],fdf['LMuCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['LMuCandidate_eta'])
+        deltaRslmulmudf = deltaR(fdf['sLMuCandidate_phi'],fdf['LMuCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['LMuCandidate_eta'])
+
+        if (stype == 1) and ("totalr" in region):#reclustering comments
+            deltaRlmughdf  = deltaR(fdf['LMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['LMuCandidate_eta'],fdf['ghCandidate_eta'])
+            deltaRslmughdf = deltaR(fdf['sLMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['ghCandidate_eta'])
+            deltaRgzghdf   = deltaR(fdf['gzCandidate_phi'],fdf['ghCandidate_phi'],fdf['gzCandidate_eta'],fdf['ghCandidate_eta'])
 
         #calculate the event weight
         #print(fdf['event_weight_btag'])

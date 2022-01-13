@@ -528,9 +528,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //Z exploration
       unsigned int nselmu = SelectedMuons->size();
       unsigned int nselel = SelectedElectrons->size();
-      //unsigned int nZmumu = ZCandidatesMuMu->size();
-      //unsigned int nZee = ZCandidatesEE->size();
-      //unsigned int nZeu = ZCandidatesEU->size();
+      unsigned int nZmumu = ZCandidatesMuMu->size();
+      unsigned int nZee = ZCandidatesEE->size();
+      unsigned int nZeu = ZCandidatesEU->size();
 
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
@@ -542,7 +542,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       TLorentzVector theZ;
       double baseZdiff = 99999;
       //Channel Flags
-      /*
+      ///*
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	//in binary 100, 4 in decimal
 	channel = 4.;//4 in decimal
@@ -659,7 +659,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
   
       //Z Candidate Build
       //For old ntuples
-      ///*
+      /*
       if (nselmu > 0 && nselel == 0 && anchan == 4) {
       	mumuchan = true;
 	channel = 4;
