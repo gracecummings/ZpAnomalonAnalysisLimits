@@ -11,10 +11,10 @@ from math import sqrt
 import tdrstyle
 import CMS_lumi
 
-tdrstyle.setTDRStyle()
-CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
-CMS_lumi.writeExtraText = 1
-CMS_lumi.extraText = "Simulation Preliminary"
+#tdrstyle.setTDRStyle()
+#CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
+#CMS_lumi.writeExtraText = 1
+#CMS_lumi.extraText = "Simulation Preliminary"
 
 def regionFormatter(regionstr):
     regdict = {'sideband':'sb','signalr':'sr','totalr':'tr'}
@@ -85,10 +85,14 @@ if __name__=='__main__':
     bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,systr)
     sigs =  go.signal(pathplots,zptcut,hptcut,metcut,btagwp,sig_xsec,years,systr)
+
+    #print(bkgs.bkgs)
     
     dynorm = 1
-    if len(years) >= 2:#dynorms only matter for composite years
+    if len(years) == 2:#dynorms only matter for composite years
         dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
+    elif len(years) == 3:
+            dynorm = np.load(pathplots+'/Run2_161718_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
 
     #Colors, Naming, general style
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
@@ -113,29 +117,29 @@ if __name__=='__main__':
     #names and param. To Do: expand to include plot limits for linear scale
     titles = {
         "h_z_pt":["Z p_{T}",0,40,1],
-        "h_z_eta":["\eta_{Z}",0,60,1],
-        "h_z_phi":["\phi_{Z}",0,40,2],
-        "h_z_phiw":["\phi_{Z}",0,40,2],
-        "h_z_m":["m_{Z}",0,30,1],
+        "h_z_eta":["\eta_{Z}",0,100,1],
+        "h_z_phi":["\phi_{Z}",0,90,2],
+        "h_z_phiw":["\phi_{Z}",0,90,2],
+        "h_z_m":["m_{Z}",0,60,1],
         "h_h_pt":["Higgs p_{T}",0,60,1],
-        "h_h_eta":["\eta_{Higss}",0,100,1],
-        "h_h_phi":["\phi_{Higgs}",0,40,2],
-        "h_h_phiw":["\phi_{Higgs}",0,40,2],
-        "h_h_m":["m_{h}",0,25,1],
-        "h_h_sd":["Higgs Soft Drop Mass",0,25,1],
+        "h_h_eta":["\eta_{Higss}",0,130,1],
+        "h_h_phi":["\phi_{Higgs}",0,70,2],
+        "h_h_phiw":["\phi_{Higgs}",0,70,2],
+        "h_h_m":["m_{h}",0,50,1],
+        "h_h_sd":["Higgs Soft Drop Mass",0,45,1],
         "h_met":["p_{T}^{miss}",0,100,1],
-        "h_met_phi":["\phi p_{T}^{miss}",0,40,2],
-        "h_met_phiw":["\phi p_{T}^{miss}",0,40,2],
-        "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,25,2],
+        "h_met_phi":["\phi p_{T}^{miss}",0,80,2],
+        "h_met_phiw":["\phi p_{T}^{miss}",0,80,2],
+        "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,60,2],
         "h_nd_jigm":["Jigsaw Mass Estimator ND",0,60,1],
-        "h_ns_jigm":["Jigsaw Mass Estimator NS",0,60,1],
-        "h_btag":["btag operating point",0,60,1],
-        "h_dphi_zh":["\Delta\phi_{ZH}",0,60,2],
+        "h_ns_jigm":["Jigsaw Mass Estimator NS",0,100,1],
+        "h_btag":["btag operating point",0,70,1],
+        "h_dphi_zh":["\Delta\phi_{ZH}",0,80,2],
         "h_dphi_zmet":["\Delta\phi_{ZMET}",0,60,2],
         "h_dphi_hmet":["\Delta\phi_{HMET}",0,60,2],
-        "h_dr_zh":["\Delta R(ZH)",0,100,1],
-        "h_dr_lmuh":["\Delta R(lmu,H)",0,100,1],
-        "h_dr_slmuh":["\Delta R(slmu,H)",0,60,1],
+        "h_dr_zh":["\Delta R(ZH)",0,170,1],
+        "h_dr_lmuh":["\Delta R(lmu,H)",0,150,1],
+        "h_dr_slmuh":["\Delta R(slmu,H)",0,100,1],
         "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,60,1],
     }
 
