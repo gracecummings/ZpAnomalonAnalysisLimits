@@ -86,6 +86,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double mEstNS;
    double  evntwkf;
    double  evntwbtag;
+   double  evntwmusf;
+   double  muiduncup;
+   double  muiduncdwn;
    double  btaguncup;
    double  btaguncdwn;
    TLorentzVector LMuCandidate;
@@ -151,6 +154,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *evntweightbtag = trimTree->Branch("event_weight_btag",&evntwbtag,"evntwbtag/D");
    TBranch *evntbtaguncup = trimTree->Branch("event_weight_btaguncup",&btaguncup,"btaguncup/D");
    TBranch *evntbtaguncdwn = trimTree->Branch("event_weight_btaguncdwn",&btaguncdwn,"btaguncdwn/D");
+   TBranch *evntweightmuid = trimTree->Branch("event_weight_muid",&evntwmusf,"evntwmusf/D");
+   TBranch *evntmuiduncup = trimTree->Branch("event_weight_muiduncup",&muiduncup,"muiduncup/D");
+   TBranch *evntmuiduncdwn = trimTree->Branch("event_weight_muiduncdwn",&muiduncdwn,"muiduncdwn/D");
    TBranch *channelf   = trimTree->Branch("channel_flag",&channelflag,"channelflag/D");
    TBranch *LMuCand     = trimTree->Branch("LMuCandidate","TLorentzVector",&LMuCandidate);
    TBranch *LMuCand_pt  = trimTree->Branch("LMuCandidate_pt",&LMuCandidate_pt,"LMuCandidate_pt/D");
@@ -200,6 +206,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    
    TString uncfile = "badstring";
    TString btagfile = "badstring";
+   TString muonsffile = "badstring";
+   TH1F *hbtagsf = 0;
+   TH1F *hbtagsfuncup = 0;
+   TH1F *hbtagsfuncdwn = 0;
+   TH2D *hmuonsf = 0;
+   
    if (sampleType == 3) {//ttbar
      btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_ttscalefactors_Zptcut_Hptcut_metcut_btagwp.root";
    }
@@ -208,9 +220,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    }
 
    TFile btagsf(btagfile,"READ");
-   TH1F *hbtagsf = 0;
-   TH1F *hbtagsfuncup = 0;
-   TH1F *hbtagsfuncdwn = 0;
+   
    std::cout<<"Looking at year  "<<year<<std::endl;
    if (year == 180){
      std::cout<<"In Run2018RunA"<<std::endl;
@@ -228,6 +238,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    if (year == 18) {
      std::cout<<"In Autumn18"<<std::endl;
      uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+     muonsffile = "leptonsf/Run2018ABCD_muon_SF_ID.root";
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2018sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2018uncUp")));
      hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2018uncDown")));
@@ -282,8 +293,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    }
    std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
    std::cout<<"Using btagsf file  "<<btagfile<<std::endl;
+   std::cout<<"Using muonsf file  "<<muonsffile<<std::endl;
 
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
+
+   TFile muonsff(muonsffile,"READ");
+   hmuonsf = new TH2D(*((TH2D*)muonsff.Get("NUM_TightID_DEN_TrackerMuons_pt_abseta")));
+   hmuonsf->SetDirectory(0);
+   muonsff.Close();
+
 
    //bring data era encoding back to normal numbers
    //Data era added as a digit on the end of the year
@@ -400,9 +418,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      //if (jentry == 200) {
-      //break;
-      //}
+      if (jentry == 200) {
+	break;
+      }
      
 
       //Trigger decisions
@@ -664,6 +682,31 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
       //*/
 
+
+      //Do Lepton SF
+      //Will need to have it be related to which channel the emu channel is serving as a background estimate
+      double leptonsf = 1;
+      double lsfup    = 0;
+      double lsfdwn   = 0;
+
+      if (sampleType !=0 && anchan == 4) {//not data
+	double ptcheck = leadmu.Pt();
+	if (ptcheck >= 120.0) {
+	  ptcheck = 100.0;//safely within last bin, but a hack
+	}
+	int leptonbin = hmuonsf->FindBin(ptcheck,std::abs(leadmu.Eta()));
+	leptonsf = hmuonsf->GetBinContent(leptonbin);
+	lsfup    = hmuonsf->GetBinErrorUp(leptonbin);
+	lsfdwn    = hmuonsf->GetBinErrorLow(leptonbin);
+
+	//if (passZ) {
+	//std::cout<<"Muon scale factor: "<<leptonsf<<std::endl;
+	//std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
+	//std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
+	//std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
+	//  }
+      }
+
       //Higgs Candidate Build
       //JetBranch = JetsAK8Clean;
       //unsigned long nfat = JetsAK8->size();
@@ -835,8 +878,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	ZCandidate_m   = theZ.M();
 	evntwkf = evntwkf_hold;
 	evntwbtag = hsf;
+	evntwmusf = leptonsf;
 	btaguncup  = hbtagunup;
 	btaguncdwn = hbtagundwn;
+	muiduncup  = lsfup;
+	muiduncdwn = lsfdwn;
 	LMuCandidate = leadmu;
 	LMuCandidate_pt  = leadmu.Pt();
 	LMuCandidate_phi = leadmu.Phi();
