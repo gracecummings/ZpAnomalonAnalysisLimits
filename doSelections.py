@@ -112,12 +112,8 @@ if __name__=='__main__':
         metstr = ''
         branches = [b'ZCandidate_*',
                     b'hCandidate_*',
-                    #b'MET',
-                    #b'METPhi',
                     b'metsuable',
                     b'metphiusable',
-                    #b'METclean',
-                    #b'METPhiclean',
                     b'ZPrime_mass_est',
                     b'ND_mass_est',
                     b'NS_mass_est',
@@ -220,7 +216,7 @@ if __name__=='__main__':
         deltaRslmuhdf   = deltaR(fdf['sLMuCandidate_phi'],fdf['hCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['hCandidate_eta'])
         deltaRslmulmudf = deltaR(fdf['sLMuCandidate_phi'],fdf['LMuCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['LMuCandidate_eta'])
 
-        if (stype == 1) and ("totalr" in region):#reclustering comments
+        if (stype != 0):#reclustering comments
             deltaRlmughdf  = deltaR(fdf['LMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['LMuCandidate_eta'],fdf['ghCandidate_eta'])
             deltaRslmughdf = deltaR(fdf['sLMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['ghCandidate_eta'])
             deltaRgzghdf   = deltaR(fdf['gzCandidate_phi'],fdf['ghCandidate_phi'],fdf['gzCandidate_eta'],fdf['ghCandidate_eta'])
@@ -408,7 +404,7 @@ if __name__=='__main__':
                      'h_sLMu_eta',
         ]
         
-        if (stype != 0) and ("totalr" in region):
+        if (stype != 0):
             rootOutFile["h_dr_lmu_gh"] = np.histogram(deltaRlmughdf,bins=30,range=(0,6),weights=eventweights)
             rootOutFile["h_dr_slmu_gh"] = np.histogram(deltaRslmughdf,bins=30,range=(0,6),weights=eventweights)
             rootOutFile["h_dr_gz_gh"] = np.histogram(deltaRgzghdf,bins=30,range=(0,6),weights=eventweights)

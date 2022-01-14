@@ -321,7 +321,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    hnorigevnts->SetBinContent(1,totalOriginalEvents);
    float zmwinlow = 70.;
    float zmwinhi  = 110.;
-   float hptcut   = 250.;
+   float hptcut   = 0.;
    ///*
    //Recursive Jigsaw Part
    LabRecoFrame         LABcontra("LABcontra","LABcontra");
@@ -423,9 +423,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //debug
-      if (jentry == 200) {
-	break;
-      }
+      //if (jentry == 200) {
+      //break;
+      //}
      
 
       //Trigger decisions
@@ -705,10 +705,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	lsfdwn    = hmuonsf->GetBinErrorLow(leptonbin);
 
 	if (passZ) {
-	std::cout<<"Muon scale factor: "<<leptonsf<<std::endl;
-	std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
-	std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
-	std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
+	  //std::cout<<"Muon scale factor: "<<leptonsf<<std::endl;
+	  //std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
+	  //std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
+	  //std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
 	 }
       }
 
@@ -765,6 +765,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  fat = fat*jecsysfac;
 	  double masshdiff = std::abs(125.18 - fsd);
 	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
+	  //if ((masshdiff < basehdiff) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
 	    basehdiff = masshdiff;
 	    theh = fat;
 	    hsd = fsd;
@@ -849,7 +850,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //std::cout<<"This is the value of the MET you are using: "<<ptmiss<<std::endl;
       
       //recursive jigsaw
-      // /*
+      //  /*
       LABcontra.ClearEvent();
       INVcontra.SetLabFrameThreeVector(met3);
       Z.SetLabFrameFourVector(theZ);
@@ -866,6 +867,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       if (passh && passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan 
       //if (passh && passZ ) {//Removed Z Channel Requirement
+      //if (channel == anchan && passZ) {//id'd lepton and gen higgs plots
 	hCandidate = theh;
 	hCandidate_pt  = theh.Pt();
 	hCandidate_phi = theh.Phi();
@@ -920,22 +922,26 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	metphiusable = ptmiss_phi;
 	channelflag = channel;
 	counthpass += 1;
-      }
+	}
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
       if (passZ && passh && passTrig && sampleType !=0 && (channel == anchan)) {
       //if (passZ && passh && sampleType !=0) {//for Zee channel checks
-	trimTree->Fill();
-	countpass += 1;
-	}
-      if (passZ && passh && passTrig && sampleType == 0 && passFil && (channel == anchan)) {
-	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
+      //if (passZ && (sampleType !=0) && (channel == anchan)){
+	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
 	trimTree->Fill();
 	countpass += 1;
       }
 
-   }
+	/////ucomment!!!
+	else if (passZ && passh && passTrig && sampleType == 0 && passFil && (channel == anchan)) {
+	  //if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
+	    trimTree->Fill();
+	    countpass += 1;
+	  }
+
+	}
 
    
    std::cout<<"Passing Trigger req: "<<counttrigpass<<std::endl;
