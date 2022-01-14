@@ -128,7 +128,12 @@ if __name__=='__main__':
                     #b'event_weight_btag'
         ]
 
-    
+        if (stype != 0):
+            mcbranches = [b'ghCandidate_*',
+                          b'gzCandidate_*']
+            branches.extend(mcbranches)
+
+
         #events = up3.pandas.iterate(inputfiles[:1],'PreSelection;1',branches=branches)
         tree = up3.open(inputfiles[0])['PreSelection;1']
         events = tree.pandas.df(branches=branches)
@@ -368,7 +373,7 @@ if __name__=='__main__':
                       smuphierrs,
                       lmuetaerrs,
                       smuetaerrs,
-        ]
+                      ]
 
         unc_names = ['h_z_pt',
                      'h_z_eta',
@@ -402,6 +407,20 @@ if __name__=='__main__':
                      'h_LMu_eta',
                      'h_sLMu_eta',
         ]
+        
+        if (stype != 0) and ("totalr" in region):
+            rootOutFile["h_dr_lmu_gh"] = np.histogram(deltaRlmughdf,bins=30,range=(0,6),weights=eventweights)
+            rootOutFile["h_dr_slmu_gh"] = np.histogram(deltaRslmughdf,bins=30,range=(0,6),weights=eventweights)
+            rootOutFile["h_dr_gz_gh"] = np.histogram(deltaRgzghdf,bins=30,range=(0,6),weights=eventweights)
+            drlmugherrs    = boostUnc(deltaRlmughdf,eventweights,30,0,6)
+            drslmugherrs   = boostUnc(deltaRslmughdf,eventweights,30,0,6)
+            drgzgherrs     = boostUnc(deltaRgzghdf,eventweights,30,0,6)
+
+            addhists = [drlmugherrs,drslmugherrs,drgzgherrs]
+            addnames = ["h_dr_lmu_gh","h_dr_slmu_gh","h_dr_gz_gh"]
+            unc_arrays.extend(addhists)
+            unc_names.extend(addnames)
+
 
         max_length = len(max(unc_arrays,key = lambda ar : len(ar)))
         pad_arrays = [np.pad(arr,(0,max_length - len(arr)),'constant') for arr in unc_arrays]
