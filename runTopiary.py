@@ -13,6 +13,7 @@ def channelEncoding(string):
     #z->mumu, z->ee, z->emu
     #the number in decimal is this flag
     #ex. Z->mumu, no others: 100, or 4
+    message = "Who the hell sent this command? Add a channel."
     if "mumu" == string:
         channel = 4
         message = "Using the Z->mumu selections"
@@ -76,6 +77,7 @@ if __name__=="__main__":
         inChain = ROOT.TChain("PreSelection")
         inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
         #inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
+        #inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
         for f in inputs:
             #print(f)
             inChain.Add(f)
@@ -87,7 +89,8 @@ if __name__=="__main__":
         inChain.Add(samp)
     elif samptype == 1 and ".root" not in samp:
         inChain = ROOT.TChain("TreeMaker2/PreSelection")
-        inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
+        #inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
+        inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
         print(inputs)
         for f in inputs:
             inChain.Add(f)
@@ -135,8 +138,8 @@ if __name__=="__main__":
         exit()
 
         
-    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#Needs to become dynamic with cuts
-    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#Needs to become dynamic with cuts
+    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','No','Req','On','Reco')#Needs to become dynamic with cuts
+    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#Needs to become dynamic with cuts
     #print( "Making topiary of ",samp)
     #print("     Sample type ",samptype)
     #print("     Sample Year ",year)
