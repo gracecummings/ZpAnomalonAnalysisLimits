@@ -89,10 +89,10 @@ if __name__=='__main__':
     #print(bkgs.bkgs)
     
     dynorm = 1
-    #if len(years) == 2:#dynorms only matter for composite years
-    #    dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
-    #elif len(years) == 3:
-    #        dynorm = np.load(pathplots+'/Run2_161718_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
+    if len(years) == 2:#dynorms only matter for composite years
+        dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
+    elif len(years) == 3:
+            dynorm = np.load(pathplots+'/Run2_161718_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
 
     #Colors, Naming, general style
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
@@ -138,12 +138,12 @@ if __name__=='__main__':
         "h_dphi_zmet":["\Delta\phi_{ZMET}",0,60,2],
         "h_dphi_hmet":["\Delta\phi_{HMET}",0,60,2],
         "h_dr_zh":["\Delta R(ZH)",0,170,1],
-        "h_dr_lmuh":["\Delta R(lmu,H)",0,150,1],
-        "h_dr_slmuh":["\Delta R(slmu,H)",0,100,1],
-        "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,60,1],
-        "h_dr_gz_gh":["\Delta R(genZ,genH)",0,170,1],
-        "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,150,1],
-        "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,100,1],
+        "h_dr_lmuh":["\Delta R(lmu,H)",0,200,1],
+        "h_dr_slmuh":["\Delta R(slmu,H)",0,200,1],
+        "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,200,1],
+        "h_dr_gz_gh":["\Delta R(genZ,genH)",0,250,1],
+        "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,250,1],
+        "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,250,1],
         "h_LMu_pt":["leading \mu p_{T}",0,40,1],
         "h_LMu_phi":["\phi_{leading \mu}",0,100,2],
         "h_LMu_eta":["\eta_{leading \mu}",0,100,1],
@@ -192,6 +192,16 @@ if __name__=='__main__':
         hzz.SetFillColor(bkgcols[3])
         hzz.SetLineColor(bkgcols[3])
         hzz.Rebin(titles[hname][3])
+
+        if ("gz" in hname) or ("gh" in hname):
+            hdy.SetFillColor(0)
+            hdy.SetLineColor(0)
+            htt.SetFillColor(ROOT.kWhite)
+            htt.SetLineColor(ROOT.kWhite)
+            hwz.SetFillColor(ROOT.kWhite)
+            hwz.SetLineColor(ROOT.kWhite)
+            hzz.SetFillColor(ROOT.kWhite)
+            hzz.SetLineColor(ROOT.kWhite)
         
         #Bkg Stack for Plotting
         hsbkg = ROOT.THStack("hsbkg","")
