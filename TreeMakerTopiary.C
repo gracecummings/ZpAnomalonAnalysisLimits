@@ -31,8 +31,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    fChain->SetBranchStatus("GenMET",1);
    fChain->SetBranchStatus("GenMETPhi",1);
    fChain->SetBranchStatus("TriggerPass",1);
-   fChain->SetBranchStatus("JetsAK8Clean*",1);
-   //fChain->SetBranchStatus("JetsAK8",1);//turn off
+   //fChain->SetBranchStatus("JetsAK8Clean*",1);
+   fChain->SetBranchStatus("JetsAK8",1);//turn off
    fChain->SetBranchStatus("Muons*",1);
    //fChain->SetBranchStatus("METclean*",1);
    //fChain->SetBranchStatus("METPhiclean",1);
@@ -321,8 +321,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    hnorigevnts->SetBinContent(1,totalOriginalEvents);
    float zmwinlow = 70.;
    float zmwinhi  = 110.;
-   float hptcut   = 0.;
-   ///*
+   float hptcut   = 250.;
+
+   /*
    //Recursive Jigsaw Part
    LabRecoFrame         LABcontra("LABcontra","LABcontra");
    DecayRecoFrame       Zp("Zp","Z'");
@@ -750,7 +751,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	znofat +=1;
       }
       */
-      
+
+      /*
       //reclustered jets
       if (nfat > 0) {
 	for (unsigned long i =0; i < nfat; ++i) {
@@ -787,6 +789,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	}
       }
       
+      */
+      
       //btag sf debug
       //if (passh) {
       //std::cout<<"The jet pT "<<theh.Pt()<<std::endl;
@@ -797,7 +801,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //}
 	    
       //unreclustered jets
-      /*
+      ///*
       if (nfat > 0) {
       for (unsigned long i =0; i < nfat; ++i) {
       	fat = JetsAK8->at(i);
@@ -816,7 +820,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
         }
       }
       }
-      */
+      //*/
 
       //MET
       //double ptmiss     = fChain->GetLeaf("METclean")->GetValue(0);
@@ -850,7 +854,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //std::cout<<"This is the value of the MET you are using: "<<ptmiss<<std::endl;
       
       //recursive jigsaw
-      //  /*
+        /*
       LABcontra.ClearEvent();
       INVcontra.SetLabFrameThreeVector(met3);
       Z.SetLabFrameFourVector(theZ);
