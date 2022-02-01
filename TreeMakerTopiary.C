@@ -31,8 +31,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    fChain->SetBranchStatus("GenMET",1);
    fChain->SetBranchStatus("GenMETPhi",1);
    fChain->SetBranchStatus("TriggerPass",1);
-   //fChain->SetBranchStatus("JetsAK8Clean*",1);
-   fChain->SetBranchStatus("JetsAK8",1);//turn off
+   fChain->SetBranchStatus("JetsAK8Clean*",1);
+   //fChain->SetBranchStatus("JetsAK8*",1);//turn off
    fChain->SetBranchStatus("Muons*",1);
    //fChain->SetBranchStatus("METclean*",1);
    //fChain->SetBranchStatus("METPhiclean",1);
@@ -241,6 +241,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
      muonsffile = "leptonsf/Run2018ABCD_muon_SF_ID.root";
      muonsfhname = "NUM_TightID_DEN_TrackerMuons_pt_abseta";
+     TFile muonsff(muonsffile,"READ");
+     hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
+     hmuonsf->SetDirectory(0);
+     muonsff.Close();
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2018sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2018uncUp")));
      hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2018uncDown")));
@@ -253,6 +257,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
      muonsffile = "leptonsf/Run2017BCDEF_muon_SF_ID.root";
      muonsfhname = "NUM_TightID_DEN_genTracks_pt_abseta";
+     TFile muonsff(muonsffile,"READ");
+     hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
+     hmuonsf->SetDirectory(0);
+     muonsff.Close();
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2017sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2017uncUp")));
      hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2017uncDown")));
@@ -276,6 +284,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    }
    if (year == 16) {
      uncfile = "JEC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK8PFPuppi.txt";
+     muonsffile = "leptonsf/Run2016_muon_SF_ID.root";
+     muonsfhname = "hflip";
+     TFile muonsff(muonsffile,"READ");
+     hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
+     hmuonsf->SetDirectory(0);
+     muonsff.Close();
      //std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2016sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2016uncUp")));
@@ -301,13 +315,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
 
-   TFile muonsff(muonsffile,"READ");
-   //hmuonsf = new TH2D(*((TH2D*)muonsff.Get("NUM_TightID_DEN_TrackerMuons_pt_abseta")));
-   hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
-   hmuonsf->SetDirectory(0);
-   muonsff.Close();
-
-
    //bring data era encoding back to normal numbers
    //Data era added as a digit on the end of the year
    //dividing by ten makes the year the integer when rounded
@@ -323,7 +330,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    float zmwinhi  = 110.;
    float hptcut   = 250.;
 
-   /*
+   ///*
    //Recursive Jigsaw Part
    LabRecoFrame         LABcontra("LABcontra","LABcontra");
    DecayRecoFrame       Zp("Zp","Z'");
@@ -423,6 +430,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       	std::cout<<"    analyzing event "<<jentry<<std::endl;
       }
 
+      //std::cout<<"    analyzing event "<<jentry<<std::endl;
       //debug
       //if (jentry == 200) {
       //break;
@@ -433,11 +441,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       size_t pos = 0;
       string token;
       ourtrg = trigs[year-16][anchan][0];//add iteration for more triggers
-      if (year == 16) {
+      //if (year == 16) {
 	//std::cout<<"Find you 2016 triggers, moron"<<std::endl;
 	//std::cout<<"2016 triggers are added, break is removed"<<std::endl;
 	//break;
-      }
+      //}
       if (jentry == 0) {
 	//This is where you would add the iteration over last nested vector
 	//Would need to save a vector of good indices
@@ -641,6 +649,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
       if (nZmumu == 0 && nZee == 0 && nZeu > 0 && anchan == 1) {
 	//001
+	//std::cout<<"At least we are in the emu channel part!"<<std::endl;
 	channel = 1.;
 	std::vector<TLorentzVector>::iterator zit;
 	for (zit = ZCandidatesEU->begin(); zit != ZCandidatesEU->end(); ++zit) {
@@ -694,28 +703,34 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double leptonsf = 1;
       double lsfup    = 0;
       double lsfdwn   = 0;
-
+      int leptonbin = -1;
+      
       if (sampleType !=0 && anchan == 4) {//not data
 	double ptcheck = leadmu.Pt();
 	if (ptcheck >= 120.0) {
 	  ptcheck = 100.0;//safely within last bin, but a hack
 	}
-	int leptonbin = hmuonsf->FindBin(ptcheck,std::abs(leadmu.Eta()));
+	if (year != 16) {
+	  leptonbin = hmuonsf->FindBin(ptcheck,std::abs(leadmu.Eta()));
+	}
+	else {
+	  leptonbin = hmuonsf->FindBin(ptcheck,leadmu.Eta());
+	}
 	leptonsf = hmuonsf->GetBinContent(leptonbin);
 	lsfup    = hmuonsf->GetBinErrorUp(leptonbin);
 	lsfdwn    = hmuonsf->GetBinErrorLow(leptonbin);
 
-	if (passZ) {
+	//if (passZ) {
 	  //std::cout<<"Muon scale factor: "<<leptonsf<<std::endl;
 	  //std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
 	  //std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
 	  //std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
-	 }
+	//}
       }
 
       //Higgs Candidate Build
       //JetBranch = JetsAK8Clean;
-      //unsigned long nfat = JetsAK8->size();
+      // unsigned long nfat = JetsAK8->size();
       //unsigned long nfat = JetBranch->size();
       unsigned long nfat = JetsAK8Clean->size();
       TLorentzVector theh;
@@ -752,7 +767,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
       */
 
-      /*
+      ///*
       //reclustered jets
       if (nfat > 0) {
 	for (unsigned long i =0; i < nfat; ++i) {
@@ -789,7 +804,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	}
       }
       
-      */
+      //*/
       
       //btag sf debug
       //if (passh) {
@@ -801,10 +816,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //}
 	    
       //unreclustered jets
-      ///*
+      /*
       if (nfat > 0) {
       for (unsigned long i =0; i < nfat; ++i) {
-      	fat = JetsAK8->at(i);
+	fat = JetsAK8->at(i);
         fsd = JetsAK8_softDropMass->at(i);
         fid = JetsAK8_ID->at(i);
         double masshdiff = std::abs(125.18 - fsd);
@@ -854,7 +869,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //std::cout<<"This is the value of the MET you are using: "<<ptmiss<<std::endl;
       
       //recursive jigsaw
-        /*
+      //  /*
       LABcontra.ClearEvent();
       INVcontra.SetLabFrameThreeVector(met3);
       Z.SetLabFrameFourVector(theZ);
@@ -926,7 +941,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	metphiusable = ptmiss_phi;
 	channelflag = channel;
 	counthpass += 1;
-	}
+      }
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
@@ -939,13 +954,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
 	/////ucomment!!!
-	else if (passZ && passh && passTrig && sampleType == 0 && passFil && (channel == anchan)) {
-	  //if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
-	    trimTree->Fill();
-	    countpass += 1;
-	  }
+      else if (passZ && passh && passTrig && sampleType == 0 && passFil && (channel == anchan)) {
+	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
+	trimTree->Fill();
+	countpass += 1;
+      }
 
-	}
+   }
 
    
    std::cout<<"Passing Trigger req: "<<counttrigpass<<std::endl;
@@ -978,3 +993,4 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
    
 }
+
