@@ -68,7 +68,7 @@ if __name__=='__main__':
     pathplots = args.directory
     systr     = args.syst
     plot_data = args.data
-    sigdivsor = 1
+    sigdivsor = 5
     
     #Select Plotting years and region
     years = [16,17,18]
@@ -107,7 +107,7 @@ if __name__=='__main__':
 
     #Gather plots
     testyear = years[0]#picks first year in list, so desired year if only one
-    testfile = bkgs.bkgs["DYJetsToLL"][testyear]["sb"][0][0]#stacked plots should always have DY
+    testfile = bkgs.bkgs["DYJetsToLL"][testyear][reg][0][0]#stacked plots should always have DY
     testtfile = ROOT.TFile(testfile)
     keys = testtfile.GetListOfKeys()
     siginfo = sigs.getPreppedSig(reg,sig_xsec,years)
@@ -126,7 +126,7 @@ if __name__=='__main__':
         "h_h_phi":["\phi_{Higgs}",0,70,2],
         "h_h_phiw":["\phi_{Higgs}",0,70,2],
         "h_h_m":["m_{h}",0,50,1],
-        "h_h_sd":["Higgs Soft Drop Mass",0,45,1],
+        "h_h_sd":["Higgs Soft Drop Mass",0,75,1],#45 normally max
         "h_met":["p_{T}^{miss}",0,100,1],
         "h_met_phi":["\phi p_{T}^{miss}",0,80,2],
         "h_met_phiw":["\phi p_{T}^{miss}",0,80,2],
@@ -140,7 +140,7 @@ if __name__=='__main__':
         "h_dr_zh":["\Delta R(ZH)",0,170,1],
         "h_dr_lmuh":["\Delta R(lmu,H)",0,200,1],
         "h_dr_slmuh":["\Delta R(slmu,H)",0,200,1],
-        "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,200,1],
+        "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,60,1],
         "h_dr_gz_gh":["\Delta R(genZ,genH)",0,250,1],
         "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,250,1],
         "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,250,1],
@@ -157,6 +157,9 @@ if __name__=='__main__':
     for key in keys:
         hname = key.GetName()
         print("working to make stacked plot of ",hname)
+
+        if ("gh" in hname) or ("gz" in hname) and plot_data:
+            continue
         
         #Make holder histograms
         h = testtfile.Get(hname)
@@ -230,7 +233,8 @@ if __name__=='__main__':
         #Data Histograms
         if plot_data:
             #Make the data histograms
-            hdat = data.getAddedHist(empty6,reg,hname,years=years)
+            #hdat = data.getAddedHist(empty6,reg,hname,years=years)
+            hdat = data.getAddedHist(empty6,'sb',hname,years=years)
             hdat.Rebin(titles[hname][3])
             hdat.SetBinErrorOption(1)
             hdat.SetMarkerStyle(8)
