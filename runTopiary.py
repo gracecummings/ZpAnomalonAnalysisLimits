@@ -75,9 +75,9 @@ if __name__=="__main__":
     #if ".root" not in samp:#should also take multi file signal
         #for non-signal samples
         inChain = ROOT.TChain("PreSelection")
-        inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
+        #inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
         #inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
-        #inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
+        inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
         for f in inputs:
             #print(f)
             inChain.Add(f)
@@ -139,12 +139,9 @@ if __name__=="__main__":
 
         
     #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','No','Req','On','Reco')#Needs to become dynamic with cuts
-    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#Needs to become dynamic with cuts
-    #print( "Making topiary of ",samp)
-    #print("     Sample type ",samptype)
-    #print("     Sample Year ",year)
-    #print("     Topiary Year ",topyear)#This is a debug
-    #print("    ",channelprint)
+    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#normal name
+    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#nemu
+
     print("     Systematics ",syststring)
     print("     Events in TChain: ",inChain.GetEntries())
     print(("     Original data set had {0} events in type.").format(origevnts))

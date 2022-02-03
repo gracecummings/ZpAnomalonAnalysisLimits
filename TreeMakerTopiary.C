@@ -389,9 +389,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::vector<string> trig18e = {"HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
    std::vector<string> trig17e = {"HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
    std::vector<string> trig16e = {"HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
-   std::vector<std::vector<string>> trig18 = {{"no"},{"emu"},trig18e,{"no"},trig18mu};
-   std::vector<std::vector<string>> trig17 = {{"no"},{"emu"},trig17e,{"no"},trig17mu};
-   std::vector<std::vector<string>> trig16 = {{"no"},{"emu"},trig16e,{"no"},trig16mu};
+   std::vector<string> trig18emu = {"HLT_Mu55_v"};
+   std::vector<string> trig17emu = {"HLT_Mu50_v"};
+   std::vector<string> trig16emu = {"HLT_Mu50_v"};
+
+
+   std::vector<std::vector<string>> trig18 = {{"no"},trig18emu,trig18e,{"no"},trig18mu};
+   std::vector<std::vector<string>> trig17 = {{"no"},trig17emu,trig17e,{"no"},trig17mu};
+   std::vector<std::vector<string>> trig16 = {{"no"},trig16emu,trig16e,{"no"},trig16mu};
    std::vector<std::vector<std::vector<string>>> trigs = {trig16,trig17,trig18};
    
    //counters
@@ -474,17 +479,18 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //If more triggers are used, will need to
       //iterate over a vector of good indices
       trgval = TriggerPass->at(trgidx);
-      if (trgval == 1 && anchan != 1) {//if not the emu channel, check trigger
+      //if (trgval == 1 && anchan != 1) {//if not the emu channel, check trigger
+      if (trgval == 1) {//if not the emu channel, check trigger
 	passTrig = true;
 	counttrigpass += 1;
       }
-      else if (anchan == 1) {//if emu channel, have it pass trigger, but there is no trigger
+      //else if (anchan == 1) {//if emu channel, have it pass trigger, but there is no trigger
 	//std::cout<<"++++++new events+++++++"<<std::endl;
 	//std::cout<<"This trig values for the emu channel: "<<passTrig<<std::endl;
 	//std::cout<<"This is the trigger idx looked at: "<<ourtrg<<std::endl;
 	//std::cout<<"This is the trigger value looked at: "<<trgval<<std::endl;
-	passTrig = true;
-      }
+	//passTrig = true;
+	//}
 
 
       //eeBadScFilter
@@ -535,12 +541,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //Z exploration
+      //std::cout<<"We are about to find a Z"<<std::endl;
       unsigned int nselmu = SelectedMuons->size();
       unsigned int nselel = SelectedElectrons->size();
       unsigned int nZmumu = ZCandidatesMuMu->size();
       unsigned int nZee = ZCandidatesEE->size();
-      unsigned int nZeu = ZCandidatesEU->size();
-
+      //unsigned int nZeu = 0;  
+      unsigned int nZeu = ZCandidatesEU->size();//Does not work on old DY ntuples
+      //std::cout<<"We found all of the number we needed"<<std::endl;
+      
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
       TLorentzVector leade;
@@ -704,6 +713,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double lsfup    = 0;
       double lsfdwn   = 0;
       int leptonbin = -1;
+      //std::cout<<"We are about to do the sf"<<std::endl;
       
       if (sampleType !=0 && anchan == 4) {//not data
 	double ptcheck = leadmu.Pt();
@@ -714,6 +724,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  leptonbin = hmuonsf->FindBin(ptcheck,std::abs(leadmu.Eta()));
 	}
 	else {
+	  //std::cout<<"We are in sf if statement"<<std::endl;
 	  leptonbin = hmuonsf->FindBin(ptcheck,leadmu.Eta());
 	}
 	leptonsf = hmuonsf->GetBinContent(leptonbin);
