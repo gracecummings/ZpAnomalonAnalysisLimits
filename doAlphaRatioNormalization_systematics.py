@@ -74,6 +74,7 @@ if __name__=='__main__':
     parser.add_argument("-j","--hptcut", type=float,help = "hpt cut of samples")
     parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
     parser.add_argument("-dir","--directory", type=str,help = "date folder with output")
+    parser.add_argument("-s","--syst", type=str,help = "systematic string")
     parser.add_argument("-v","--validationregion", type=bool,help = "is this a validation region?")
     args = parser.parse_args()
 
@@ -87,6 +88,7 @@ if __name__=='__main__':
     btagwp  = args.btagwp#'0.8'
     years   = [16,17,18]
     yearstr = go.yearFormatter(years)
+    systr = args.syst
 
     tdrstyle.setTDRStyle()
     CMS_lumi.lumi_13TeV = go.lumiFormatter(years)
@@ -106,10 +108,13 @@ if __name__=='__main__':
     if validation:
         rstr = "validationblind"
 
-    systr = 'systnominal_btagnom'
+    #systr = 'systnominal_btagnom_muidnom'
 
     bkgs  = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
     data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
+
+    #print(bkgs.bkgs)
+    print(data.data)
 
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_h_sd')
