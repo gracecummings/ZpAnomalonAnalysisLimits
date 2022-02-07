@@ -66,9 +66,8 @@ if __name__=='__main__':
 
     ####load in the files with the nominal distributions
     bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
-    sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get('nominal','strnom'))
-    print(config.get('nominal','pathnom')+'/Run2_2017_2018_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
-    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_2017_2018_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,systr=config.get('nominal','strnom'))
+    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
 
     ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
@@ -135,8 +134,8 @@ if __name__=='__main__':
         systbkgsdwn = go.backgrounds(config.get(syst,'pathdwn'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strdwn'))
 
         if rebindiv == 2:
-            dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_2017_2018_dy_extraploation'+config.get(syst,'strup')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
-            dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_2017_2018_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+            dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_161718_dy_extraploation'+config.get(syst,'strup')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+            dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_161718_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
 
 
         ####Prepping holders####
@@ -193,9 +192,9 @@ if __name__=='__main__':
         
         #Debug for background
         #Extra plots
-        dynormup = np.load(config.get(syst,'pathup')+'/Run2_2017_2018_dynormalization_'+config.get(syst,'strup')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
-        dynormnom = np.load(config.get(syst,'pathnom')+'/Run2_2017_2018_dynormalization_'+config.get(syst,'strnom')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
-        dynormdwn = np.load(config.get(syst,'pathdwn')+'/Run2_2017_2018_dynormalization_'+config.get(syst,'strdwn')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+        dynormup = np.load(config.get(syst,'pathup')+'/Run2_161718_dynormalization_'+config.get(syst,'strup')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+        dynormnom = np.load(config.get(syst,'pathnom')+'/Run2_161718_dynormalization_'+config.get(syst,'strnom')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+        dynormdwn = np.load(config.get(syst,'pathdwn')+'/Run2_161718_dynormalization_'+config.get(syst,'strdwn')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
 
         print("DY norm up:  ",dynormup)
         print("DY norm nom: ",dynormnom)
