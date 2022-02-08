@@ -127,6 +127,21 @@ if __name__=='__main__':
         "h_sLMu_pt":["subleading \mu p_{T} (GeV)",0,5500,1],
         "h_sLMu_phi":["\phi_{subleading \mu}",0,5500,2],
         "h_sLMu_eta":["\eta_{subleading \mu}",0,5500,1],
+        "h_dr_leadleph":["\Delta R(leading lepton,H)",0,800,1],
+        "h_dr_sleadleph":["\Delta R(subleading lepton,H)",0,800,1],
+        "h_dr_leps":["\Delta R(leptons)",0,800,1],
+        "h_leadlep_pt":["leading lepton p_{T} (GeV)",0,5500,1],
+        "h_sleadlep_pt":["subleading lepton p_{T} (GeV)",0,5500,1],
+        "h_leadlep_phi":["\phi_{leading lepton}",0,5500,2],
+        "h_sleadlep_phi":["\phi_{subleading lepton}",0,5500,2],
+        "h_leadlep_eta":["\eta_{leading lepton}",0,5500,1],
+        "h_sleadlep_eta":["\eta_{subleading lepton}",0,5500,1],
+        "h_electron_pt":["electron p_{T} (GeV)",0,800,1],
+        "h_electron_phi":["\phi_{electron}",0,700,2],
+        "h_electron_eta":["\eta_{electron}",0,1200,1],
+        "h_muon_pt":["muon p_{T} (GeV)",0,800,1],
+        "h_muon_phi":["\phi_{muon}",0,700,2],
+        "h_muon_eta":["\eta_{muon}",0,1200,1],
     }
 
         #make the plots
