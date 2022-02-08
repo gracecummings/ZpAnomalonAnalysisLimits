@@ -115,9 +115,9 @@ if __name__=='__main__':
     validation = False
     rstr = "signalblind"
     rebindiv = 2
-    systname = 'nominal'
-    systclass = 'pathnom'
-    syststr = 'strnom'
+    systname = 'btag'
+    systclass = 'pathup'
+    syststr = 'strup'
     sigmabars = 1#1 sigma bands
 
     #Get the samples
@@ -139,10 +139,7 @@ if __name__=='__main__':
         elif len(years) == 3:
             dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
         bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
-        if systname != 'btag':
-            data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))#has both up and down data here, not just one
-        else:
-            data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp)#has both up and down data here, not just one
+        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
         sbstring = "30 < m_{hcand,SD} < 70"
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
