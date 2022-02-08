@@ -328,7 +328,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    hnorigevnts->SetBinContent(1,totalOriginalEvents);
    float zmwinlow = 70.;
    float zmwinhi  = 110.;
-   float hptcut   = 250.;
+   float hptcut   = 0.;
 
    ///*
    //Recursive Jigsaw Part
@@ -415,6 +415,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    int znorecfat = 0;
    int znounrecfat = 0;
    int znofat = 0;
+   int countzcand = 0;
+   int countfat = 0;
    
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
@@ -435,11 +437,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       	std::cout<<"    analyzing event "<<jentry<<std::endl;
       }
 
-      //std::cout<<"    analyzing event "<<jentry<<std::endl;
+      std::cout<<"    analyzing event "<<jentry<<std::endl;
       //debug
-      //if (jentry == 200) {
-      //break;
-      //}
+      if (jentry == 200) {
+	break;
+      }
      
 
       //Trigger decisions
@@ -555,13 +557,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       TLorentzVector leade;
       TLorentzVector subleade;
       TLorentzVector testmu;
+      TLorentzVector teste;
       double lptmax = 0;
       unsigned int nZs = ZCandidates->size();
       TLorentzVector theZ;
       double baseZdiff = 99999;
       //Channel Flags
-      ///*
+      //*
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
+	if (passTrig) countzcand += 1;
 	//in binary 100, 4 in decimal
 	channel = 4.;//4 in decimal
 	mumuchan = true;
@@ -579,7 +583,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	std::vector<TLorentzVector>::iterator zit;
 	for (zit = ZCandidatesMuMu->begin(); zit != ZCandidatesMuMu->end(); ++zit) {
 	  double massZdiff = std::abs(91.1876 - zit->M());
-	  if ((massZdiff < baseZdiff) && (zit->M() > zmwinlow) && (zit->M() < zmwinhi)) {
+	  if ((massZdiff < baseZdiff) && (zit->M() >= zmwinlow) && (zit->M() <= zmwinhi)) {
 	    baseZdiff = massZdiff;
 	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
 	    passZ = true;
@@ -667,10 +671,26 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    baseZdiff = massZdiff;
 	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
 	    passZ = true;
-	    //if (passTrig) {
-	    zemu += 1;
-	    //std::cout<<"Found a good emu Z!"<<std::endl;
-	    //}
+	    if (passTrig) {
+	      zemu += 1;
+	    }
+	    //std::cout<<"Need to find leptons in the emu channel!"<<std::endl;
+	    //std::cout<<"The number of selected muons is "<<nselmu<<std::endl;
+	    //std::cout<<"                      Muon's pT: "<<SelectedMuons->at(0).Pt()<<std::endl;
+	    //std::cout<<"The number of selected electronss is "<<nselel<<std::endl;
+	    //std::cout<<"                 Electrons's pT: "<<SelectedElectrons->at(0).Pt()<<std::endl;
+	    testmu = SelectedMuons->at(0);
+	    teste = SelectedElectrons->at(0);
+	    if (testmu.Pt() > teste.Pt()) {
+	      leadmu = testmu;
+	      subleade = teste;
+	      //std::cout<<"The muon is leading, the electron is subleading!"<<std::endl;
+	    }
+	    else {
+	      leade = teste;
+	      subleadmu = testmu;
+	      //std::cout<<"The electron is leading, the muon is subleading!"<<std::endl;
+	    }
 	  }
 	}
       }
@@ -781,6 +801,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       ///*
       //reclustered jets
       if (nfat > 0) {
+	if (passTrig) countfat += 1;
 	for (unsigned long i =0; i < nfat; ++i) {
 	  fat = JetsAK8Clean->at(i);
 	  fsd = JetsAK8Clean_softDropMass->at(i);
@@ -974,10 +995,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    }
 
    
-   std::cout<<"Passing Trigger req: "<<counttrigpass<<std::endl;
-   std::cout<<"Passing Z  req:      "<<countzpass<<std::endl;
-   std::cout<<"Passing h  req:      "<<counthpass<<std::endl;
-   std::cout<<"Passing    req:      "<<countpass<<std::endl;
+   std::cout<<"Passing Trigger req:        "<<counttrigpass<<std::endl;
+   std::cout<<"Passing Z  req:             "<<countzpass<<std::endl;
+   std::cout<<"Passing h  req:             "<<counthpass<<std::endl;
+   std::cout<<"Passing    req:             "<<countpass<<std::endl;
+   std::cout<<"Passing number of fat jets: "<<countfat<<std::endl;
+   std::cout<<"Had a Z candidate:          "<<countzcand<<std::endl;
+   
 
    /*
    std::cout<<"Events with zmumu        "<<zmumu<<std::endl;
