@@ -149,6 +149,7 @@ if __name__=='__main__':
 
 
         #events = up3.pandas.iterate(inputfiles[:1],'PreSelection;1',branches=branches)
+        print(inputfiles[0])
         tree = up3.open(inputfiles[0])['PreSelection;1']
         events = tree.pandas.df(branches=branches)
         #events = tree.pandas.df()
@@ -161,10 +162,16 @@ if __name__=='__main__':
         #print("Doing SD mass lower cut of :" ,sdmcut)
         #do some cuts
         #print("Number of events in chunk ",len(events))
-        sddf   = events[events['hCandidate_sd'] > sdmcut]
-        metdf  = sddf[sddf['metsuable'] > metcut]
-        zptdf  = metdf[metdf['ZCandidate_pt'] > zptcut]
-        hptdf  = zptdf[zptdf['hCandidate_pt'] > hptcut]
+        #sddf   = events[events['hCandidate_sd'] > sdmcut]
+        #metdf  = sddf[sddf['metsuable'] > metcut]
+        #zptdf  = metdf[metdf['ZCandidate_pt'] > zptcut]
+        #hptdf  = zptdf[zptdf['hCandidate_pt'] > hptcut]
+        #btdf   = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
+
+        #new cut order
+        zptdf  = events[events['ZCandidate_pt'] > zptcut]
+        metdf   = zptdf[zptdf['metsuable'] > metcut]
+        hptdf  = metdf[metdf['hCandidate_pt'] > hptcut]
         btdf   = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
 
         #Actual Analysis
@@ -172,19 +179,24 @@ if __name__=='__main__':
             srup   = btdf[btdf['hCandidate_sd'] > 70.]
             bldf   = srup[srup['hCandidate_sd'] < 150.]#full blinded region
             srdf   = bldf[bldf['hCandidate_sd'] > 110.]#Higgs Peak
-            lowsb  = btdf[btdf['hCandidate_sd'] <= 70.]
+            lowsbh = btdf[btdf['hCandidate_sd'] <= 70.]
+            lowsb  = lowsbh[lowsbh['hCandidate_sd'] > 30.]
+            #lowsb = btdf[btdf['hCandidate_sd'] <= 70.]#old way
             highsb = btdf[btdf['hCandidate_sd'] >= 150.]
             sbdf   = pd.concat([lowsb,highsb])
+            totdf = pd.concat([sbdf,srdf])
             
         #Validation region for alpha method for DY
         if valid:
             srup   = btdf[btdf['hCandidate_sd'] > 55.]
             bldf   = srup[srup['hCandidate_sd'] < 150.]#full blinded region
             srdf   = bldf[bldf['hCandidate_sd'] <= 70.]#Validation region
-            lowsb  = btdf[btdf['hCandidate_sd'] <= 55.]
+            #lowsb  = btdf[btdf['hCandidate_sd'] <= 55.]
+            lowsbh = btdf[btdf['hCandidate_sd'] <= 55.]
+            lowsb  = lowsbh[lowsbh['hCandidate_sd'] > 30.]
             highsb = btdf[btdf['hCandidate_sd'] >= 150.]
             sbdf   = pd.concat([lowsb,highsb])
-
+            totdf = pd.concat([sbdf,srdf])
 
         region = "sideband"
         if not valid:
@@ -194,7 +206,7 @@ if __name__=='__main__':
                     region = "signalr"
                     print("    using signal region selections")
                 elif comb:
-                    fdf = btdf
+                    fdf = totdf
                     region = "totalr"
                     print("    using full region selections")
                 else:
@@ -206,7 +218,7 @@ if __name__=='__main__':
                 region = "signalr"
                 print("    using signal region selections")
             elif stype == 0 and ("emu" in channel) and comb:
-                fdf = btdf
+                fdf = totdf
                 region = "totalr"
                 print("    using full region selections")
             else:
@@ -217,7 +229,7 @@ if __name__=='__main__':
                 fdf = srdf
                 region = "validationr"
             elif comb:
-                fdf = btdf
+                fdf = totdf
                 region = "totalr"
             else:
                 fdf = sbdf
@@ -606,11 +618,11 @@ if __name__=='__main__':
         f = up3.open(inputfiles[0])
         np.save(npOutFile,np.array([f['hnorigevnts'].values[0]]))
         rootOutFile["hnevents"]      = str(f['hnorigevnts'].values[0])
-        rootOutFile["hnevents_pMET"] = str((metdf['event_weight_kf']*metdf['event_weight_btag']).sum())#str(len(metdf))
-        rootOutFile["hnevents_pZ"]   = str((zptdf['event_weight_kf']*zptdf['event_weight_btag']).sum())#str(len(zptdf))
-        rootOutFile["hnevents_ph"]   = str((hptdf['event_weight_kf']*hptdf['event_weight_btag']).sum())#str(len(hptdf))
-        rootOutFile["hnevents_sb"]   = str((sbdf['event_weight_kf']*sbdf['event_weight_btag']).sum())#str(len(sbdf))
-        rootOutFile["hnevents_btag"] = str((btdf['event_weight_kf']*btdf['event_weight_btag']).sum())#str(len(btdf))
+        rootOutFile["hnevents_pMET"] = str((metdf['event_weight_kf']*metdf['event_weight_btag']*metdf['event_weight_muid']).sum())#str(len(metdf))
+        rootOutFile["hnevents_pZ"]   = str((zptdf['event_weight_kf']*zptdf['event_weight_btag']*zptdf['event_weight_muid']).sum())#str(len(zptdf))
+        rootOutFile["hnevents_ph"]   = str((hptdf['event_weight_kf']*hptdf['event_weight_btag']*hptdf['event_weight_muid']).sum())#str(len(hptdf))
+        rootOutFile["hnevents_sb"]   = str((sbdf['event_weight_kf']*sbdf['event_weight_btag']*sbdf['event_weight_muid']).sum())#str(len(sbdf))
+        rootOutFile["hnevents_btag"] = str((btdf['event_weight_kf']*btdf['event_weight_btag']*btdf['event_weight_muid']).sum())#str(len(btdf))
 
         #print("Passing events sb events, not sf              : ",len(sbdf))
         #print("Passing events sb events, sum of event weights: ",
@@ -618,3 +630,11 @@ if __name__=='__main__':
         if stype != 0:
             if sr:
                 rootOutFile["hnevents_sr"]   = str((srdf['event_weight_kf']*srdf['event_weight_btag']).sum())#str(len(srdf))
+            print("Weighted Events, passing Z pT:  ",str((zptdf['event_weight_kf']*zptdf['event_weight_btag']*zptdf['event_weight_muid']).sum()))
+            print("Weighted Events, passing MET:   ",str((metdf['event_weight_kf']*metdf['event_weight_btag']*metdf['event_weight_muid']).sum()))
+            print("Weighted Events, passing H pT:  ",str((hptdf['event_weight_kf']*hptdf['event_weight_btag']*hptdf['event_weight_muid']).sum()))
+            print("Weighted Events, passing btag:  ",str((btdf['event_weight_kf']*btdf['event_weight_btag']*btdf['event_weight_muid']).sum()))
+            print("Weighted Events, signal region: ",str((srdf['event_weight_kf']*srdf['event_weight_btag']*srdf['event_weight_muid']).sum()))
+            print("Weighted Events, sideband:      ",str((sbdf['event_weight_kf']*sbdf['event_weight_btag']*sbdf['event_weight_muid']).sum()))
+
+                
