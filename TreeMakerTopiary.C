@@ -212,10 +212,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TString btagfile = "badstring";
    TString muonsffile = "badstring";
    TString muonsfhname = "badstring";
+   TString electronsffile = "badstring";
+   TString electronsfhname = "badstring";
+
    TH1F *hbtagsf = 0;
    TH1F *hbtagsfuncup = 0;
    TH1F *hbtagsfuncdwn = 0;
    TH2D *hmuonsf = 0;
+   TH2F *helectronsf = 0;
    
    if (sampleType == 3) {//ttbar
      btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_ttscalefactors_Zptcut_Hptcut_metcut_btagwp.root";
@@ -241,14 +245,24 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      uncfile = "JEC/Autumn18_RunD_V19_DATA/Autumn18_RunD_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 18) {
+     //JEC
      std::cout<<"In Autumn18"<<std::endl;
      uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+     //Muon ID SF
      muonsffile = "leptonsf/Run2018ABCD_muon_SF_ID.root";
      muonsfhname = "NUM_TightID_DEN_TrackerMuons_pt_abseta";
      TFile muonsff(muonsffile,"READ");
      hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
      hmuonsf->SetDirectory(0);
      muonsff.Close();
+     //Electron ID SF
+     electronsffile = "leptonsf/Run2018_electron_SF.root";
+     electronsfhname = "EGamma_SF2D";
+     TFile elecsff(electronsffile,"READ");
+     helectronsf = new TH2F(*((TH2F*)elecsff.Get(electronsfhname)));
+     helectronsf->SetDirectory(0);
+     elecsff.Close();
+     //Btag SF
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2018sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2018uncUp")));
      hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2018uncDown")));
@@ -258,13 +272,23 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      btagsf.Close();
    }
    if (year == 17) {
+     //JEC
      uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
+     //Muon ID SF
      muonsffile = "leptonsf/Run2017BCDEF_muon_SF_ID.root";
      muonsfhname = "NUM_TightID_DEN_genTracks_pt_abseta";
      TFile muonsff(muonsffile,"READ");
      hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
      hmuonsf->SetDirectory(0);
      muonsff.Close();
+     //Electron ID SF
+     electronsffile = "leptonsf/Run2017BCDEF_electron_SF.root";
+     electronsfhname = "EGamma_SF2D";
+     TFile elecsff(electronsffile,"READ");
+     helectronsf = new TH2F(*((TH2F*)elecsff.Get(electronsfhname)));
+     helectronsf->SetDirectory(0);
+     elecsff.Close();
+     //Btag SF
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2017sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2017uncUp")));
      hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2017uncDown")));
@@ -287,14 +311,23 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      uncfile = "JEC/Fall17_17Nov2017F_V32_DATA/Fall17_17Nov2017F_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 16) {
+     //JEC
      uncfile = "JEC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK8PFPuppi.txt";
+     //Muon ID SF
      muonsffile = "leptonsf/Run2016_muon_SF_ID.root";
      muonsfhname = "hflip";
      TFile muonsff(muonsffile,"READ");
      hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
      hmuonsf->SetDirectory(0);
      muonsff.Close();
-     //std::cout<<"You have not loaded jec uncs for 16, get it together"<<std::endl;
+     //Electron ID SF
+     electronsffile = "leptonsf/Run2016BCDEFGH_electron_SF.root";
+     electronsfhname = "EGamma_SF2D";
+     TFile elecsff(electronsffile,"READ");
+     helectronsf = new TH2F(*((TH2F*)elecsff.Get(electronsfhname)));
+     helectronsf->SetDirectory(0);
+     elecsff.Close();
+     //Btag SF
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2016sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2016uncUp")));
      hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2016uncDown")));
@@ -315,7 +348,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    }
    std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
    std::cout<<"Using btagsf file  "<<btagfile<<std::endl;
-   std::cout<<"Using muonsf file  "<<muonsffile<<std::endl;
+   std::cout<<"Using muon ID sf file  "<<muonsffile<<std::endl;
+   std::cout<<"Using electron sf file  "<<electronsffile<<std::endl;
 
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
 
@@ -859,7 +893,59 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  //std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
 	//}
       }
+      else if (sampleType > 0 && anchan == 2) {//not data, ee channel
+	double ptcheck = leade.Pt();
+	if (ptcheck >= 500.0) {
+	  ptcheck = 400.0;//safely within last bin, but a hack
+	}
+	leptonbin = helectronsf->FindBin(leade.Eta(),ptcheck);
+	leptonsf = helectronsf->GetBinContent(leptonbin);
+	lsfup    = helectronsf->GetBinErrorUp(leptonbin);
+	lsfdwn   = helectronsf->GetBinErrorLow(leptonbin);
+      }
+      else if (sampleType > 0 && anchan == 1) {//not data, emu channel
+	if (muld == 1) {
+	  double ptcheck = leadmu.Pt();
+	  if (ptcheck >= 120.0) {
+	    ptcheck = 100.0;//safely within last bin, but a hack
+	  }
+	  if (year != 16) {
+	    leptonbin = hmuonsf->FindBin(ptcheck,std::abs(leadmu.Eta()));
+	  }
+	  else {
+	    //std::cout<<"We are in sf if statement"<<std::endl;
+	    leptonbin = hmuonsf->FindBin(ptcheck,leadmu.Eta());
+	  }
+	  leptonsf = hmuonsf->GetBinContent(leptonbin);
+	  lsfup    = hmuonsf->GetBinErrorUp(leptonbin);
+	  lsfdwn    = hmuonsf->GetBinErrorLow(leptonbin);
+	  if (passZ) {
+	    std::cout<<"Muon scale factor: "<<leptonsf<<std::endl;
+	    std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
+	    std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
+	    std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
+	  }
 
+	}
+	if (elld == 1) {
+	  double ptcheck = leade.Pt();
+	  if (ptcheck >= 500.0) {
+	    ptcheck = 400.0;//safely within last bin, but a hack
+	  }
+	  leptonbin = helectronsf->FindBin(leade.Eta(),ptcheck);
+	  leptonsf = helectronsf->GetBinContent(leptonbin);
+	  lsfup    = helectronsf->GetBinErrorUp(leptonbin);
+	  lsfdwn   = helectronsf->GetBinErrorLow(leptonbin);
+	  if (passZ) {
+	    std::cout<<"Electron scale factor: "<<leptonsf<<std::endl;
+	    std::cout<<"leading Electron pt, straight : "<<leade.Pt()<<std::endl;
+	    std::cout<<"leading electron pt, checked  : "<<ptcheck<<std::endl;
+	    std::cout<<"leading electron eta, straight : "<<leade.Eta()<<std::endl;
+	  }
+
+	}
+      }
+ 
       //Higgs Candidate Build
       //JetBranch = JetsAK8Clean;
       // unsigned long nfat = JetsAK8->size();
