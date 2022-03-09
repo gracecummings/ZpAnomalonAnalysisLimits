@@ -43,6 +43,17 @@ def deltaR(v1phi,v2phi,v1eta,v2eta):
     dR = ((v2phi-v1phi)**2+(v2eta-v1eta)**2)**(1/2)
     return dR
 
+def getContentsOfSample(listoffiles):
+    fs = [x.split("/")[-1] for x in listoffiles]
+    fronts = [x.split("_Zpt")[0] for x in fs]
+    jectypes = [x.split("_")[-1] for x in fronts]
+    names = [x.split("_topiary")[0] for x in fronts]
+
+    names = list(set(names))
+    jectypes = list(set(jectypes))
+    return names,jectypes
+    
+
 if __name__=='__main__':
     parser.add_argument("-f","--sample",help = "sample file")
     parser.add_argument("-o","--output",help = "output file name")
@@ -60,7 +71,7 @@ if __name__=='__main__':
     parser.add_argument("-c","--chan",type=str)
     args = parser.parse_args()
 
-    samp   = args.sample
+    sampname   = args.sample
     sdmcut = args.sdmCut
     zptcut = args.zPtCut
     hptcut = args.hPtCut
@@ -74,36 +85,14 @@ if __name__=='__main__':
     channel = args.chan
     topdir = args.directory
 
-    #print(samp)
-    #print(topdir)
-    #print(channel)
-    inputfiles = glob.glob(topdir+'/'+samp+'*_topiary_'+channel+'*.root')
-    #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+topdir+'/'+samp+'*_topiary*systnominal*.root')
-   # inputfiles = glob.glob(topdir+'/'+samp+'*_topiary*systnominal*.root')
+    inputfiles = glob.glob(topdir+'/'+sampname+'*_topiary_'+channel+'*.root')
+    innames,jecs = getContentsOfSample(inputfiles)
+    samp = innames[0]
+    print("The parameters you are invoking: ")
+    print("    ",innames,jecs)
 
-    for fjec in inputfiles:
-        #for jet systematics
-        samp = fjec.split("/")[-1]
-        front = samp.split("_Zpt")[0]
-        jectype = front.split("_")[-1]
-        samp = front.split("_topiary")[0]
-        #inputfiles = glob.glob('analysis_output_ZpAnomalon/'+topdir+'/'+samp+'*_topiary*'+jectype+'*.root')
-        inputfiles = glob.glob(topdir+'/'+samp+'*_topiary_'+channel+'_'+jectype+'*.root')
-    
-        print("Doing selections on:")
-        print("    ",inputfiles[:1])
-        print("    ",samp)
-        print("    Concerning systematics:")
-        print("    ",jectype)
+    for i,jectype in enumerate(jecs):
         stype,year = go.sampleType(samp)
-
-        #if not valid:
-        #    if sr and stype != 0:
-        #        print("    using signal region selections")
-        #    elif comb and stype != 0:
-        #        print("    using full region selections")
-        #    else:
-        #        print("    using sideband selections")
 
         if valid:
             print("    Doing validation of alpha method cuts")
@@ -114,6 +103,9 @@ if __name__=='__main__':
 
         metstr = ''
         branches = [b'ZCandidate_*',
+                    #b'RunNum',
+                    #b'LumiBlockNum',
+                    #b'EvtNum',
                     b'hCandidate_*',
                     b'metsuable',
                     b'metphiusable',
@@ -129,7 +121,7 @@ if __name__=='__main__':
                     #b'event_weight_btag'
         ]
 
-        if (stype != 0):
+        if (stype > 0):
             mcbranches = [b'ghCandidate_*',
                           b'gzCandidate_*']
             branches.extend(mcbranches)
@@ -147,11 +139,48 @@ if __name__=='__main__':
             branches.extend(mcbranches)
 
 
+        if (("Run" in sampname) and ("emu" in channel)):
+            if (("Single" not in sampname) or ("EGamma" not in sampname)):
+                print("Going to combine datasets")
+                muf = glob.glob(topdir+'/'+sampname+'*SingleMuon*_topiary_'+channel+'_'+jectype+'*.root')
+                euf = glob.glob(topdir+'/'+sampname+'*SingleElectron*_topiary_'+channel+'_'+jectype+'*.root')
+                print("Doing selections on:")
+                print("    ",muf[0],euf[0])
+                print("    ",sampname)
 
-        #events = up3.pandas.iterate(inputfiles[:1],'PreSelection;1',branches=branches)
-        print(inputfiles[0])
-        tree = up3.open(inputfiles[0])['PreSelection;1']
-        events = tree.pandas.df(branches=branches)
+                mtree = up3.open(muf[0])['PreSelection;1']
+                mevents = mtree.pandas.df(branches=branches)
+                etree = up3.open(euf[0])['PreSelection;1']
+                eevents = etree.pandas.df(branches=branches)
+                print("Number of events in muon dataset ",len(mevents))
+                print("Number of events in elec dataset ",len(eevents))
+                
+                frames = [mevents,eevents]
+                mixdf = pd.concat(frames)
+                
+                print("Number of events in straight mixed set ",len(mixdf))
+                print("dropping duplicates")
+                mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
+                print("Number of events after dropping duplicates ",len(mixdf))
+                events = mixdf
+                goodname = sampname+"combined"
+
+        else:
+            inputfiles = glob.glob(topdir+'/'+samp+'*_topiary_'+channel+'_'+jectype+'*.root')
+            print("Doing selections on:")
+            print("    ",inputfiles[:1])
+            print("    ",samp)
+            #events = up3.pandas.iterate(inputfiles[:1],'PreSelection;1',branches=branches)
+            tree = up3.open(inputfiles[0])['PreSelection;1']
+            events = tree.pandas.df(branches=branches)
+            goodname = samp
+
+
+        print("    Concerning systematics:")
+        print("    ",jectype)
+
+
+            
         #events = tree.pandas.df()
         #print(events)
     
@@ -200,7 +229,7 @@ if __name__=='__main__':
 
         region = "sideband"
         if not valid:
-            if stype != 0:
+            if stype > 0:
                 if sr:
                     fdf = srdf
                     region = "signalr"
@@ -213,11 +242,11 @@ if __name__=='__main__':
                     fdf = sbdf
                     region = "sideband"
                     print("    using sideband selections")
-            elif stype == 0 and ("emu" in channel) and sr:
+            elif stype <= 0 and ("emu" in channel) and sr:
                 fdf = srdf
                 region = "signalr"
                 print("    using signal region selections")
-            elif stype == 0 and ("emu" in channel) and comb:
+            elif stype <= 0 and ("emu" in channel) and comb:
                 fdf = totdf
                 region = "totalr"
                 print("    using full region selections")
@@ -272,7 +301,7 @@ if __name__=='__main__':
             deltaRsleplepdf = deltaR(sleadphi,leadphi,sleadeta,leadeta)
 
 
-        if (stype != 0 and channel != "emu"):#reclustering comments
+        if (stype > 0 and channel != "emu"):#reclustering comments
             deltaRlmughdf  = deltaR(fdf['LMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['LMuCandidate_eta'],fdf['ghCandidate_eta'])
             deltaRslmughdf = deltaR(fdf['sLMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['sLMuCandidate_eta'],fdf['ghCandidate_eta'])
             deltaRgzghdf   = deltaR(fdf['gzCandidate_phi'],fdf['ghCandidate_phi'],fdf['gzCandidate_eta'],fdf['ghCandidate_eta'])
@@ -303,18 +332,18 @@ if __name__=='__main__':
         #print(" systl: ",systl)
         #print(" stype: ",stype)
         systname = 'btagsystdefaultname'
-        if not systl and stype != 0:
+        if not systl and stype > 0:
             #print("if testing is working")
             print("    Applying nominal sf")
             systname = 'btagnom_muidnom'
             eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']
             #print(eventweights)
-        elif not systl and stype == 0:
+        elif not systl and stype <= 0:
             #print("if testing is working")
             print("    No systematic request and data, so no sf")
             systname = 'btagnom_muidnom'
             #print(eventweights)
-        elif systl and stype == 0:
+        elif systl and stype <= 0:
             #print("if testing is working")
             print("    Attempt at a systematic, but dat, so no sf")
             systname = 'btagnom_muidnom'
@@ -346,9 +375,11 @@ if __name__=='__main__':
         #print("    max Zp mass estimator: ",fdf['ZPrime_mass_est'].max())
 
         #lets make some histograms.
-        rootfilename  = go.makeOutFile(samp,'upout_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))#need to update for btagger
-        npfilename    = go.makeOutFile(samp,'totalevents_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-        pklfilename   = go.makeOutFile(samp,'selected_errors_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        rootfilename  = go.makeOutFile(goodname,'upout_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))#need to update for btagger
+
+        print("Saving file as ",rootfilename)
+        npfilename    = go.makeOutFile(goodname,'totalevents_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        pklfilename   = go.makeOutFile(goodname,'selected_errors_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         rootOutFile   = up3.recreate(rootfilename,compression = None)
         npOutFile     = open(npfilename,'wb')
 
@@ -376,16 +407,6 @@ if __name__=='__main__':
         rootOutFile["h_dphi_zmet"]  = np.histogram(deltaphizmetdf,bins=100,range=(0,3.14159),weights=eventweights)
         rootOutFile["h_dphi_hmet"]  = np.histogram(deltaphihmetdf,bins=100,range=(0,3.14159),weights=eventweights)
         rootOutFile["h_dr_zh"]      = np.histogram(deltaRzhdf,bins=30,range=(0,6),weights=eventweights)
-        #rootOutFile["h_dr_lmuh"]    = np.histogram(deltaRlmuhdf,bins=30,range=(0,6),weights=eventweights)
-        #rootOutFile["h_dr_slmuh"]   = np.histogram(deltaRslmuhdf,bins=30,range=(0,6),weights=eventweights)
-        #rootOutFile["h_dr_slmulmu"] = np.histogram(deltaRslmulmudf,bins=30,range=(0,6),weights=eventweights)
-        ###new 2022-01-11
-        #rootOutFile["h_LMu_pt"]     = np.histogram(fdf['LMuCandidate_pt'],bins=50,range=(0,500),weights=eventweights)
-        #rootOutFile["h_sLMu_pt"]     = np.histogram(fdf['sLMuCandidate_pt'],bins=50,range=(0,500),weights=eventweights)
-        #rootOutFile["h_LMu_phi"]    = np.histogram(fdf['LMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
-        #rootOutFile["h_sLMu_phi"]    = np.histogram(fdf['sLMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
-        #rootOutFile["h_LMu_eta"]    = np.histogram(fdf['LMuCandidate_eta'],bins=30,range=(-5,5),weights=eventweights)
-        #rootOutFile["h_sLMu_eta"]    = np.histogram(fdf['sLMuCandidate_eta'],bins=30,range=(-5,5),weights=eventweights)
 
         zpterrs      = boostUnc(fdf['ZCandidate_pt'],eventweights,80,0,800)
         zetaerrs     = boostUnc(fdf['ZCandidate_eta'],eventweights,30,-5,5)
@@ -441,16 +462,7 @@ if __name__=='__main__':
                       dphizmeterrs,
                       dphihmeterrs,
                       drzherrs,
-                      #drlmuherrs,
-                      #drslmuherrs,
-                      #drslmulmuerrs,
-                      #lmupterrs,
-                      #smupterrs,
-                      #lmuphierrs,
-                      #smuphierrs,
-                      #lmuetaerrs,
-                      #smuetaerrs,
-                      ]
+        ]
 
         unc_names = ['h_z_pt',
                      'h_z_eta',
@@ -474,18 +486,9 @@ if __name__=='__main__':
                      'h_dphi_zmet',
                      'h_dphi_hmet',
                      'h_dr_zh',
-                     #'h_dr_lmuh',
-                     #'h_dr_slmuh',
-                     #'h_dr_slmulmu',
-                     #'h_LMu_pt',
-                     #'h_sLMu_pt',
-                     #'h_LMu_phi',
-                     #'h_sLMu_phi',
-                     #'h_LMu_eta',
-                     #'h_sLMu_eta',
         ]
         
-        if (stype != 0 and channel != "emu"):
+        if (stype > 0 and channel != "emu"):
             rootOutFile["h_dr_lmu_gh"] = np.histogram(deltaRlmughdf,bins=30,range=(0,6),weights=eventweights)
             rootOutFile["h_dr_slmu_gh"] = np.histogram(deltaRslmughdf,bins=30,range=(0,6),weights=eventweights)
             rootOutFile["h_dr_gz_gh"] = np.histogram(deltaRgzghdf,bins=30,range=(0,6),weights=eventweights)
@@ -627,7 +630,7 @@ if __name__=='__main__':
         #print("Passing events sb events, not sf              : ",len(sbdf))
         #print("Passing events sb events, sum of event weights: ",
         
-        if stype != 0:
+        if stype > 0:
             if sr:
                 rootOutFile["hnevents_sr"]   = str((srdf['event_weight_kf']*srdf['event_weight_btag']).sum())#str(len(srdf))
             print("Weighted Events, passing Z pT:  ",str((zptdf['event_weight_kf']*zptdf['event_weight_btag']*zptdf['event_weight_muid']).sum()))

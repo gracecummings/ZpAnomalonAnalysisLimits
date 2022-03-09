@@ -29,8 +29,10 @@ def sampleType(sampstring,givejecs=False):
     if "Run" in sampstring:
         if "SingleMuon" in sampstring:
             samptype = -1
-        if ("SingleElectron" in sampstring) or ("EGamma" in sampstring):
+        elif ("SingleElectron" in sampstring) or ("EGamma" in sampstring):
             samptype = -2
+        else:
+            samptype = 0
     elif "ZpAnomalon" in sampstring:
         samptype = 1
     elif "DYJetsToLL" in sampstring:
