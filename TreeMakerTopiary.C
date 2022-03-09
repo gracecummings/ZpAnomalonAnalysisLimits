@@ -51,7 +51,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    fChain->SetBranchStatus("ZCandidatesEE",1);
    fChain->SetBranchStatus("ZCandidatesEU",1);
 
-   if (sampleType != 0){
+   if (sampleType > 0){
      fChain->SetBranchStatus("GenParticles*",1);
    }
 
@@ -539,7 +539,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       */
 
       //eeBadScFilter
-      if (sampleType == 0) {
+      if (sampleType < 0) {
 	if (fChain->GetLeaf("eeBadScFilter")->GetValue() == 1.0) {
 	  passFil = true;
 	}
@@ -549,7 +549,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       float evntwkf_hold = 1.;
       TLorentzVector theGenZ;
       TLorentzVector theGenH;
-      if (sampleType != 0) {//Not Data
+      if (sampleType > 0) {//Not Data
 	int gpid;
 	unsigned long ngen = GenParticles->size();
 	for (unsigned long i = 0; i < ngen; ++i) {
@@ -754,7 +754,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       //Do the emu trigger
       //passTrig = true;
-      if (sampleType !=0 && anchan == 1 ) {//if emu channel
+      if (sampleType > 0 && anchan == 1 ) {//if emu channel
 	//if (nZeu > 0) {
 	//std::cout<<"   The muon trigger truth is  "<<TriggerPass->at(65)<<std::endl;
 	//std::cout<<"   The electron trigger truth is  "<<TriggerPass->at(40)<<std::endl;
@@ -779,7 +779,20 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//}
 	//*/
       }
-   //*/
+      else if (sampleType < 0 && anchan == 1 ) {
+	//if (sampleType == -1 && trgvals[0] == 1) {//test for just the muon trigger
+	//passTrig = true;
+	//counttrigpass += true;
+	//}	  
+	if (sampleType == -1 && muld == 1 && trgvals[0] == 1) {//mu data, mu lead, mu trig
+	  passTrig = true;
+	  counttrigpass += true;
+	}
+	else if (sampleType == -2 && elld == 1 && trgvals[1] == 1) {
+	 passTrig = true;
+	 counttrigpass += true;
+	 }
+      }
   
       //Z Candidate Build
       //For old ntuples
@@ -820,7 +833,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       int leptonbin = -1;
       //std::cout<<"We are about to do the sf"<<std::endl;
       
-      if (sampleType !=0 && anchan == 4) {//not data
+      if (sampleType > 0 && anchan == 4) {//not data
 	double ptcheck = leadmu.Pt();
 	if (ptcheck >= 120.0) {
 	  ptcheck = 100.0;//safely within last bin, but a hack
@@ -912,7 +925,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	}
       }
 
-      if (sampleType != 0) {
+      if (sampleType > 0) {
 	sfidx = hbtagsf->FindBin(theh.Pt());
 	if (sfidx > 0) {
 	  hsf = hbtagsf->GetBinContent(sfidx);
@@ -960,7 +973,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
       double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue();
 
-      if (systidx > -1 && sampleType != 0){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
+      if (systidx > -1 && sampleType > 0){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
 	if (metsys[systidx] > 0) {//Checks up or down
 	  ptmiss = METUp->at(systidx);//The index of the corresponding met in the ntuple is the same
 	  ptmiss_phi = METPhiUp->at(systidx);
@@ -1066,17 +1079,17 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
-      if (passZ && passh && passTrig && sampleType !=0 && (channel == anchan)) {//usual
-	//if (passZ && passTrig && sampleType !=0 && (channel == anchan)) {//loosened cuts
-	//if (passZ && passh && sampleType !=0) {//for Zee channel checks
-	//if (passZ && (sampleType !=0) && (channel == anchan)){
+      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
+	//if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
+	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
+	//if (passZ && (sampleType > 0) && (channel == anchan)){
 	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
 	trimTree->Fill();
 	countpass += 1;
       }
 
 	/////ucomment!!!
-      else if (passZ && passh && passTrig && sampleType == 0 && passFil && (channel == anchan)) {
+      else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;

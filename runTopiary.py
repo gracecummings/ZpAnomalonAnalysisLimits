@@ -40,7 +40,7 @@ if __name__=="__main__":
     parser.add_argument("-dwnuncl","--downunclsystematics",type=bool,help="if you want unclustered met down systematics output")
     args = parser.parse_args() 
     samp = args.sample
-    samptype = -1
+    samptype = -1000
     extrajeccrap = True
     #Check what you are working with
     samptype,checkedyear = go.sampleType(samp,extrajeccrap)
@@ -55,7 +55,7 @@ if __name__=="__main__":
         checkedyear = round(tmp)
     year = "20"+str(checkedyear)
     
-    if samptype < 0:
+    if samptype < -10:
         print("You have a problem, we do not undertand the sample coding")
         sys.exit()
     if channel <= 0:
@@ -76,8 +76,8 @@ if __name__=="__main__":
         #for non-signal samples
         inChain = ROOT.TChain("PreSelection")
         #inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
-        #inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
-        inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
+        inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
+        #inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
         for f in inputs:
             #print(f)
             inChain.Add(f)
@@ -139,8 +139,8 @@ if __name__=="__main__":
 
         
     #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','No','Req','On','Reco')#Needs to become dynamic with cuts
-    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#normal name
-    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#nemu
+    #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#normal name
+    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#nemu
 
     print("     Systematics ",syststring)
     print("     Events in TChain: ",inChain.GetEntries())

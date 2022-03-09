@@ -27,7 +27,10 @@ def yearFormatter(yearlist):
 def sampleType(sampstring,givejecs=False):
     #Make numerical code for type of sample
     if "Run" in sampstring:
-        samptype = 0
+        if "SingleMuon" in sampstring:
+            samptype = -1
+        if ("SingleElectron" in sampstring) or ("EGamma" in sampstring):
+            samptype = -2
     elif "ZpAnomalon" in sampstring:
         samptype = 1
     elif "DYJetsToLL" in sampstring:
@@ -39,7 +42,7 @@ def sampleType(sampstring,givejecs=False):
     elif "ZZTo" in sampstring:
         samptype = 5
     else:
-        samptype = -1
+        samptype = -1000
 
     if "2018" in sampstring:
         year = 18
