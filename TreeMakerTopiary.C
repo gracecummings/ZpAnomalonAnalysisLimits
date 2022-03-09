@@ -28,6 +28,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    
 
    fChain->SetBranchStatus("*",0);
+   fChain->SetBranchStatus("RunNum",1);
+   fChain->SetBranchStatus("LumiBlockNum",1);
+   fChain->SetBranchStatus("EvtNum",1);
    fChain->SetBranchStatus("GenMET",1);
    fChain->SetBranchStatus("GenMETPhi",1);
    fChain->SetBranchStatus("TriggerPass",1);
