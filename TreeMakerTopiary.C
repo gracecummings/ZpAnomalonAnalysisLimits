@@ -447,7 +447,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       //debug
       //std::cout<<"    analyzing event "<<jentry<<std::endl;
-      //if (jentry == 200) {
+      //if (jentry == 2000) {
       //break;
       //}
      
@@ -753,11 +753,31 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //Do the emu trigger
-      if (anchan == 1) {//if emu channel
+      //passTrig = true;
+      if (sampleType !=0 && anchan == 1 ) {//if emu channel
+	//if (nZeu > 0) {
+	//std::cout<<"   The muon trigger truth is  "<<TriggerPass->at(65)<<std::endl;
+	//std::cout<<"   The electron trigger truth is  "<<TriggerPass->at(40)<<std::endl;
+	//}
+	//if (trgvals[0] == 1) {
+	//passTrig = true;
+	//counttrigpass += 1;
+	//}
+	///*
 	if (muld == 1 && trgvals[0] == 1){
 	  passTrig = true;
-	  counttrigpass = true;
+	  counttrigpass += true;
 	}
+	else if (elld == 1 && trgvals[1] == 1) {
+	  passTrig = true;
+	  counttrigpass += true;
+	}
+	//else {
+	//if (nZeu > 0) {
+	//  std::cout<<"We have an emu MC event where it's leading lepton does not match the trigger."<<std::endl;
+	//}
+	//}
+	//*/
       }
    //*/
   
