@@ -429,10 +429,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::vector<string> trig16mu = {"HLT_Mu50_v"};
    std::vector<string> trig18e = {"HLT_Ele32_WPTight_Gsf_v"};
    std::vector<string> trig17e = {"HLT_Ele35_WPTight_Gsf_v"};
-   std::vector<string> trig16e = {"HLT_Ele32_WPTight_Gsf_v"};
+   std::vector<string> trig16e = {"HLT_Ele27_WPTight_Gsf_v"};
    std::vector<string> trig18emu = {"HLT_Mu55_v","HLT_Ele32_WPTight_Gsf_v"};
    std::vector<string> trig17emu = {"HLT_Mu50_v","HLT_Ele35_WPTight_Gsf_v"};
-   std::vector<string> trig16emu = {"HLT_Mu50_v","HLT_Ele32_WPTight_Gsf_v"};
+   std::vector<string> trig16emu = {"HLT_Mu50_v","HLT_Ele27_WPTight_Gsf_v"};
 
 
    std::vector<std::vector<string>> trig18 = {{"no"},trig18emu,trig18e,{"no"},trig18mu};
@@ -919,12 +919,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  leptonsf = hmuonsf->GetBinContent(leptonbin);
 	  lsfup    = hmuonsf->GetBinErrorUp(leptonbin);
 	  lsfdwn    = hmuonsf->GetBinErrorLow(leptonbin);
-	  if (passZ) {
-	    std::cout<<"Muon scale factor: "<<leptonsf<<std::endl;
-	    std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
-	    std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
-	    std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
-	  }
+	  //if (passZ) {
+	  //std::cout<<"Muon scale factor: "<<leptonsf<<std::endl;
+	  //std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
+	  //std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
+	  //std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
+	  //}
 
 	}
 	if (elld == 1) {
@@ -936,12 +936,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  leptonsf = helectronsf->GetBinContent(leptonbin);
 	  lsfup    = helectronsf->GetBinErrorUp(leptonbin);
 	  lsfdwn   = helectronsf->GetBinErrorLow(leptonbin);
-	  if (passZ) {
-	    std::cout<<"Electron scale factor: "<<leptonsf<<std::endl;
-	    std::cout<<"leading Electron pt, straight : "<<leade.Pt()<<std::endl;
-	    std::cout<<"leading electron pt, checked  : "<<ptcheck<<std::endl;
-	    std::cout<<"leading electron eta, straight : "<<leade.Eta()<<std::endl;
-	  }
+	  //if (passZ) {
+	  //std::cout<<"Electron scale factor: "<<leptonsf<<std::endl;
+	  //std::cout<<"leading Electron pt, straight : "<<leade.Pt()<<std::endl;
+	  //std::cout<<"leading electron pt, checked  : "<<ptcheck<<std::endl;
+	  //std::cout<<"leading electron eta, straight : "<<leade.Eta()<<std::endl;
+	  //}
 
 	}
       }
@@ -1169,7 +1169,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
       if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
-	//if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
+      //if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
 	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
 	//if (passZ && (sampleType > 0) && (channel == anchan)){
 	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
@@ -1179,6 +1179,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
 	/////ucomment!!!
       else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
+	//else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;

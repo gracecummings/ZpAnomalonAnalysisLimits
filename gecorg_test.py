@@ -43,6 +43,9 @@ def sampleType(sampstring,givejecs=False):
         samptype = 4
     elif "ZZTo" in sampstring:
         samptype = 5
+    elif "WWTo" in sampstring:
+        samptype = 6
+
     else:
         samptype = -1000
 
