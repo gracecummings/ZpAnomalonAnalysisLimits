@@ -126,7 +126,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double channelflag;
    double metusable;
    double metphiusable;
-
+   TLorentzVector eventleade;
+   TLorentzVector eventleadmu;
+   
    //Define the skimmed skim  output file and tree
    TFile* trimFile = new TFile(outputFileName.c_str(),"recreate");
    TTree* trimTree = fChain->CloneTree(0);
@@ -812,13 +814,29 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//counttrigpass += 1;
 	//}
 	//*
-	if (muld == 1 && trgvals[0] == 1){
+
+	//First iteration
+	//if (muld == 1 && trgvals[0] == 1){
+	//passTrig = true;
+	//counttrigpass += true;
+	//}
+	//else if (elld == 1 && trgvals[1] == 1) {
+	//passTrig = true;
+	//counttrigpass += true;
+	//}
+
+	//New MC mixing
+	if (Electrons->size() > 0 && Muons->size() > 0) {
+	eventleade = Electrons->at(0);
+	eventleadmu = Muons->at(0);
+	if (eventleade.Pt() > eventleadmu.Pt() && trgvals[1] == 1) {
 	  passTrig = true;
 	  counttrigpass += true;
 	}
-	else if (elld == 1 && trgvals[1] == 1) {
+	if (eventleade.Pt() <= eventleadmu.Pt() && trgvals[0] == 1) {
 	  passTrig = true;
 	  counttrigpass += true;
+	}
 	}
 	//else {
 	//if (nZeu > 0) {
@@ -828,11 +846,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//*/
       }
       else if (sampleType < 0 && anchan == 1 ) {
-	if (sampleType == -2 && trgvals[1] == 1) {//test for just the electron trigger
-	  passTrig = true;
-	  counttrigpass += true;
-	}
-	/*
+	//if (sampleType == -2 && trgvals[1] == 1) {//test for just the electron trigger
+	//passTrig = true;
+	//counttrigpass += true;
+	//}
+	/*//Original plan for data mixed triggers
 	if (sampleType == -1 && muld == 1 && trgvals[0] == 1) {//mu data, mu lead, mu trig
 	  passTrig = true;
 	  counttrigpass += true;
@@ -842,6 +860,19 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	 counttrigpass += true;
 	 }
 	//*/
+	if (Electrons->size() > 0 && Muons->size() > 0) {
+	  eventleade = Electrons->at(0);
+	  eventleadmu = Muons->at(0);
+	  if (eventleade.Pt() > eventleadmu.Pt() && trgvals[1] == 1) {
+	    passTrig = true;
+	    counttrigpass += true;
+	  }
+	  if (eventleade.Pt() <= eventleadmu.Pt() && trgvals[0] == 1) {
+	    passTrig = true;
+	    counttrigpass += true;
+	  }
+	}
+
       }
       //Z Candidate Build
       //For old ntuples
