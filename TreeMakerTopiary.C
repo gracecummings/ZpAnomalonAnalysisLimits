@@ -461,7 +461,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    int countfat = 0;
    int emumulead = 0;
    int emuelead  = 0;
-   
+
+   //std::cout<<"Number of files that make up the TChain: "<<fChain->GetListOfFiles()->GetSize()<<std::endl;this is weird, does not match files
+      
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
@@ -494,26 +496,31 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       string token;
       std::vector<int> checktrgidxs;
       thetrigs = trigs[year-16][anchan];//add iteration for more triggers
-      if (jentry == 0) {
+      //if (jentry == 0) {
 	for (std::size_t i = 0; i < thetrigs.size();++i){
-	  std::cout<<"The trigs we are checking are "<<thetrigs[i]<<std::endl;
+	  //std::cout<<"The trigs we are checking are "<<thetrigs[i]<<std::endl;
 	  ourtrg = thetrigs[i];
 	  trgtit = fChain->GetBranch("TriggerPass")->GetTitle();
-	  fthen = fChain->GetCurrentFile();
+	  fthen = fChain->GetFile();
+	  //std::cout<<"The file we are checking is  "<<fthen<<std::endl;
 	  while ((pos = trgtit.find(delim)) != std::string::npos && token != ourtrg) {
 	    token = trgtit.substr(0,pos);
+	    //std::cout<<"    This trigger name "<<token<<std::endl;
 	    trgidx += 1;
 	    trgtit.erase(0,pos+delim.length());
+	    //std::cout<<"    This trig's idx "<<trgidx<<std::endl;
 	  }
 	  checktrgidxs.push_back(trgidx);
-	  std::cout<<"The trig idx is "<<trgidx<<std::endl;
+	  //std::cout<<"The found trig idx is "<<trgidx<<std::endl;
 	  trgidx = -1;
 	}
-      }
+	//}
+      /*
       else {
-	fnow = fChain->GetCurrentFile();
+	fnow = fChain->GetFile();
 	if (fnow != fthen) {
 	  std::cout<< "New file in TChain" <<std::endl;
+	  std::cout<<"The file we are checking is  "<<fthen<<std::endl;
 	  checktrgidxs.clear();
 	  trgtit = fChain->GetBranch("TriggerPass")->GetTitle();
 	  trgidx = -1;
@@ -522,17 +529,21 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    std::cout<<"The trigs we are checking are "<<thetrigs[i]<<std::endl;
 	    ourtrg = thetrigs[i];
 	    while ((pos = trgtit.find(delim)) != std::string::npos && token != ourtrg) {
+	      //std::cout<<"The trigger name "<<pos<<std::endl;
 	      token = trgtit.substr(0,pos);
+	      std::cout<<"    This trigger name "<<token<<std::endl;
 	      trgidx += 1;
+	      std::cout<<"    This trig's idx "<<trgidx<<std::endl;
 	      trgtit.erase(0,pos+delim.length());
 	    }
 	    checktrgidxs.push_back(trgidx);
-	    std::cout<<"The trig idx is "<<trgidx<<std::endl;
+	    std::cout<<"The found trig idx is "<<trgidx<<std::endl;
 	    trgidx = -1;
 	  }
 	}
       }
-
+      */
+      
       if (checktrgidxs.size() != 0) {//This keeps the trg indexs in scope
 	trgidxs = checktrgidxs;
       }
@@ -679,9 +690,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    baseZdiff = massZdiff;
 	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
 	    passZ = true;
-	    if (passTrig){
+	    //if (passTrig){
 	      zmumu += 1;
-	    }
+	      //}
 
 	  }
 	}
@@ -800,7 +811,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//passTrig = true;
 	//counttrigpass += 1;
 	//}
-	///*
+	//*
 	if (muld == 1 && trgvals[0] == 1){
 	  passTrig = true;
 	  counttrigpass += true;
@@ -817,10 +828,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//*/
       }
       else if (sampleType < 0 && anchan == 1 ) {
-	//if (sampleType == -1 && trgvals[0] == 1) {//test for just the muon trigger
-	//passTrig = true;
-	//counttrigpass += true;
-	//}	  
+	if (sampleType == -2 && trgvals[1] == 1) {//test for just the electron trigger
+	  passTrig = true;
+	  counttrigpass += true;
+	}
+	/*
 	if (sampleType == -1 && muld == 1 && trgvals[0] == 1) {//mu data, mu lead, mu trig
 	  passTrig = true;
 	  counttrigpass += true;
@@ -829,8 +841,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	 passTrig = true;
 	 counttrigpass += true;
 	 }
+	//*/
       }
-  
       //Z Candidate Build
       //For old ntuples
       /*
@@ -1022,7 +1034,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  hbtagundwn = hbtagsfuncdwn->GetBinContent(sfidx);
 	}
       }
-      
       //*/
       
       //btag sf debug
@@ -1104,8 +1115,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	countzpass +=1 ;
       }
 
-      if (passh && passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan
-	//if (passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan 
+      //if (passh && passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan
+	if (passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan 
 	//if (passh && passZ ) {//Removed Z Channel Requirement
 	//if (channel == anchan && passZ) {//id'd lepton and gen higgs plots
 	hCandidate = theh;
@@ -1168,8 +1179,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
-      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
-      //if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
+      //if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
+      if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
 	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
 	//if (passZ && (sampleType > 0) && (channel == anchan)){
 	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
@@ -1178,8 +1189,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
 	/////ucomment!!!
-      else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
-	//else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
+	//else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
+	else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;
