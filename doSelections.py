@@ -13,12 +13,19 @@ parser = argparse.ArgumentParser()
 def makeEventWeightSeries(df,syststr):
     colnames = list(df.columns)
     wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
+    sfnames = [x.split("event_weight_")[1]+"nom" for x in wnames]
+    sfname = "_".join(sfnames)
+    
     wdf = df[wnames]
     ewdf = wdf.prod(axis=1)
-    return ewdf
+    return ewdf,sfname
 
 def makeEventWeightSeriesWithUncertainties(df,syststr):
     colnames = list(df.columns)
+    wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
+        
+    sfnames = [x.split("event_weight_")[1]+"nom" for x in wnames]
+    sfname = "_".join(sfnames)
 
     if "up" in syststr:
         uncname = syststr.split("up")[0]
@@ -28,7 +35,9 @@ def makeEventWeightSeriesWithUncertainties(df,syststr):
         uncname = syststr.split("dwn")[0]
         unctag = syststr.split("dwn")[0]+"uncdwn"
         uncsign = -1.0
-    
+
+    sfname = sfname.replace(uncname+"nom",syststr)
+
     wcolname = "event_weight_"+uncname
     if wcolname not in colnames:
         print("You scale factor is not in the dataframe, aborting")
@@ -39,14 +48,13 @@ def makeEventWeightSeriesWithUncertainties(df,syststr):
         
     unccol = df["event_weight_"+unctag]        
     wcol   = df[wcolname]
-    wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
     wnames.remove(wcolname)
     
     wdf = df[wnames].copy()
     wdf[wcolname] = wcol+uncsign*unccol
     ewdf = wdf.prod(axis=1)
     #print(ewdf)
-    return ewdf
+    return ewdf,sfname
     
 def boostUnc(values,weights,nbins,binstart,binstop):
     boosth = bh.Histogram(bh.axis.Regular(bins=nbins,start=binstart,stop=binstop),storage=bh.storage.Weight())
@@ -222,7 +230,7 @@ if __name__=='__main__':
             goodname = samp
 
         #print(events)
-        print("    Concerning systematics:")
+        print("    Concerning jet systematics:")
         print("    ",jectype)
 
 
@@ -408,15 +416,10 @@ if __name__=='__main__':
         #print(" systl: ",systl)
         #print(" stype: ",stype)
         systname = 'btagsystdefaultname'
-        makeEventWeightSeriesWithUncertainties(fdf,systl)
+        
         if not systl and stype > 0:
-            #print("if testing is working")
             print("    Applying nominal sf")
-            systname = 'btagnom_muidnom'
-            #eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
-            #print(eventweights)
-            eventweights = makeEventWeightSeries(fdf,systl)
-            print(eventweights)
+            eventweights,systname = makeEventWeightSeries(fdf,systl)
         elif not systl and stype <= 0:
             #print("if testing is working")
             print("    No systematic request and data, so no sf")
@@ -428,29 +431,32 @@ if __name__=='__main__':
             systname = 'btagnom_muidnom'
 
         else:
-            if "btagup" == systl:
-                print("    Applying uncUp btagging SF")
-                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']+fdf['event_weight_btaguncup'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
-                print(eventweights)
-                systname = systl+'_muidnom'
-            elif "btagdwn" == systl:
-                print("    Applying uncDwn btagging SF")
-                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']-fdf['event_weight_btaguncdwn'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
-                print(eventweights)
-                systname = systl+'_muidnom'
-            elif "muidup" == systl:
-                print("    Applying uncUp MuonID SF")
-                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*(fdf['event_weight_muid']+fdf['event_weight_muiduncup'])
-                systname = 'btagnom_'+systl
-            elif "muiddwn" == systl:
-                print("    Applying uncDwn MuonID SF")
-                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*(fdf['event_weight_muid']-fdf['event_weight_muiduncdwn'])
-                systname = 'btagnom_'+systl
-            else:
-                print("    SF unc not recognized, using the nominal values")
-                systname = systl
-                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']
-
+            print("Doing scale factor variations of type: ",systl)
+            eventweights,systname = makeEventWeightSeriesWithUncertainties(fdf,systl)
+#            if "btagup" == systl:
+#                print("    Applying uncUp btagging SF")
+#                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']+fdf['event_weight_btaguncup'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
+#                #print(eventweights)
+#                systname = systl+'_muidnom'
+#            elif "btagdwn" == systl:
+#                print("    Applying uncDwn btagging SF")
+#                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']-fdf['event_weight_btaguncdwn'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
+#                print(eventweights)
+#                systname = systl+'_muidnom'
+#            elif "muidup" == systl:
+#                print("    Applying uncUp MuonID SF")
+#                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*(fdf['event_weight_muid']+fdf['event_weight_muiduncup'])
+#                systname = 'btagnom_'+systl
+#            elif "muiddwn" == systl:
+#                print("    Applying uncDwn MuonID SF")
+#                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*(fdf['event_weight_muid']-fdf['event_weight_muiduncdwn'])
+#                systname = 'btagnom_'+systl
+#            else:
+#                print("    SF unc not recognized, using the nominal values")
+#                systname = systl
+#                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']
+#
+                
         print("The event weights are wrong for general leading lepton dR plots")
         print("    number of passing events straight ",len(fdf))
         print("    number of passing events weighted ",eventweights.sum())
