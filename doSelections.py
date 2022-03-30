@@ -10,6 +10,19 @@ import gecorg_test as go
 
 parser = argparse.ArgumentParser()
 
+def makeEventWeightSeries(df,syststr):
+    print("   In the event weights function:")
+    print("   The systl ",syststr)
+    colnames = list(df.columns)
+    #print("   The df columns ",colnames)
+    wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
+    print("   The weight columns ",wnames)
+    wdf = df[wnames]
+    print(wdf)
+    ewdf = wdf.prod(axis=1)
+    print(ewdf)
+    return ewdf
+
 def boostUnc(values,weights,nbins,binstart,binstop):
     boosth = bh.Histogram(bh.axis.Regular(bins=nbins,start=binstart,stop=binstop),storage=bh.storage.Weight())
     boosth.fill(values,weight=weights)
@@ -86,6 +99,8 @@ if __name__=='__main__':
     topdir = args.directory
 
     inputfiles = glob.glob(topdir+'/'+sampname+'*_topiary_'+channel+'*.root')
+    #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-14/noLeadingReq/Run2016H-17Jul2018-v1.SingleElectron_topiary_emu_systnominal_elecTrigNoLeadingRequirement_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
+    #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-28/Autumn18.TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8_topiary_mumu_systnominal_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
     innames,jecs = getContentsOfSample(inputfiles)
     samp = innames[0]
     print("The parameters you are invoking: ")
@@ -139,34 +154,40 @@ if __name__=='__main__':
             branches.extend(mcbranches)
 
 
-        if (("Run" in sampname) and ("emu" in channel)):
-            if (("Single" not in sampname) or ("EGamma" not in sampname)):
-                print("Going to combine datasets")
-                muf = glob.glob(topdir+'/'+sampname+'*SingleMuon*_topiary_'+channel+'_'+jectype+'*.root')
-                euf = glob.glob(topdir+'/'+sampname+'*SingleElectron*_topiary_'+channel+'_'+jectype+'*.root')
-                print("Doing selections on:")
-                print("    ",muf[0],euf[0])
-                print("    ",sampname)
-
-                mtree = up3.open(muf[0])['PreSelection;1']
-                mevents = mtree.pandas.df(branches=branches)
-                etree = up3.open(euf[0])['PreSelection;1']
-                eevents = etree.pandas.df(branches=branches)
-                print("Number of events in muon dataset ",len(mevents))
-                print("Number of events in elec dataset ",len(eevents))
-                
-                frames = [mevents,eevents]
-                mixdf = pd.concat(frames)
-                
-                print("Number of events in straight mixed set ",len(mixdf))
-                print("dropping duplicates")
-                mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
-                print("Number of events after dropping duplicates ",len(mixdf))
-                events = mixdf
-                goodname = sampname+"combined"
+        if (("Run" in sampname) and ("emu" in channel) and not (("Single" in sampname) or ("EGamma" in sampname))):
+            print(sampname)
+            print("Going to combine datasets")
+            muf = glob.glob(topdir+'/'+sampname+'*SingleMuon*_topiary_'+channel+'_*'+jectype+'*.root')
+            if (year < 18):
+                euf = glob.glob(topdir+'/'+sampname+'*SingleElectron*_topiary_'+channel+'_*'+jectype+'*.root')
+            if (year == 18):
+                euf = glob.glob(topdir+'/'+sampname+'*EGamma*_topiary_'+channel+'_*'+jectype+'*.root')
+            print("Doing selections on:")
+            print("    ",muf[0],euf[0])
+            print("    ",sampname)
+            
+            mtree = up3.open(muf[0])['PreSelection;1']
+            mevents = mtree.pandas.df(branches=branches)
+            etree = up3.open(euf[0])['PreSelection;1']
+            eevents = etree.pandas.df(branches=branches)
+            #print(mevents)
+            #print(eevents)
+            print("Number of events in muon dataset ",len(mevents))
+            print("Number of events in elec dataset ",len(eevents))
+            
+            frames = [mevents,eevents]
+            mixdf = pd.concat(frames)
+            print("Number of events in straight mixed set ",len(mixdf))
+            print("dropping duplicates")
+            mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
+            print("Number of events after dropping duplicates ",len(mixdf))
+            events = mixdf
+            #print(events)
+            goodname = sampname+"combined"
 
         else:
-            inputfiles = glob.glob(topdir+'/'+samp+'*_topiary_'+channel+'_'+jectype+'*.root')
+            print("No weird combos going on")
+            inputfiles = glob.glob(topdir+'/'+samp+'*_topiary_'+channel+'_*'+jectype+'*.root')
             print("Doing selections on:")
             print("    ",inputfiles[:1])
             print("    ",samp)
@@ -175,7 +196,7 @@ if __name__=='__main__':
             events = tree.pandas.df(branches=branches)
             goodname = samp
 
-
+        #print(events)
         print("    Concerning systematics:")
         print("    ",jectype)
 
@@ -282,8 +303,27 @@ if __name__=='__main__':
             print("IN the emu chanel")
             #print(fdf['LEleCandidate_pt'])
             #print(fdf['LMuCandidate_pt'])
+            print(" Length of final selection df ",len(fdf))
+
             leadmu = fdf[fdf['LMuCandidate_pt'] > fdf['LEleCandidate_pt']]
             leadel = fdf[fdf['LEleCandidate_pt'] > fdf['LMuCandidate_pt']]
+
+            print(" Length of leading muon df in final selection ",len(leadmu))
+            print(" Length of leading electron df in",len(leadel))
+
+            #get the event weights in order for these reordered series
+            lepordrkfw         = leadmu['event_weight_kf'].append(leadel['event_weight_kf'])
+            lepordrbtagw       = leadmu['event_weight_btag'].append(leadel['event_weight_btag'])
+            lepordrbtaguncdwnw = leadmu['event_weight_btaguncdwn'].append(leadel['event_weight_btaguncdwn'])
+            lepordrbtaguncupw  = leadmu['event_weight_btaguncup'].append(leadel['event_weight_btaguncup'])
+            lepordrmuidw       = leadmu['event_weight_muid'].append(leadel['event_weight_muid'])
+            lepordrmuidwuncdwn = leadmu['event_weight_muiduncdwn'].append(leadel['event_weight_muiduncdwn'])
+            lepordrmuidwuncup  = leadmu['event_weight_muiduncup'].append(leadel['event_weight_muiduncup'])
+
+            #gotta make the hCandidate stuff with the same variables
+            leadinglephcandphi = leadmu['hCandidate_phi'].append(leadel['hCandidate_phi'])
+            leadinglephcandeta = leadmu['hCandidate_eta'].append(leadel['hCandidate_eta'])
+            
             leadpt = leadmu['LMuCandidate_pt'].append(leadel['LEleCandidate_pt'])
             leadphi = leadmu['LMuCandidate_phi'].append(leadel['LEleCandidate_phi'])
             leadeta = leadmu['LMuCandidate_eta'].append(leadel['LEleCandidate_eta'])
@@ -296,10 +336,22 @@ if __name__=='__main__':
             allelphi = leadmu['sLEleCandidate_phi'].append(leadel['LEleCandidate_phi'])
             allmueta =  leadmu['LMuCandidate_eta'].append(leadel['sLMuCandidate_eta'])
             alleleta = leadmu['sLEleCandidate_eta'].append(leadel['LEleCandidate_eta'])
-            deltaRllephdf   = deltaR(leadphi,fdf['hCandidate_phi'],leadeta,fdf['hCandidate_eta'])
-            deltaRslephdf   = deltaR(sleadphi,fdf['hCandidate_phi'],sleadeta,fdf['hCandidate_eta'])
+            deltaRllephdf   = deltaR(leadphi,leadinglephcandphi,leadeta,leadinglephcandeta)
+            deltaRslephdf   = deltaR(sleadphi,leadinglephcandphi,sleadeta,leadinglephcandeta)
             deltaRsleplepdf = deltaR(sleadphi,leadphi,sleadeta,leadeta)
-
+            #print(" lenght of leading phi series ",len(leadphi))
+            #print(" lenght of leading eta series ",len(leadeta))
+            #print(" lenght of hcandidare phi ",len(fdf['hCandidate_phi']))
+            #print(" lenght of hcandidare eta ",len(fdf['hCandidate_eta']))
+            #print(" lenght of leading lep dr h series ",len(deltaRllephdf))
+            #print("printing the weird series")
+            #print(deltaRllephdf)
+            #print("the leading series")
+            #print(leadphi)
+            #print(leadeta)
+            #print(fdf['hCandidate_phi'])
+            #print(fdf['hCandidate_eta'])
+            #print(fdf)
 
         if (stype > 0 and channel != "emu"):#reclustering comments
             deltaRlmughdf  = deltaR(fdf['LMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['LMuCandidate_eta'],fdf['ghCandidate_eta'])
@@ -326,18 +378,20 @@ if __name__=='__main__':
         #calculate the event weight
         #print(fdf['event_weight_btag'])
         eventweights = fdf['event_weight_kf']
-        #print(eventweights)
-
+        
         #print("btagging systematics debug")
         #print(" systl: ",systl)
         #print(" stype: ",stype)
         systname = 'btagsystdefaultname'
+        makeEventWeightSeries(fdf,systl)
         if not systl and stype > 0:
             #print("if testing is working")
             print("    Applying nominal sf")
             systname = 'btagnom_muidnom'
-            eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']
-            #print(eventweights)
+            eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
+            print(eventweights)
+            eventweights = makeEventWeightSeries(fdf,systl)
+            print(eventweights)
         elif not systl and stype <= 0:
             #print("if testing is working")
             print("    No systematic request and data, so no sf")
@@ -370,6 +424,7 @@ if __name__=='__main__':
                 systname = systl
                 eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']
 
+        print("The event weights are wrong for general leading lepton dR plots")
         print("    number of passing events straight ",len(fdf))
         print("    number of passing events weighted ",eventweights.sum())
         #print("    max Zp mass estimator: ",fdf['ZPrime_mass_est'].max())
@@ -629,14 +684,16 @@ if __name__=='__main__':
 
         #print("Passing events sb events, not sf              : ",len(sbdf))
         #print("Passing events sb events, sum of event weights: ",
-        
+
         if stype > 0:
             if sr:
                 rootOutFile["hnevents_sr"]   = str((srdf['event_weight_kf']*srdf['event_weight_btag']).sum())#str(len(srdf))
-            print("Weighted Events, passing Z pT:  ",str((zptdf['event_weight_kf']*zptdf['event_weight_btag']*zptdf['event_weight_muid']).sum()))
-            print("Weighted Events, passing MET:   ",str((metdf['event_weight_kf']*metdf['event_weight_btag']*metdf['event_weight_muid']).sum()))
-            print("Weighted Events, passing H pT:  ",str((hptdf['event_weight_kf']*hptdf['event_weight_btag']*hptdf['event_weight_muid']).sum()))
-            print("Weighted Events, passing btag:  ",str((btdf['event_weight_kf']*btdf['event_weight_btag']*btdf['event_weight_muid']).sum()))
+        print("Unweighted initial events :     ",len(events))
+        print("Weighted Events, passing Z pT:  ",str((zptdf['event_weight_kf']*zptdf['event_weight_btag']*zptdf['event_weight_muid']).sum()))
+        print("Weighted Events, passing MET:   ",str((metdf['event_weight_kf']*metdf['event_weight_btag']*metdf['event_weight_muid']).sum()))
+        print("Weighted Events, passing H pT:  ",str((hptdf['event_weight_kf']*hptdf['event_weight_btag']*hptdf['event_weight_muid']).sum()))
+        print("Weighted Events, passing btag:  ",str((btdf['event_weight_kf']*btdf['event_weight_btag']*btdf['event_weight_muid']).sum()))
+        if "emu" in channel:
             print("Weighted Events, signal region: ",str((srdf['event_weight_kf']*srdf['event_weight_btag']*srdf['event_weight_muid']).sum()))
             print("Weighted Events, sideband:      ",str((sbdf['event_weight_kf']*sbdf['event_weight_btag']*sbdf['event_weight_muid']).sum()))
 
