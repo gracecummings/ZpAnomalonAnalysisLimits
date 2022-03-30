@@ -11,18 +11,43 @@ import gecorg_test as go
 parser = argparse.ArgumentParser()
 
 def makeEventWeightSeries(df,syststr):
-    print("   In the event weights function:")
-    print("   The systl ",syststr)
     colnames = list(df.columns)
-    #print("   The df columns ",colnames)
     wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
-    print("   The weight columns ",wnames)
     wdf = df[wnames]
-    print(wdf)
     ewdf = wdf.prod(axis=1)
-    print(ewdf)
     return ewdf
 
+def makeEventWeightSeriesWithUncertainties(df,syststr):
+    colnames = list(df.columns)
+
+    if "up" in syststr:
+        uncname = syststr.split("up")[0]
+        unctag = syststr.split("up")[0]+"uncup"
+        uncsign = 1.0
+    if "dwn" in syststr:
+        uncname = syststr.split("dwn")[0]
+        unctag = syststr.split("dwn")[0]+"uncdwn"
+        uncsign = -1.0
+    
+    wcolname = "event_weight_"+uncname
+    if wcolname not in colnames:
+        print("You scale factor is not in the dataframe, aborting")
+        exit()
+    if not ("event_weight_"+unctag in colnames):
+        print("You scale factor uncertainty is not in the dataframe, aborting")
+        exit()
+        
+    unccol = df["event_weight_"+unctag]        
+    wcol   = df[wcolname]
+    wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
+    wnames.remove(wcolname)
+    
+    wdf = df[wnames].copy()
+    wdf[wcolname] = wcol+uncsign*unccol
+    ewdf = wdf.prod(axis=1)
+    #print(ewdf)
+    return ewdf
+    
 def boostUnc(values,weights,nbins,binstart,binstop):
     boosth = bh.Histogram(bh.axis.Regular(bins=nbins,start=binstart,stop=binstop),storage=bh.storage.Weight())
     boosth.fill(values,weight=weights)
@@ -383,13 +408,13 @@ if __name__=='__main__':
         #print(" systl: ",systl)
         #print(" stype: ",stype)
         systname = 'btagsystdefaultname'
-        makeEventWeightSeries(fdf,systl)
+        makeEventWeightSeriesWithUncertainties(fdf,systl)
         if not systl and stype > 0:
             #print("if testing is working")
             print("    Applying nominal sf")
             systname = 'btagnom_muidnom'
-            eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
-            print(eventweights)
+            #eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
+            #print(eventweights)
             eventweights = makeEventWeightSeries(fdf,systl)
             print(eventweights)
         elif not systl and stype <= 0:
@@ -405,11 +430,13 @@ if __name__=='__main__':
         else:
             if "btagup" == systl:
                 print("    Applying uncUp btagging SF")
-                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']+fdf['event_weight_btaguncup'])*fdf['event_weight_muid']
+                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']+fdf['event_weight_btaguncup'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
+                print(eventweights)
                 systname = systl+'_muidnom'
             elif "btagdwn" == systl:
                 print("    Applying uncDwn btagging SF")
-                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']-fdf['event_weight_btaguncdwn'])*fdf['event_weight_muid']
+                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']-fdf['event_weight_btaguncdwn'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
+                print(eventweights)
                 systname = systl+'_muidnom'
             elif "muidup" == systl:
                 print("    Applying uncUp MuonID SF")
