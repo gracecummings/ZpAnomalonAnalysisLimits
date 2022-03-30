@@ -18,6 +18,24 @@ using std::string;
 RestFrames::RFKey ensure_autoload(1);
 using namespace RestFrames;
 
+std::vector<double> combineTheLeptonSF(std::vector<double> sfvec1,std::vector<double> sfvec2) {
+  std::vector<double> outv;
+  double sf = 1;
+  double upunc = 0;
+  double dnunc = 0;
+  sf = sfvec1[0]*sfvec2[0];
+  outv.push_back(sf);
+  upunc = sf*sqrt(pow(sfvec1[1],2)/sfvec1[0]+pow(sfvec2[1],2)/sfvec2[0]);
+  dnunc = sf*sqrt(pow(sfvec1[2],2)/sfvec1[0]+pow(sfvec2[2],2)/sfvec2[0]);
+  outv.push_back(upunc);
+  outv.push_back(dnunc);
+  //std::cout<<"Value of unc sfvec1:  "<<sfvec1[1]<<std::endl;
+  //std::cout<<"Value of unc sfvec2:  "<<sfvec2[1]<<std::endl;
+  //std::cout<<"combounc val:  "<<upunc<<std::endl;
+  //std::cout<<"Value of second vec sf: "<<sfvec2[0]<<std::endl;
+  //std::cout<<"Value of combined sf:   "<<sf<<std::endl;
+  return outv;
+}
 std::vector<double> GetElectronPtEtaSF(int year,TH2F *hist,TLorentzVector obj) {
   std::vector<double> sfvec;
   double leptonsf  = 1;
@@ -1023,6 +1041,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       //Do Lepton SF
       //Will need to have it be related to which channel the emu channel is serving as a background estimate
+      ///*
       double muidsf  = 1;
       double muidup  = 0;
       double muiddwn = 0;
@@ -1039,38 +1058,27 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double lsfup  = 0;
       double lsfdwn = 0;
       int leptonbin    = -1;
-      std::vector<double> muidsfvec = {1,0,0};
-      std::vector<double> elidsfvec = {1,0,0};
-      std::vector<double> elrecosfvec = {1,0,0};
+      //*/
+      std::vector<double> muidsfvec = {1,0,0};//total muon weight
+      std::vector<double> elidsfvec = {1,0,0};//total electron ID weight
+      std::vector<double> elrecosfvec = {1,0,0};//total electron Reco weight
+      std::vector<double> muidsfleadv = {1,0,0};//muon channel leadmuon
+      std::vector<double> elidsfleadv = {1,0,0};//electron channel leadelectron
+      std::vector<double> elrecoslleadv = {1,0,0};//electron channel leadelectron
+      std::vector<double> muidsfsublv = {1,0,0};//muon channel subleadmuon
+      std::vector<double> elidsfsublv = {1,0,0};//electron channel subleadelectron
+      std::vector<double> elrecosublv = {1,0,0};//electron channel subleadelectron
 
       //std::cout<<"We are about to do the sf"<<std::endl;
       
-      if (sampleType > 0 && anchan == 4) {//not data
-	double ptcheck = leadmu.Pt();
-	if (ptcheck >= 120.0) {
-	  ptcheck = 100.0;//safely within last bin, but a hack
-	}
-	if (year != 16) {
-	  muidbin = hmuonsf->FindBin(ptcheck,std::abs(leadmu.Eta()));
-	}
-	else {
-	  //std::cout<<"We are in sf if statement"<<std::endl;
-	  muidbin = hmuonsf->FindBin(ptcheck,leadmu.Eta());
-	}
-	muidsf = hmuonsf->GetBinContent(muidbin);
-	muidup = hmuonsf->GetBinErrorUp(muidbin);
-	muiddwn = hmuonsf->GetBinErrorLow(muidbin);
-
-	//if (passZ) {
-	  //std::cout<<"Muon scale factor: "<<muidsf<<std::endl;
-	  //std::cout<<"leading muon pt, straight : "<<leadmu.Pt()<<std::endl;
-	  //std::cout<<"leading muon pt, checked  : "<<ptcheck<<std::endl;
-	  //std::cout<<"leading muon eta, straight : "<<leadmu.Eta()<<std::endl;
-	//}
+      if (sampleType > 0 && anchan == 4) {//not data, mumuchannel
+	muidsfleadv = GetMuonPtEtaSF(year,hmuonsf,leadmu);
+	muidsfsublv = GetMuonPtEtaSF(year,hmuonsf,subleadmu);
+	muidsfvec = combineTheLeptonSF(muidsfleadv,muidsfsublv);
       }
       else if (sampleType > 0 && anchan == 2) {//not data, ee channel
 	double ptcheck = leade.Pt();
-	if (ptcheck >= 500.0) {
+	if (ptcheck >= 500.0) { 
 	  ptcheck = 400.0;//safely within last bin, but a hack
 	}
 	elrecobin = helectronsf->FindBin(leade.Eta(),ptcheck);
@@ -1085,9 +1093,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       }
       else if (sampleType > 0 && anchan == 1) {//not data, emu channel
-	//The scale factors here get weird.
 	//Trigger scale factors should be applied based on the trigger object
-	//ID scale factors can be based off of the objects
+	//ID scale factors can be based off of the objects, done here
 	if (muld == 1) {
 	  muidsfvec = GetMuonPtEtaSF(year,hmuonsf,leadmu);
 	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,subleade);
