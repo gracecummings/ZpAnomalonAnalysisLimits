@@ -41,13 +41,25 @@ def writeDataCard(processes,rootFileName,channel):
         cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst),processes["syst"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
 
-    card.write("* autoMCStats 1\n")
+    #card.write("* autoMCStats 1\n")
     card.close()
 
 #def gatherSystematics(confsecsyst):
-    
-    
 
+def newNameAndStructure(hist,name,rebindiv,limrangelow,limrangehigh):
+    hist.Rebin(rebindiv)
+    nbins = hist.GetNbinsX()
+    binw  = hist.GetBinWidth(1)
+    newbins = [limrangelow+x*binw for x in range(int((limrangehigh-limrangelow)/binw))]
+    nh = ROOT.TH1F(name,name,len(newbins),limrangelow,limrangehigh)
+    for b,le in enumerate(newbins):
+        bnum = hist.FindBin(le)
+        bincontent = hist.GetBinContent(bnum)
+        binerror   = hist.GetBinError(bnum)
+        nh.SetBinContent(b+1,bincontent)
+        nh.SetBinError(b+1,binerror)
+
+    return nh
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-m","--metcut", type=float,help = "met cut of samples")
@@ -81,8 +93,8 @@ if __name__=='__main__':
 
     ####load in the files with the nominal distributions
     bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
-    sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get('nominal','strnom'))
-    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'Run2_2017_2018_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+    sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
+    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
     ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
@@ -102,19 +114,27 @@ if __name__=='__main__':
     hvv.Add(hwz)
 
     ####Rename and restucture
-    htt.SetName("TT")
-    hvv.SetName("VV")
-    hdy.SetName("DY")
-    hdat.SetName("data_obs")
-    htt.Rebin(rebindiv)
-    hvv.Rebin(rebindiv)
-    hdat.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-    htt.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-    hvv.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-    hdy.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    htt = newNameAndStructure(htt,"TT",rebindiv,limrangelow,limrangehigh)
+    hdy = newNameAndStructure(hdy,"DY",1,limrangelow,limrangehigh)
+    hvv = newNameAndStructure(hvv,"VV",rebindiv,limrangelow,limrangehigh)
+    hdat = newNameAndStructure(hdat,"data_obs",rebindiv,limrangelow,limrangehigh)
+    #htt.SetName("TT")
+    #hvv.SetName("VV")
+    #hdy.SetName("DY")
+    #hdat.SetName("data_obs")
+
+    #How we kept the old ways
+    #htt.Rebin(rebindiv)
+    #hvv.Rebin(rebindiv)
+    #hdat.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    #htttest.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    #hvv.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    #hdy.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+    
 
     ####For Each signal, make a datacard, and a root file with all systematics
-    siginfo = sig.prepsigsr
+    #siginfo = sig.prepsigsr
+    siginfo = sig.getPreppedSig('sr',sigxs)
     sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
     for s,sig in enumerate(siginfo):
         name = sig["name"]
@@ -125,6 +145,9 @@ if __name__=='__main__':
         else:
             signame = name.replace("-","")
         print("------- Looking at signal sample ",signame)
+
+        #if "Zp4000ND800NS200" not in signame:
+        #    continue
 
         ####Make Files
         prepRootName = go.makeOutFile('Run2_2017_2018_ZllHbbMET',chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
@@ -141,16 +164,11 @@ if __name__=='__main__':
         #    print(" Bin Error: ",hsigori.GetBinError(ibin))
 
         hsig = hsigori.Clone()
-        hsig.SetName(signame)
         hsig.Scale(sig["scale"])
 
-       # print("Looking at signal errors and uncertainties after scaling")
-       # for ibin in range(hsig.GetNbinsX()+1):
-       #     print(" Bin Content: ",hsig.GetBinContent(ibin))
-       #     print(" Bin Error: ",hsig.GetBinError(ibin))
-
-        hsig.Rebin(rebindiv)
-        hsig.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+        hsig = newNameAndStructure(hsig,signame,rebindiv,limrangelow,limrangehigh)
+        #hsig.Rebin(rebindiv)
+        #hsig.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
         prepRootFile.cd() 
         htt.Write()
         hvv.Write()
@@ -163,6 +181,8 @@ if __name__=='__main__':
                     }
 
         for syst in systs:
+            #print("YOU HAVE CURRENTLY TURNED OFF SYSTEMATICS")
+            #continue
             if syst == 'nominal':
                 continue
             print("------- Looking at systematic ",syst)
@@ -170,8 +190,8 @@ if __name__=='__main__':
             
             systbkgsup  = go.backgrounds(config.get(syst,'pathup'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strup'))
             systbkgsdwn = go.backgrounds(config.get(syst,'pathdwn'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strdwn'))
-            systsigup   = go.signal(config.get(syst,'pathsigup'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get(syst,'strup'))
-            systsigdwn  = go.signal(config.get(syst,'pathsigdwn'),zptcut,hptcut,metcut,btagwp,sigxs,101.27,config.get(syst,'strdwn'))
+            systsigup   = go.signal(config.get(syst,'pathsigup'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strup'))
+            systsigdwn  = go.signal(config.get(syst,'pathsigdwn'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strdwn'))
 
             if len(systbkgsup.bkgs["DYJetsToLL"][18]["sb"][0]) < 1:
                 print("        There are no DYJets entires for this systematic.")
@@ -183,12 +203,12 @@ if __name__=='__main__':
             systdict[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
             
             if rebindiv == 2:
-                dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strup')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-                dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'Run2_2017_2018_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+                dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_161718_dy_extraploation'+config.get(syst,'strup')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+                dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_161718_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
             ####Make it useful
-            sigup  = systsigup.prepsigsr
-            sigdwn = systsigdwn.prepsigsr
+            sigup  = systsigup.getPreppedSig('sr',sigxs)#systsigup.prepsigsr
+            sigdwn = systsigdwn.getPreppedSig('sr',sigxs)#systsigdwn.prepsigsr
             if name != sigup[s]["name"] !=  sigdwn[s]["name"]:
                 print("Cannot find matching entries in systematics collections, aborting")
                 break
@@ -217,37 +237,45 @@ if __name__=='__main__':
             hdydwn = dyEstdwn.Get("extrphist").Clone()
 
             #Rename and Restructure
-            httup.SetName("TT_"+syst+"Up")
-            httdwn.SetName("TT_"+syst+"Down")
-            hvvup.SetName("VV_"+syst+"Up")
-            hvvdwn.SetName("VV_"+syst+"Down")
-            hdyup.SetName("DY_"+syst+"Up")
-            hdydwn.SetName("DY_"+syst+"Down")
-            httup.Rebin(rebindiv)
-            httdwn.Rebin(rebindiv)
-            hvvup.Rebin(rebindiv)
-            hvvdwn.Rebin(rebindiv)
-            httup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            httdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            hvvup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            hvvdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            hdyup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            hdydwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+            httdwn = newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            hvvup = newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh) 
+            hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            hdyup  = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
+            hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
+            #httup.SetName("TT_"+syst+"Up")
+            #httdwn.SetName("TT_"+syst+"Down")
+            #hvvup.SetName("VV_"+syst+"Up")
+            #hvvdwn.SetName("VV_"+syst+"Down")
+            #hdyup.SetName("DY_"+syst+"Up")
+            #hdydwn.SetName("DY_"+syst+"Down")
+            #httup.Rebin(rebindiv)
+            #httdwn.Rebin(rebindiv)
+            #hvvup.Rebin(rebindiv)
+            #hvvdwn.Rebin(rebindiv)
+            #httup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            #httdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            #hvvup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            #hvvdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            #hdyup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            #hdydwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
             
             #Signal
             hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
             hsigup = hsigupori.Clone()
-            hsigup.SetName(signame+"_"+syst+"Up")
             hsigup.Scale(sigup[s]["scale"])
-            hsigup.Rebin(rebindiv)
-            hsigup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            hsigup = newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+            #hsigup.SetName(signame+"_"+syst+"Up")
+            #hsigup.Rebin(rebindiv)
+            #hsigup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
             
             hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
             hsigdwn = hsigdwnori.Clone()
-            hsigdwn.SetName(signame+"_"+syst+"Down")
             hsigdwn.Scale(sigdwn[s]["scale"])
-            hsigdwn.Rebin(rebindiv)
-            hsigdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
+            hsigdwn = newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            #hsigdwn.SetName(signame+"_"+syst+"Down")
+            #hsigdwn.Rebin(rebindiv)
+            #hsigdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
 
             #Write the histograms
             prepRootFile.cd()
@@ -272,18 +300,18 @@ if __name__=='__main__':
             # hsig.SetBinError(ibin,newbinval**(1/2))
 
             ##### Make Plot of each syst for each signal sample
-            tc = ROOT.TCanvas("tc",signame,600,600)
-            hsig.SetLineColor(ROOT.kBlack)
-            hsigup.SetLineColor(ROOT.kRed)
-            hsigdwn.SetLineColor(ROOT.kBlue)
-            hsigup.SetStats(0)
-            hsigup.GetXaxis().SetTitle("Z' Jigsaw Mass Estmator")
-            tc.cd()
-            hsigup.Draw('hist')
-            hsig.Draw('histsame')
-            hsigdwn.Draw('histsame')
-            sigplotname = go.makeOutFile(signame,syst+'updowncomp','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-            tc.SaveAs(sigplotname)
+            #tc = ROOT.TCanvas("tc",signame,600,600)
+            #hsig.SetLineColor(ROOT.kBlack)
+            #hsigup.SetLineColor(ROOT.kRed)
+            #hsigdwn.SetLineColor(ROOT.kBlue)
+            #hsigup.SetStats(0)
+            #hsigup.GetXaxis().SetTitle("Z' Jigsaw Mass Estmator")
+            #tc.cd()
+            #hsigup.Draw('hist')
+            #hsig.Draw('histsame')
+            #hsigdwn.Draw('histsame')
+            #sigplotname = go.makeOutFile(signame,syst+'updowncomp','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+            #tc.SaveAs(sigplotname)
 
 
         #For writing the datacard
