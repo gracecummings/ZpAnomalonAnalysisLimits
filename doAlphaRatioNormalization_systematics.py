@@ -111,10 +111,10 @@ if __name__=='__main__':
     #systr = 'systnominal_btagnom_muidnom'
 
     bkgs  = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
-    data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
+    data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr.replace("_elidnom_elreconom","").replace("_kfnom",""))
 
     #print(bkgs.bkgs)
-    print(data.data)
+    #print(data.data)
 
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_h_sd')
@@ -149,7 +149,7 @@ if __name__=='__main__':
     htrzz.SetFillColor(bkgcols[3])
     htrzz.SetLineColor(bkgcols[3])
 
-    plotmax = 35.
+    plotmax = 35 #550 for btag region .#35 for nominal
     linemax = plotmax*.8
     labelmin = plotmax*.75
 

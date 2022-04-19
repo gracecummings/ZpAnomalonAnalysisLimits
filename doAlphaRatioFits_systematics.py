@@ -84,7 +84,9 @@ if __name__=='__main__':
     parser.add_argument("-z","--zptcut", type=float,help = "zpt cut of samples")
     parser.add_argument("-j","--hptcut", type=float,help = "hpt cut of samples")
     parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
-    #parser.add_argument("-dir","--directory", type=str,help = "date folder with output")
+    parser.add_argument("-dir","--directory", type=str,help = "date folder with output")
+    parser.add_argument("-sn","--systname", type=str,help = "systematic name")
+    parser.add_argument("-sd","--systdirection", type=str,help = "systematic direction")
     #probably should add systematic stuff as a input
     parser.add_argument("-v","--validationregion", type=bool,help = "is this a validation region?")
     args = parser.parse_args()
@@ -115,15 +117,20 @@ if __name__=='__main__':
     validation = False
     rstr = "signalblind"
     rebindiv = 2
-    systname = 'btag'
-    systclass = 'pathup'
-    syststr = 'strup'
+    systname = args.systname
+    systclass = 'path'+args.systdirection
+    syststr = 'str'+args.systdirection
     sigmabars = 1#1 sigma bands
 
     #Get the samples
-    pathbkg    = config.get(systname,systclass)
-    pathdata   = config.get(systname,systclass)
+    if not args.directory:
+        pathbkg    = config.get(systname,systclass)
+        pathdata   = config.get(systname,systclass)
     #datastr = 'systnominal_btagnom'
+
+    else:
+        pathbkg = args.directory
+        pathdata = args.directory
     
     if validation:
         rstr = "validationblind"
@@ -139,12 +146,11 @@ if __name__=='__main__':
         elif len(years) == 3:
             dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
         bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
-        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
+        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_elidnom_elreconom","").replace("_kfnom",""))
         sbstring = "30 < m_{hcand,SD} < 70"
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
 
-    print(data.data)
         
     print("Using the DY normalization factor: ",dynorm)
     
