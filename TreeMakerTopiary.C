@@ -533,9 +533,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::vector<int> trgidxs;
    TFile * fthen = 0;
    TFile * fnow = 0;
-   std::vector<string> trig18mu = {"HLT_Mu55_v"};
-   std::vector<string> trig17mu = {"HLT_Mu50_v"};
-   std::vector<string> trig16mu = {"HLT_Mu50_v"};
+   std::vector<string> trig18mu = {"HLT_Mu55_v","HLT_TkMu100_v"};
+   std::vector<string> trig17mu = {"HLT_Mu50_v","HLT_TkMu100_v"};
+   std::vector<string> trig16mu = {"HLT_Mu50_v","HLT_TkMu50_v"};
    std::vector<string> trig18e = {"HLT_Ele32_WPTight_Gsf_v"};
    std::vector<string> trig17e = {"HLT_Ele35_WPTight_Gsf_v"};
    std::vector<string> trig16e = {"HLT_Ele27_WPTight_Gsf_v"};
@@ -612,7 +612,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  trgtit = fChain->GetBranch("TriggerPass")->GetTitle();
 	  fthen = fChain->GetFile();
 	  //std::cout<<"The file we are checking is  "<<fthen<<std::endl;
-	  while ((pos = trgtit.find(delim)) != std::string::npos && token != ourtrg) {
+	  while ((pos = trgtit.find(delim)) != std::string::npos+1 && token != ourtrg) {
 	    token = trgtit.substr(0,pos);
 	    //std::cout<<"    This trigger name "<<token<<std::endl;
 	    trgidx += 1;
@@ -674,7 +674,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //std::cout<<"   The trigger truth is  "<<TriggerPass->at(65)<<std::endl;
 
       //Do the trigger for non-emu samples
-      if (trgvals[0] == 1 && anchan != 1) {//if not emu channel
+      if (trgvals[0] == 1 || trgvals[1] == 1 && anchan != 1) {//if not emu channel
 	passTrig = true;
 	counttrigpass += 1;
       }
@@ -778,7 +778,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       int elld = 0;
 
       //Channel Flags
-      //*
+     ///*
       //std::cout<<"At the part for before the Z"<<std::endl;
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	if (passTrig) countzcand += 1;
@@ -848,7 +848,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//if (passTrig) {
 	zee +=1;
 	//}
-	///*
+       ///*
 	std::vector<TLorentzVector>::iterator eit;
 	for (eit = SelectedElectrons->begin(); eit != SelectedElectrons->end();++eit) { 
 	  if (eit->Pt() > lptmax) {
@@ -913,7 +913,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  }
 	}
       }
-
+     //*/
       //Do the emu trigger
       //passTrig = true;
       eventleade.SetPtEtaPhiM(0,0,0,0);
@@ -960,24 +960,20 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  eventleade = Electrons->at(0);
 	  eventleadmu = Muons->at(0);
 	  //std::cout<<"   The leading electron pt should be nonzero: "<<eventleade.Pt()<<std::endl;
-	  if (eventleade.Pt() > 27 && trgvals[1] == 1) {
-	    passTrig = true;
-	    counttrigpass += true;
+	  if (eventleade.Pt() > 27 ) { //&& trgvals[1] == 1) {
+	    if (trgvals[1] == 1) {
+	      passTrig = true;
+	      counttrigpass += true;
+	    }
 	    //std::cout<<"   Passed trig"<<std::endl;
 	  }
-	  else if (eventleadmu.Pt() > 50 && trgvals[0] == 1) {
-	    passTrig = true;
-	    counttrigpass += true;
+	  if (eventleadmu.Pt() > 50 ) { //&& trgvals[0] == 1) {
+	    if (trgvals[0] == 1) {
+	      passTrig = true;
+	      counttrigpass += true;
+	    }
 	  }
 	}
-
-
-	//else {
-	//if (nZeu > 0) {
-	//  std::cout<<"We have an emu MC event where it's leading lepton does not match the trigger."<<std::endl;
-	//}
-	//}
-	//*/
       }
       else if (sampleType < 0 && anchan == 1 ) {
 	//if (sampleType == -2 && trgvals[1] == 1) {//test for just the electron trigger
@@ -995,6 +991,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	 }
 	//*/
 	if (Electrons->size() > 0 && Muons->size() > 0) {
+	  //std::cout<<"We have an emu event"<<std::endl;
 	  eventleade = Electrons->at(0);
 	  eventleadmu = Muons->at(0);
 	  if (eventleade.Pt() > eventleadmu.Pt() && trgvals[1] == 1) {
@@ -1005,6 +1002,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    passTrig = true;
 	    counttrigpass += true;
 	  }
+	  //std::cout<<"    Trigger Descision "<<passTrig<<std::endl;
+	  //std::cout<<"    Trig counter       "<<counttrigpass<<std::endl;
 	}
 
       }
@@ -1041,7 +1040,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       //Do Lepton SF
       //Will need to have it be related to which channel the emu channel is serving as a background estimate
-      ///*
+      /*
       double muidsf  = 1;
       double muidup  = 0;
       double muiddwn = 0;
@@ -1077,20 +1076,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	muidsfvec = combineTheLeptonSF(muidsfleadv,muidsfsublv);
       }
       else if (sampleType > 0 && anchan == 2) {//not data, ee channel
-	double ptcheck = leade.Pt();
-	if (ptcheck >= 500.0) { 
-	  ptcheck = 400.0;//safely within last bin, but a hack
-	}
-	elrecobin = helectronsf->FindBin(leade.Eta(),ptcheck);
-	elrecosf = helectronsf->GetBinContent(elrecobin);
-	elrecoup    = helectronsf->GetBinErrorUp(elrecobin);
-	elrecodwn   = helectronsf->GetBinErrorLow(elrecobin);
-	elidbin = helectronIDsf->FindBin(leade.Eta(),ptcheck);
-	elidsf = helectronIDsf->GetBinContent(elidbin);
-	elidup    = helectronIDsf->GetBinErrorUp(elidbin);
-	eliddwn   = helectronIDsf->GetBinErrorLow(elidbin);
-	//Make it so it is correctly applied to the second electron as well
-
+	elidsfleadv = GetElectronPtEtaSF(year,helectronIDsf,leade);
+	elidsfsublv = GetElectronPtEtaSF(year,helectronIDsf,subleade);
+	elrecoslleadv = GetElectronPtEtaSF(year,helectronsf,leade);
+	elrecosublv = GetElectronPtEtaSF(year,helectronIDsf,subleade);
+	elidsfvec = combineTheLeptonSF(elidsfleadv,elidsfsublv);
+	elrecosfvec = combineTheLeptonSF(elrecoslleadv,elrecosublv);
       }
       else if (sampleType > 0 && anchan == 1) {//not data, emu channel
 	//Trigger scale factors should be applied based on the trigger object
@@ -1220,7 +1211,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //double ptmiss     = fChain->GetLeaf("METclean")->GetValue(0);
       //double ptmiss_phi = fChain->GetLeaf("METPhiclean")->GetValue();
       double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
-      double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue();
+      double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue(0);
 
       if (systidx > -1 && sampleType > 0){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
 	if (metsys[systidx] > 0) {//Checks up or down
@@ -1336,8 +1327,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
-      //if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
-      if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
+      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
+      //if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
 	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
 	//if (passZ && (sampleType > 0) && (channel == anchan)){
 	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
@@ -1346,8 +1337,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
 	/////ucomment!!!
-	//else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
-	else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
+	else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
+	//else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;
@@ -1374,7 +1365,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::cout<<"Events with zmumuzeezemu "<<zmumuzeezemu<<std::endl;
    std::cout<<"Events with zee          "<<zee<<std::endl;
    std::cout<<"Events with zeezemu      "<<zeezemu<<std::endl;
-   std::cout<<"Events with zemu         "<<zemu<<std::endl;
+//std::cout<<"Events with zemu         "<<zemu<<std::endl;
 
    /*
    std::cout<<"Events with no reclustered fat jets, but a Z "<<znorecfat<<std::endl;
