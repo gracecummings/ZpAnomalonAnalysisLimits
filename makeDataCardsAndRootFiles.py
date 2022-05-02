@@ -41,7 +41,7 @@ def writeDataCard(processes,rootFileName,channel):
         cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst),processes["syst"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
 
-    #card.write("* autoMCStats 1\n")
+    card.write("* autoMCStats 1\n")
     card.close()
 
 #def gatherSystematics(confsecsyst):
@@ -73,12 +73,9 @@ if __name__=='__main__':
     metcut  = str(args.metcut)#'200.0'
     btagwp  = str(args.btagwp)#'0.8'
 
-    #zptcut  = '150.0'
-    #hptcut  = '300.0'
-    #metcut  = '200.0'
-    #btagwp  = '0.8'
-
     chan    = 'mumu'
+    years   = [16,17,18]
+    yearstr = go.yearFormatter(years)
     sigxs   = 1.0
     rebindiv = 2
 
@@ -96,6 +93,9 @@ if __name__=='__main__':
     sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
     dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
+    dykeys = dyEst.GetListOfKeys()
+    for k in dykeys:
+        print(k.GetName())
     ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_zp_jigm')
@@ -106,7 +106,7 @@ if __name__=='__main__':
     
     ####Getting the Estimations####
     hdat = empty.Clone()
-    hdy    = dyEst.Get("extrphist").Clone()
+    hdy    = dyEst.Get("extrphistnoerrs").Clone()
     htt = bkgs.getAddedHist(empty1,"TT","sr","h_zp_jigm")
     hzz  = bkgs.getAddedHist(empty2,"ZZTo2L2Q","sr","h_zp_jigm")
     hwz  = bkgs.getAddedHist(empty3,"WZTo2L2Q","sr","h_zp_jigm")
@@ -118,22 +118,8 @@ if __name__=='__main__':
     hdy = newNameAndStructure(hdy,"DY",1,limrangelow,limrangehigh)
     hvv = newNameAndStructure(hvv,"VV",rebindiv,limrangelow,limrangehigh)
     hdat = newNameAndStructure(hdat,"data_obs",rebindiv,limrangelow,limrangehigh)
-    #htt.SetName("TT")
-    #hvv.SetName("VV")
-    #hdy.SetName("DY")
-    #hdat.SetName("data_obs")
-
-    #How we kept the old ways
-    #htt.Rebin(rebindiv)
-    #hvv.Rebin(rebindiv)
-    #hdat.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-    #htttest.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-    #hvv.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-    #hdy.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-    
 
     ####For Each signal, make a datacard, and a root file with all systematics
-    #siginfo = sig.prepsigsr
     siginfo = sig.getPreppedSig('sr',sigxs)
     sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
     for s,sig in enumerate(siginfo):
@@ -146,11 +132,11 @@ if __name__=='__main__':
             signame = name.replace("-","")
         print("------- Looking at signal sample ",signame)
 
-        #if "Zp4000ND800NS200" not in signame:
-        #    continue
+        if "Zp4000ND800NS200" not in signame:
+            continue
 
         ####Make Files
-        prepRootName = go.makeOutFile('Run2_2017_2018_ZllHbbMET',chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        prepRootName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET',chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         prepRootFile = ROOT.TFile(prepRootName,"recreate")
             
         ####Nominal Signal
@@ -167,8 +153,6 @@ if __name__=='__main__':
         hsig.Scale(sig["scale"])
 
         hsig = newNameAndStructure(hsig,signame,rebindiv,limrangelow,limrangehigh)
-        #hsig.Rebin(rebindiv)
-        #hsig.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
         prepRootFile.cd() 
         htt.Write()
         hvv.Write()
