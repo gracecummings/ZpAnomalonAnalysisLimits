@@ -86,7 +86,7 @@ if __name__=='__main__':
     parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
     parser.add_argument("-dir","--directory", type=str,help = "date folder with output")
     parser.add_argument("-sn","--systname", type=str,help = "systematic name")
-    parser.add_argument("-sd","--systdirection", type=str,help = "systematic direction")
+    parser.add_argument("-sd","--systdirection", type=str,help = "systematic direction,: up, dwn, nom")
     #probably should add systematic stuff as a input
     parser.add_argument("-v","--validationregion", type=bool,help = "is this a validation region?")
     args = parser.parse_args()
@@ -146,7 +146,9 @@ if __name__=='__main__':
         elif len(years) == 3:
             dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
         bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
-        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_elidnom_elreconom","").replace("_kfnom",""))
+        #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_elidnom_elreconom","").replace("_kfnom",""))
+        #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
+        data = go.run2("mumu_2022-03-31_ProperREOIDSF",zptcut,hptcut,metcut,btagwp,"systnominal_kfnom_btagnom_muidnom_elidnom_elreconom")
         sbstring = "30 < m_{hcand,SD} < 70"
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
@@ -253,6 +255,10 @@ if __name__=='__main__':
     extrap  = ROOT.alphaExtrapolation(hsbdy,hsrdy,sbdatuncsub,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
     extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,sbdatuncsub,1,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
 
+    extrphnoerrs = extrphist.Clone()
+    for i in range(extrphnoerrs.GetNbinsX()+1):
+        extrphnoerrs.SetBinError(i,0.0)
+    extrphnoerrs.SetName("extrphistnoerrs")
 
     #Set some paremeter for plotting
     uncbands.SetStats(ROOT.kFALSE)
@@ -758,4 +764,5 @@ if __name__=='__main__':
     rootOutName = go.makeOutFile('Run2_'+yearstr,'dy_extraploation'+config.get(systname,syststr),'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootFile = ROOT.TFile(rootOutName,"recreate")
     extrphist.Write()
+    extrphnoerrs.Write()
     rootFile.Close()
