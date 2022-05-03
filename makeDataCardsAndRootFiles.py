@@ -8,14 +8,14 @@ import pandas as pd
 import configparser
 import argparse
 
-def writeDataCard(processes,rootFileName,channel):
+def writeDataCard(processes,rootFileName,channel,yearstr):
     signame = processes["processnames"][0]
     nbkg = len(processes["processnames"])-1
     obsEvents = 0
     binname = signame+"_"+channel
     namestr = " ".join(processes["processnames"])
     rates   = [str(hist.Integral()) for hist in processes["hists"]]
-    prepCardName = go.makeOutFile('Run2_2017_2018_ZllHbbMET','datacard_'+chan+'_'+signame,'.txt',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    prepCardName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET','datacard_'+chan+'_'+signame,'.txt',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     card = open(prepCardName,"w")
 
     #Write the card
@@ -34,11 +34,22 @@ def writeDataCard(processes,rootFileName,channel):
     card.write("rate "+" ".join(rates)+"\n")
     card.write("------------\n")
 
-    for syst in processes["syst"].keys():
-        #vals = [x*processes["syst"][syst]["unc"] for x in processes["syst"][syst]["proc"]]
-        vals = processes["syst"][syst]["proc"]
+    maxnamelength = max([len(x) for x in processes["systrates"].keys()])
+
+    for syst in processes["systrates"].keys():
+        vals = processes["systrates"][syst]["proc"]
+        sval = [x if len(x) > 1 else "-" for x in vals]
+
+        nameoffset = maxnamelength - len(syst)
+        
+        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst)+" "*nameoffset,processes["systrates"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
+        card.write(cardstr)
+    
+    for syst in processes["systshapes"].keys():
+        vals = processes["systshapes"][syst]["proc"]
         sval = [x if x != 0 else "-" for x in vals]
-        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst),processes["syst"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
+        nameoffset = maxnamelength - len(syst)
+        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst)+" "*nameoffset,processes["systshapes"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
 
     card.write("* autoMCStats 1\n")
@@ -142,13 +153,6 @@ if __name__=='__main__':
         ####Nominal Signal
         hsigori = sig["tfile"].Get("h_zp_jigm")
         hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
-
-        #####Debug of bin uncertainties
-        #print("Looking at signal errors and uncertainties before scaling")
-        #for ibin in range(hsigori.GetNbinsX()+1):
-        #    print(" Bin Content: ",hsigori.GetBinContent(ibin))
-        #    print(" Bin Error: ",hsigori.GetBinError(ibin))
-
         hsig = hsigori.Clone()
         hsig.Scale(sig["scale"])
 
@@ -161,8 +165,9 @@ if __name__=='__main__':
         hsig.Write()
 
         #####Gather Systematics
-        systdict = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":[0,1.018,1.018,1.018]},#GOOD LUMI
+        systdictrate = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":["0","1.018","1.018","1.018"]}
                     }
+        systdictshape = {}
 
         for syst in systs:
             #print("YOU HAVE CURRENTLY TURNED OFF SYSTEMATICS")
@@ -183,8 +188,11 @@ if __name__=='__main__':
                 continue
             
             appcode = config.get(syst,'applist').split(',')
+            ratenums = config.get(syst,'rate').split(',')
+            ratelist = ratenums
             applist = [float(x) for x in appcode]
-            systdict[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
+            systdictshape[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
+            systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
             
             if rebindiv == 2:
                 dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_161718_dy_extraploation'+config.get(syst,'strup')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
@@ -227,40 +235,16 @@ if __name__=='__main__':
             hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
             hdyup  = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
             hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
-            #httup.SetName("TT_"+syst+"Up")
-            #httdwn.SetName("TT_"+syst+"Down")
-            #hvvup.SetName("VV_"+syst+"Up")
-            #hvvdwn.SetName("VV_"+syst+"Down")
-            #hdyup.SetName("DY_"+syst+"Up")
-            #hdydwn.SetName("DY_"+syst+"Down")
-            #httup.Rebin(rebindiv)
-            #httdwn.Rebin(rebindiv)
-            #hvvup.Rebin(rebindiv)
-            #hvvdwn.Rebin(rebindiv)
-            #httup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            #httdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            #hvvup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            #hvvdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            #hdyup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            #hdydwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
             
             #Signal
             hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
             hsigup = hsigupori.Clone()
             hsigup.Scale(sigup[s]["scale"])
             hsigup = newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
-            #hsigup.SetName(signame+"_"+syst+"Up")
-            #hsigup.Rebin(rebindiv)
-            #hsigup.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-            
             hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
             hsigdwn = hsigdwnori.Clone()
             hsigdwn.Scale(sigdwn[s]["scale"])
             hsigdwn = newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-            #hsigdwn.SetName(signame+"_"+syst+"Down")
-            #hsigdwn.Rebin(rebindiv)
-            #hsigdwn.GetXaxis().SetRangeUser(limrangelow,limrangehigh)
-
             #Write the histograms
             prepRootFile.cd()
             print("------- Writing the up/dwn histograms")
@@ -273,40 +257,16 @@ if __name__=='__main__':
             hdyup.Write()
             hdydwn.Write()
 
-            #This is need to get the errors on the bins correct
-            #built for nominal case
-            #but not needed for Combine
-            #for ibin in range(hsig.GetNbinsX()+1):
-            # oribin = hsigori.GetBinContent(ibin)
-            # orierr = hsigori.GetBinError(ibin)
-            # newbinval = oribin*sig["scale"]
-            # hsig.SetBinContent(ibin,newbinval)
-            # hsig.SetBinError(ibin,newbinval**(1/2))
-
-            ##### Make Plot of each syst for each signal sample
-            #tc = ROOT.TCanvas("tc",signame,600,600)
-            #hsig.SetLineColor(ROOT.kBlack)
-            #hsigup.SetLineColor(ROOT.kRed)
-            #hsigdwn.SetLineColor(ROOT.kBlue)
-            #hsigup.SetStats(0)
-            #hsigup.GetXaxis().SetTitle("Z' Jigsaw Mass Estmator")
-            #tc.cd()
-            #hsigup.Draw('hist')
-            #hsig.Draw('histsame')
-            #hsigdwn.Draw('histsame')
-            #sigplotname = go.makeOutFile(signame,syst+'updowncomp','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-            #tc.SaveAs(sigplotname)
-
-
         #For writing the datacard
         procdict = {"processnames":[signame,"DY","TT","VV"],
                     "hists":[hsig,hdy,htt,hvv],
                     "method":["mc","alpha","mc","mc"],
-                    "syst":systdict,
+                    "systshapes":systdictshape,
+                    "systrates":systdictrate,
         }
         print("------- Defined the Datacard Dict")
         print("------- Writing the Datacard")
-        writeDataCard(procdict,prepRootName,chan)
+        writeDataCard(procdict,prepRootName,chan,yearstr)
         print("------- About to close the root file")
         prepRootFile.Close()
 
