@@ -225,8 +225,8 @@ if __name__=='__main__':
             hvvdwn = hzzdwn.Clone()
             hvvup.Add(hwzup)
             hvvdwn.Add(hwzdwn)
-            hdyup  = dyEstup.Get("extrphist").Clone()
-            hdydwn = dyEstdwn.Get("extrphist").Clone()
+            hdyup  = dyEstup.Get("extrphistnoerrs").Clone()
+            hdydwn = dyEstdwn.Get("extrphistnoerrs").Clone()
 
             #Rename and Restructure
             httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
