@@ -58,7 +58,7 @@ std::vector<double> GetElectronPtEtaSF(int year,TH2F *hist,TLorentzVector obj) {
   return sfvec;
 }
 
-std::vector<double> GetMuonPtEtaSF(int year,TH2D *hist,TLorentzVector obj) {
+std::vector<double> GetMuonPtEtaSF(int year,TH2D *hist,TLorentzVector obj,float highbinedge, bool isID) {
   //std::cout<<"This is the hist "<<hist<<std::endl;
   std::vector<double> sfvec;
   double leptonsf  = 1;
@@ -66,26 +66,27 @@ std::vector<double> GetMuonPtEtaSF(int year,TH2D *hist,TLorentzVector obj) {
   double lsfdwn = 0;
   int leptonbin    = -1;
   double ptcheck = obj.Pt();
-  if (ptcheck >= 120.0) {
-    ptcheck = 100.0;//safely within last bin, but a hack
+  if (ptcheck >= highbinedge) {
+    ptcheck =  highbinedge - 20.0;//safely within last bin, but a hack
   }
-  if (year != 16) {
-    leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
-  }
-  else {
+  //if (year != 16) {
+  //leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
+  //std::cout<<"We are in the non 2016 muon id placee"<<std::endl;
+  //}
+  if (year == 16 && isID) {
     leptonbin = hist->FindBin(ptcheck,obj.Eta());
+    std::cout<<"We are in the ID and 2016 place"<<std::endl;
   }
-  //std::cout<<"This is the funciton bin "<<leptonbin<<std::endl;
+  else{
+        leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
+	std::cout<<"We are in the non 2016 muon id placee"<<std::endl;
+  }
   leptonsf = hist->GetBinContent(leptonbin);
-  //std::cout<<"This is the scale factor not in the vector in hte function "<<leptonsf<<std::endl;
   lsfup    = hist->GetBinErrorUp(leptonbin);
   lsfdwn   = hist->GetBinErrorLow(leptonbin);
   sfvec.push_back(leptonsf);
-  //std::cout<<"This is the scale factor from the vector in hte function "<<sfvec[0]<<std::endl;
   sfvec.push_back(lsfup);
-  //std::cout<<"This is the scale factor up unc from the vector in hte function "<<sfvec[1]<<std::endl;
   sfvec.push_back(lsfdwn);
-  //std::cout<<"This is the scale factor dwn unc from the vector in hte function "<<sfvec[2]<<std::endl;
   return sfvec;
 }
 
@@ -205,6 +206,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double metphiusable;
    TLorentzVector eventleade;
    TLorentzVector eventleadmu;
+
    
    //Define the skimmed skim  output file and tree
    TFile* trimFile = new TFile(outputFileName.c_str(),"recreate");
@@ -215,6 +217,19 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TH1F*  hZpass = new TH1F("hZpass","Z pass",1,0,1);
    TH1F*  hHpass = new TH1F("hHpass","h pass",1,0,1);
    TH1F*  hpass  = new TH1F("hpass","passing all req",1,0,1);
+
+   //Add these horrible plots for efficiency
+   TH1F* hzpasstrig_pt = new TH1F("hzpasstrig_pt","Z pt > 100 and passing triggers",74,60,800);
+   TH1F* hzbuild_pt = new TH1F("hzbuild_pt","Z pt > 100",74,60,800);
+   TH1F* hzpasstrig_eta = new TH1F("hzpasstrig_eta","Z pt > 100 and passing triggers",24,-2.4,2.4);
+   TH1F* hzbuild_eta = new TH1F("hzbuild_eta","Z pt > 100",24,-2.4,2.4);
+   
+   TH1F* hlmupasstrig_pt = new TH1F("hlmupasstrig_pt","Z pt > 100 and passing triggers",74,60,800);
+   TH1F* hlmubuild_pt = new TH1F("hlmubuild_pt","Z pt > 100",74,60,800);
+   TH1F* hlmupasstrig_eta = new TH1F("hlmupasstrig_eta","Z pt > 100and passing triggers",24,-2.4,2.4);
+   TH1F* hlmubuild_eta = new TH1F("hlmubuild_eta","Z pt > 100",24,-2.4,2.4);
+
+   
    TBranch *hCand     = trimTree->Branch("hCandidate","TLorentzVector",&hCandidate);
    TBranch *hCand_pt  = trimTree->Branch("hCandidate_pt",&hCandidate_pt,"hCandidate_pt/D");
    TBranch *hCand_phi = trimTree->Branch("hCandidate_phi",&hCandidate_phi,"hCandidate_phi/D");
@@ -533,12 +548,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::vector<int> trgidxs;
    TFile * fthen = 0;
    TFile * fnow = 0;
-   std::vector<string> trig18mu = {"HLT_Mu55_v","HLT_TkMu100_v"};
+   //std::vector<string> trig18mu = {"HLT_Mu55_v","HLT_TkMu100_v"};
+   std::vector<string> trig18mu = {"HLT_Mu50_v","HLT_TkMu100_v"};
    std::vector<string> trig17mu = {"HLT_Mu50_v","HLT_TkMu100_v"};
    std::vector<string> trig16mu = {"HLT_Mu50_v","HLT_TkMu50_v"};
-   std::vector<string> trig18e = {"HLT_Ele32_WPTight_Gsf_v"};
-   std::vector<string> trig17e = {"HLT_Ele35_WPTight_Gsf_v"};
-   std::vector<string> trig16e = {"HLT_Ele27_WPTight_Gsf_v"};
+   std::vector<string> trig18e = {"HLT_Ele32_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig17e = {"HLT_Ele35_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig16e = {"HLT_Ele27_WPTight_Gsf_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v","HLT_Photon175_v"};
    std::vector<string> trig18emu = {"HLT_Mu55_v","HLT_Ele32_WPTight_Gsf_v"};
    std::vector<string> trig17emu = {"HLT_Mu50_v","HLT_Ele35_WPTight_Gsf_v"};
    std::vector<string> trig16emu = {"HLT_Mu50_v","HLT_Ele27_WPTight_Gsf_v"};
@@ -572,7 +588,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    int emuelead  = 0;
 
    //std::cout<<"Number of files that make up the TChain: "<<fChain->GetListOfFiles()->GetSize()<<std::endl;this is weird, does not match files
-      
+
    for (Long64_t jentry=0; jentry<nentries;jentry++) {
       Long64_t ientry = LoadTree(jentry);
       if (ientry < 0) break;
@@ -594,10 +610,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       
       //debug
-      //std::cout<<"    analyzing event "<<jentry<<std::endl;
-      //if (jentry == 200) {
-      //break;
-      //}
+      std::cout<<"    analyzing event "<<jentry<<std::endl;
+      if (jentry == 200) {
+	break;
+      }
      
 
       //Trigger decisions
@@ -758,8 +774,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //std::cout<<"Checking the SelectedElectrons "<<nselel<<std::endl;
       unsigned int nZmumu = ZCandidatesMuMu->size();
       unsigned int nZee = ZCandidatesEE->size();
-      //unsigned int nZeu = 0;  
-      unsigned int nZeu = ZCandidatesEU->size();//Does not work on old DY ntuples
+      unsigned int nZeu = 0;  
+      //unsigned int nZeu = ZCandidatesEU->size();//Does not work on old DY ntuples
       //std::cout<<"We found all of the number we needed"<<std::endl;
 
       emcounter += nZeu;
@@ -1071,8 +1087,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //std::cout<<"We are about to do the sf"<<std::endl;
       
       if (sampleType > 0 && anchan == 4) {//not data, mumuchannel
-	muidsfleadv = GetMuonPtEtaSF(year,hmuonsf,leadmu);
-	muidsfsublv = GetMuonPtEtaSF(year,hmuonsf,subleadmu);
+	muidsfleadv = GetMuonPtEtaSF(year,hmuonsf,leadmu,120.0,true);
+	muidsfsublv = GetMuonPtEtaSF(year,hmuonsf,subleadmu,120.0,true);
 	muidsfvec = combineTheLeptonSF(muidsfleadv,muidsfsublv);
       }
       else if (sampleType > 0 && anchan == 2) {//not data, ee channel
@@ -1087,14 +1103,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//Trigger scale factors should be applied based on the trigger object
 	//ID scale factors can be based off of the objects, done here
 	if (muld == 1) {
-	  muidsfvec = GetMuonPtEtaSF(year,hmuonsf,leadmu);
+	  muidsfvec = GetMuonPtEtaSF(year,hmuonsf,leadmu,120.0,true);
 	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,subleade);
 	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,subleade);
 	}
 	if (elld == 1) {
 	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,leade);
 	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,leade);
-	  muidsfvec   = GetMuonPtEtaSF(year,hmuonsf,subleadmu);
+	  muidsfvec   = GetMuonPtEtaSF(year,hmuonsf,subleadmu,120.0,true);
 	}
       }
  
@@ -1153,7 +1169,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  fat = fat*jecsysfac;
 	  double masshdiff = std::abs(125.18 - fsd);
 	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
-	  //if ((masshdiff < basehdiff) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
 	    basehdiff = masshdiff;
 	    theh = fat;
 	    hsd = fsd;
@@ -1250,9 +1265,20 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       mEstNS = NS.GetMass();
       //*/
 
+      //Just for the efficiency plots
+      if (passZ && (channel == anchan) && theZ.Pt() > 100.0) {
+	hzbuild_pt->Fill(theZ.Pt());
+	hzbuild_eta->Fill(theZ.Eta());
+	hlmubuild_pt->Fill(leade.Pt());
+	hlmubuild_eta->Fill(leade.Eta());
+      }
 
-      if (passZ && passTrig && (channel == anchan)) {
+      if (passZ && passTrig && (channel == anchan) && theZ.Pt() > 100.0) {
 	countzpass +=1 ;
+	hzpasstrig_pt->Fill(theZ.Pt());
+	hzpasstrig_eta->Fill(theZ.Eta());
+	hlmupasstrig_pt->Fill(leade.Pt());
+	hlmupasstrig_eta->Fill(leade.Eta());
       }
 
       //if (passh && passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan
@@ -1327,8 +1353,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
-      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
-      //if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
+      //if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
+      if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
 	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
 	//if (passZ && (sampleType > 0) && (channel == anchan)){
 	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
@@ -1337,8 +1363,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
 	/////ucomment!!!
-	else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
-	//else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
+	//else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
+	else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;
