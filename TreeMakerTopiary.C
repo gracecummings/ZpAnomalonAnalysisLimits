@@ -58,7 +58,7 @@ std::vector<double> GetElectronPtEtaSF(int year,TH2F *hist,TLorentzVector obj) {
   return sfvec;
 }
 
-std::vector<double> GetMuonPtEtaSF(int year,TH2D *hist,TLorentzVector obj,float highbinedge, bool isID) {
+std::vector<double> GetMuonPtEtaSF(int year,TH2 *hist,TLorentzVector obj,float highbinedge, bool isID) {
   //std::cout<<"This is the hist "<<hist<<std::endl;
   std::vector<double> sfvec;
   double leptonsf  = 1;
@@ -69,20 +69,22 @@ std::vector<double> GetMuonPtEtaSF(int year,TH2D *hist,TLorentzVector obj,float 
   if (ptcheck >= highbinedge) {
     ptcheck =  highbinedge - 20.0;//safely within last bin, but a hack
   }
-  //if (year != 16) {
-  //leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
-  //std::cout<<"We are in the non 2016 muon id placee"<<std::endl;
-  //}
   if (year == 16 && isID) {
     leptonbin = hist->FindBin(ptcheck,obj.Eta());
-    std::cout<<"We are in the ID and 2016 place"<<std::endl;
+    //std::cout<<"We are in the ID and 2016 place"<<std::endl;
   }
   else{
-        leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
-	std::cout<<"We are in the non 2016 muon id placee"<<std::endl;
+    leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
+    //std::cout<<"We are in the non 2016 muon id placee"<<std::endl;
   }
   leptonsf = hist->GetBinContent(leptonbin);
+  // std::cout<<"the scale factor bin is "<<leptonbin<<std::endl;
+  //std::cout<<"the scale factor is "<<leptonsf<<std::endl;
   lsfup    = hist->GetBinErrorUp(leptonbin);
+  //std::cout<<"the scale factor up unc is "<<lsfup<<std::endl;
+  //if (leptonsf > 0 && not isID) {
+  //std::cout<<"Found a nonzero trigger SF+++++++++++++++++++++++"<<std::endl;
+  //}
   lsfdwn   = hist->GetBinErrorLow(leptonbin);
   sfvec.push_back(leptonsf);
   sfvec.push_back(lsfup);
@@ -163,8 +165,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double  evntwkf;
    double  evntwbtag;
    double  evntwmusf;
+   double evntwmutrig;
    double  muiduncup;
    double  muiduncdwn;
+   double  mutriguncup;
+   double  mutriguncdwn;
    double  evntwelidsf;
    double  eliduncup;
    double  eliduncdwn;
@@ -253,8 +258,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *evntbtaguncup = trimTree->Branch("event_weight_btaguncup",&btaguncup,"btaguncup/D");
    TBranch *evntbtaguncdwn = trimTree->Branch("event_weight_btaguncdwn",&btaguncdwn,"btaguncdwn/D");
    TBranch *evntweightmuid = trimTree->Branch("event_weight_muid",&evntwmusf,"evntwmusf/D");
+   TBranch *evntweightmutrig = trimTree->Branch("event_weight_mutrig",&evntwmutrig,"evntwmutrig/D");
    TBranch *evntmuiduncup = trimTree->Branch("event_weight_muiduncup",&muiduncup,"muiduncup/D");
    TBranch *evntmuiduncdwn = trimTree->Branch("event_weight_muiduncdwn",&muiduncdwn,"muiduncdwn/D");
+   TBranch *evntmutriguncup = trimTree->Branch("event_weight_mutriguncup",&mutriguncup,"mutriguncup/D");
+   TBranch *evntmutriguncdwn = trimTree->Branch("event_weight_mutriguncdwn",&mutriguncdwn,"mutriguncdwn/D");
    TBranch *evntweightelid = trimTree->Branch("event_weight_elid",&evntwelidsf,"evntwelidsf/D");
    TBranch *evnteliduncup = trimTree->Branch("event_weight_eliduncup",&eliduncup,"eliduncup/D");
    TBranch *evnteliduncdwn = trimTree->Branch("event_weight_eliduncdwn",&eliduncdwn,"eliduncdwn/D");
@@ -312,6 +320,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TString btagfile = "badstring";
    TString muonsffile = "badstring";
    TString muonsfhname = "badstring";
+   TString muontrigsffile = "badstring";
+   TString muontrigsfhname = "badstring";
    TString electronsffile = "badstring";
    TString electronsfhname = "badstring";
    TString electronIDsffile = "badstring";
@@ -323,6 +333,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TH2D *hmuonsf = 0;
    TH2F *helectronsf = 0;
    TH2F *helectronIDsf = 0;
+   TH2F *hmuontrigsf = 0;
    
    if (sampleType == 3) {//ttbar
      btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_ttscalefactors_Zptcut_Hptcut_metcut_btagwp.root";
@@ -358,6 +369,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
      hmuonsf->SetDirectory(0);
      muonsff.Close();
+     //Muon Trigger SF
+     //std::cout<<"About to try and do the muon trigger sf"<<std::endl;
+     muontrigsffile = "leptonsf/Run2018_muon_SF_TRIGGER.root";
+     muontrigsfhname = "hflip";
+     TFile muontrigsff(muontrigsffile,"READ");
+     hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigsf->SetDirectory(0);
+     muontrigsff.Close();
      //Electron reco SF
      electronsffile = "leptonsf/Run2018_electron_SF.root";
      electronsfhname = "EGamma_SF2D";
@@ -391,6 +410,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
      hmuonsf->SetDirectory(0);
      muonsff.Close();
+     //Muon Trigger SF
+     std::cout<<"About to try and do the muon trigger sf"<<std::endl;
+     muontrigsffile = "leptonsf/Run2017_muon_SF_TRIGGER.root";
+     muontrigsfhname = "hflip";
+     TFile muontrigsff(muontrigsffile,"READ");
+     hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigsf->SetDirectory(0);
+     muontrigsff.Close();
      //Electron reco SF
      electronsffile = "leptonsf/Run2017BCDEF_electron_SF.root";
      electronsfhname = "EGamma_SF2D";
@@ -437,6 +464,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
      hmuonsf->SetDirectory(0);
      muonsff.Close();
+     //Muon Trigger SF
+     std::cout<<"About to try and do the muon trigger sf"<<std::endl;
+     muontrigsffile = "leptonsf/Run2016_muon_SF_TRIGGER.root";
+     muontrigsfhname = "hflip";
+     TFile muontrigsff(muontrigsffile,"READ");
+     hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigsf->SetDirectory(0);
+     muontrigsff.Close();
      //Electron reco SF
      electronsffile = "leptonsf/Run2016BCDEFGH_electron_SF.root";
      electronsfhname = "EGamma_SF2D";
@@ -473,6 +508,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
    std::cout<<"Using btagsf file  "<<btagfile<<std::endl;
    std::cout<<"Using muon ID sf file  "<<muonsffile<<std::endl;
+   std::cout<<"Using muon trigger sf file  "<<muontrigsffile<<std::endl;
    std::cout<<"Using electron sf file  "<<electronsffile<<std::endl;
 
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
@@ -620,8 +656,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       size_t pos = 0;
       string token;
       std::vector<int> checktrgidxs;
-      thetrigs = trigs[year-16][anchan];//add iteration for more triggers
-      //if (jentry == 0) {
+      thetrigs = trigs[year-16][anchan];
 	for (std::size_t i = 0; i < thetrigs.size();++i){
 	  //std::cout<<"The trigs we are checking are "<<thetrigs[i]<<std::endl;
 	  ourtrg = thetrigs[i];
@@ -932,49 +967,17 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      //*/
       //Do the emu trigger
       //passTrig = true;
-      eventleade.SetPtEtaPhiM(0,0,0,0);
-      eventleadmu.SetPtEtaPhiM(0,0,0,0);
+      //eventleade.SetPtEtaPhiM(0,0,0,0);
+      //eventleadmu.SetPtEtaPhiM(0,0,0,0);
+      if (Electrons->size() > 0){
+	eventleade = Electrons->at(0);
+      }
+      if (Muons->size() > 0){
+	eventleadmu = Muons->at(0);
+      }
       //std::cout<<"   The leading electron pt should be 0: "<<eventleade.Pt()<<std::endl;
       if (sampleType > 0 && anchan == 1 ) {//if emu channel
-	//if (nZeu > 0) {
-	//std::cout<<"   The muon trigger truth is  "<<TriggerPass->at(65)<<std::endl;
-	//std::cout<<"   The electron trigger truth is  "<<TriggerPass->at(40)<<std::endl;
-	//}
-	//if (trgvals[0] == 1) {
-	//passTrig = true;
-	//counttrigpass += 1;
-	//}
-	//*
-
-	//First iteration
-	//if (muld == 1 && trgvals[0] == 1){
-	  //passTrig = true;
-	  //counttrigpass += true;
-	  //}
-	//else if (elld == 1 && trgvals[1] == 1) {
-	  //passTrig = true;
-	  //counttrigpass += true;
-	  //}
-
-	//New MC mixing
-	//std::cout<<"At the data trigger position part"<<std::endl;
-	/*
 	if (Electrons->size() > 0 && Muons->size() > 0) {
-	  eventleade = Electrons->at(0);
-	  eventleadmu = Muons->at(0);
-	  if (eventleade.Pt() > eventleadmu.Pt() && trgvals[1] == 1) {
-	    passTrig = true;
-	    counttrigpass += true;
-	  }
-	  if (eventleade.Pt() <= eventleadmu.Pt() && trgvals[0] == 1) {
-	    passTrig = true;
-	    counttrigpass += true;
-	  }
-	}
-	//*/
-	if (Electrons->size() > 0 && Muons->size() > 0) {
-	  eventleade = Electrons->at(0);
-	  eventleadmu = Muons->at(0);
 	  //std::cout<<"   The leading electron pt should be nonzero: "<<eventleade.Pt()<<std::endl;
 	  if (eventleade.Pt() > 27 ) { //&& trgvals[1] == 1) {
 	    if (trgvals[1] == 1) {
@@ -992,20 +995,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	}
       }
       else if (sampleType < 0 && anchan == 1 ) {
-	//if (sampleType == -2 && trgvals[1] == 1) {//test for just the electron trigger
-	//passTrig = true;
-	//counttrigpass += true;
-	//}
-	/*//Original plan for data mixed triggers
-	if (sampleType == -1 && muld == 1 && trgvals[0] == 1) {//mu data, mu lead, mu trig
-	  passTrig = true;
-	  counttrigpass += true;
-	}
-	else if (sampleType == -2 && elld == 1 && trgvals[1] == 1) {
-	 passTrig = true;
-	 counttrigpass += true;
-	 }
-	//*/
 	if (Electrons->size() > 0 && Muons->size() > 0) {
 	  //std::cout<<"We have an emu event"<<std::endl;
 	  eventleade = Electrons->at(0);
@@ -1055,25 +1044,6 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
 
       //Do Lepton SF
-      //Will need to have it be related to which channel the emu channel is serving as a background estimate
-      /*
-      double muidsf  = 1;
-      double muidup  = 0;
-      double muiddwn = 0;
-      int muidbin    = -1;
-      double elidsf  = 1;
-      double elidup  = 0;
-      double eliddwn = 0;
-      int elidbin    = -1;
-      double elrecosf  = 1;
-      double elrecoup  = 0;
-      double elrecodwn = 0;
-      int elrecobin    = -1;
-      double leptonsf  = 1;
-      double lsfup  = 0;
-      double lsfdwn = 0;
-      int leptonbin    = -1;
-      //*/
       std::vector<double> muidsfvec = {1,0,0};//total muon weight
       std::vector<double> elidsfvec = {1,0,0};//total electron ID weight
       std::vector<double> elrecosfvec = {1,0,0};//total electron Reco weight
@@ -1083,13 +1053,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       std::vector<double> muidsfsublv = {1,0,0};//muon channel subleadmuon
       std::vector<double> elidsfsublv = {1,0,0};//electron channel subleadelectron
       std::vector<double> elrecosublv = {1,0,0};//electron channel subleadelectron
-
-      //std::cout<<"We are about to do the sf"<<std::endl;
+      std::vector<double> mutrigsfvec= {1,0,0};//muon trigger leading muon in event
       
       if (sampleType > 0 && anchan == 4) {//not data, mumuchannel
+	//std::cout<<"Doing Muon ID sf"<<std::endl;
 	muidsfleadv = GetMuonPtEtaSF(year,hmuonsf,leadmu,120.0,true);
 	muidsfsublv = GetMuonPtEtaSF(year,hmuonsf,subleadmu,120.0,true);
 	muidsfvec = combineTheLeptonSF(muidsfleadv,muidsfsublv);
+	//std::cout<<"Doing Muon Trigger sf"<<std::endl;
+	mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,200.0,false);
       }
       else if (sampleType > 0 && anchan == 2) {//not data, ee channel
 	elidsfleadv = GetElectronPtEtaSF(year,helectronIDsf,leade);
@@ -1304,6 +1276,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	evntwkf = evntwkf_hold;
 	evntwbtag = hsf;
 	evntwmusf = muidsfvec[0];
+	evntwmutrig = mutrigsfvec[0];
 	evntwelidsf = elidsfvec[0];
 	evntwelrecosf = elrecosfvec[0];
 	//The scale factor uncertainties
@@ -1311,6 +1284,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	btaguncdwn = hbtagundwn;
 	muiduncup  = muidsfvec[1];
 	muiduncdwn = muidsfvec[2];
+	mutriguncup  = mutrigsfvec[1];
+	mutriguncdwn = mutrigsfvec[2];
 	eliduncup  = elidsfvec[1];
 	eliduncdwn = elidsfvec[2];
 	elrecouncup = elrecosfvec[1];
