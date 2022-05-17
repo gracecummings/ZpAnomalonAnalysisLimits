@@ -118,6 +118,7 @@ if __name__=='__main__':
     parser.add_argument("-tot","--comboregion",type=bool,help = "do you want combined SR and SB?")
     parser.add_argument("-v","--validation",type=bool,help = "validation region bounds?")
     parser.add_argument("-syst","--systematics",type=str)
+    parser.add_argument("-a","--alphar",type=bool,help = "alpha ratio regions?")
     parser.add_argument("-c","--chan",type=str)
     args = parser.parse_args()
 
@@ -132,6 +133,7 @@ if __name__=='__main__':
     comb   = args.comboregion
     valid  = args.validation
     systl  = args.systematics
+    alphatest = args.alphar
     channel = args.chan
     topdir = args.directory
 
@@ -158,9 +160,9 @@ if __name__=='__main__':
 
         metstr = ''
         branches = [b'ZCandidate_*',
-                    #b'RunNum',
-                    #b'LumiBlockNum',
-                    #b'EvtNum',
+                    b'RunNum',
+                    b'LumiBlockNum',
+                    b'EvtNum',
                     b'hCandidate_*',
                     b'metsuable',
                     b'metphiusable',
@@ -168,12 +170,6 @@ if __name__=='__main__':
                     b'ND_mass_est',
                     b'NS_mass_est',
                     b'event_weight*',
-                    #b'LMuCandidate_*',
-                    #b'sLMuCandidate_*',
-                    #b'LEleCandidate_*',
-                    #b'sLEleCandidate_*',
-                    #b'event_weight_kf',
-                    #b'event_weight_btag'
         ]
 
         if (stype > 0):
@@ -210,8 +206,6 @@ if __name__=='__main__':
             mevents = mtree.pandas.df(branches=branches)
             etree = up3.open(euf[0])['PreSelection;1']
             eevents = etree.pandas.df(branches=branches)
-            #print(mevents)
-            #print(eevents)
             print("Number of events in muon dataset ",len(mevents))
             print("Number of events in elec dataset ",len(eevents))
             
@@ -219,11 +213,9 @@ if __name__=='__main__':
             mixdf = pd.concat(frames)
             print("Number of events in straight mixed set ",len(mixdf))
             print("dropping duplicates")
-            #mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
             mixdf = mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
             print("Number of events after dropping duplicates ",len(mixdf))
             events = mixdf
-            #print(events)
             goodname = sampname+"combined"
 
         else:
@@ -266,16 +258,14 @@ if __name__=='__main__':
         btdf   = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
 
         #Actual Analysis
-        if not valid:
+        if not (valid or alphatest):
             srup   = btdf[btdf['hCandidate_sd'] > 70.]
             bldf   = srup[srup['hCandidate_sd'] < 150.]#full blinded region
             srdf   = bldf[bldf['hCandidate_sd'] > 110.]#Higgs Peak
             lowsbh = btdf[btdf['hCandidate_sd'] <= 70.]
             lowsb  = lowsbh[lowsbh['hCandidate_sd'] > 30.]
-            #lowsb = btdf[btdf['hCandidate_sd'] <= 70.]#old way
             highsb = btdf[btdf['hCandidate_sd'] >= 150.]
             sbdf   = pd.concat([lowsb,highsb])
-            #totdf = pd.concat([sbdf,srdf])
             totdf = pd.concat([bldf,lowsb,highsb])
             
         #Validation region for alpha method for DY
@@ -289,9 +279,22 @@ if __name__=='__main__':
             highsb = btdf[btdf['hCandidate_sd'] >= 150.]
             sbdf   = pd.concat([lowsb,highsb])
             totdf = pd.concat([sbdf,srdf])
+        
+        if alphatest:
+            #This is to generate the alpha ratio normalization regions
+            alphahptdf = zptdf[zptdf['hCandidate_pt'] > hptcut]
+            alphabtdf  = alphahptdf[alphahptdf['hCandidate_'+btaggr] > float(btagwp)]
+            normdf = alphabtdf
+            lowsb  = normdf[normdf['hCandidate_sd'] <= 70.]
+            highsb = normdf[normdf['hCandidate_sd'] >= 150.]
+            sbdf   = pd.concat([lowsb,highsb])
+            srbtdf = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
+            srdflow = srbtdf[srbtdf['hCandidate_sd'] < 150.]
+            srdf = srdflow[srdflow['hCandidate_sd'] > 110]
+
 
         region = "sideband"
-        if not valid:
+        if not (valid or alphatest):
             if stype > 0:
                 if sr:
                     fdf = srdf
@@ -326,6 +329,20 @@ if __name__=='__main__':
             else:
                 fdf = sbdf
                 region = "validationsideband"
+        if alphatest:
+            if (sr and stype > 0):
+                fdf = srdf[srdf['metsuable'] > metcut]#added back in the met cut for the sr
+                region = "signalr_alphatest"
+                print("    using signal region selections")
+            elif (comb and stype > 0):
+                fdf = normdf
+                region = "totalr_alphatest"
+                print("    Using a total soft drop mass region without met cut")
+            else:
+                fdf = sbdf
+                region = "sideband_alphatest"
+                print("    using a softdrop mass sideband without met cut")
+
 
         #print("number of btag passing events ",len(btdf))
         
@@ -499,7 +516,7 @@ if __name__=='__main__':
         rootOutFile["h_h_eta"]      = np.histogram(fdf['hCandidate_eta'],bins=30,range=(-5,5),weights=eventweights)
         rootOutFile["h_h_m"]        = np.histogram(fdf['hCandidate_m'],bins=80,range=(0,400),weights=eventweights)
         rootOutFile["h_h_sd"]       = np.histogram(fdf['hCandidate_sd'],bins=80,range=(0,400),weights=eventweights)
-        rootOutFile["h_met"]        = np.histogram(fdf['metsuable'],bins=39,range=(50,2000),weights=eventweights)
+        rootOutFile["h_met"]        = np.histogram(fdf['metsuable'],bins=80,range=(0,2000),weights=eventweights)
         rootOutFile["h_met_phi"]    = np.histogram(fdf['metphiusable'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
         rootOutFile["h_met_phiw"]   = np.histogram(fdf['metphiusable'].map(wrapPhi),bins=30,range=(0,3.14159),weights=eventweights)#wrapped version of phi
         #rootOutFile["h_zp_jigm"]    = np.histogram(fdf['ZPrime_mass_est'],bins=50,range=(500,5000),weights=eventweights)
@@ -524,7 +541,7 @@ if __name__=='__main__':
         hphiwerrs    = boostUnc(fdf['hCandidate_phi'].map(wrapPhi),eventweights,30,0,3.14159)
         hmerrs       = boostUnc(fdf['hCandidate_m'],eventweights,80,0,400)
         hsderrs      = boostUnc(fdf['hCandidate_sd'],eventweights,80,0,400)
-        meterrs      = boostUnc(fdf['metsuable'],eventweights,39,50,2000)
+        meterrs      = boostUnc(fdf['metsuable'],eventweights,80,0,2000)
         metphierrs   = boostUnc(fdf['metphiusable'],eventweights,30,-3.14159,3.14159)
         metphiwerrs  = boostUnc(fdf['metphiusable'].map(wrapPhi),eventweights,30,0,3.14159)
         zpjigerrs    = boostUnc(fdf['ZPrime_mass_est'],eventweights,130,0,13000)
