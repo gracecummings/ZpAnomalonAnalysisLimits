@@ -245,20 +245,18 @@ if __name__=='__main__':
         #print("Doing SD mass lower cut of :" ,sdmcut)
         #do some cuts
         #print("Number of events in chunk ",len(events))
-        #sddf   = events[events['hCandidate_sd'] > sdmcut]
-        #metdf  = sddf[sddf['metsuable'] > metcut]
-        #zptdf  = metdf[metdf['ZCandidate_pt'] > zptcut]
-        #hptdf  = zptdf[zptdf['hCandidate_pt'] > hptcut]
-        #btdf   = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
 
-        #new cut order
+        if alphatest:
+            metcut = 0.0
+            
         zptdf  = events[events['ZCandidate_pt'] > zptcut]
         metdf   = zptdf[zptdf['metsuable'] > metcut]
         hptdf  = metdf[metdf['hCandidate_pt'] > hptcut]
         btdf   = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
 
         #Actual Analysis
-        if not (valid or alphatest):
+        #if not (valid or alphatest):
+        if not valid:
             srup   = btdf[btdf['hCandidate_sd'] > 70.]
             bldf   = srup[srup['hCandidate_sd'] < 150.]#full blinded region
             srdf   = bldf[bldf['hCandidate_sd'] > 110.]#Higgs Peak
@@ -281,16 +279,21 @@ if __name__=='__main__':
             totdf = pd.concat([sbdf,srdf])
         
         if alphatest:
+            normdf = totdf
             #This is to generate the alpha ratio normalization regions
-            alphahptdf = zptdf[zptdf['hCandidate_pt'] > hptcut]
-            alphabtdf  = alphahptdf[alphahptdf['hCandidate_'+btaggr] > float(btagwp)]
-            normdf = alphabtdf
-            lowsb  = normdf[normdf['hCandidate_sd'] <= 70.]
-            highsb = normdf[normdf['hCandidate_sd'] >= 150.]
-            sbdf   = pd.concat([lowsb,highsb])
-            srbtdf = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
-            srdflow = srbtdf[srbtdf['hCandidate_sd'] < 150.]
-            srdf = srdflow[srdflow['hCandidate_sd'] > 110]
+            #alphahptdf = zptdf[zptdf['hCandidate_pt'] > hptcut]
+            #alphabtdf  = alphahptdf[alphahptdf['hCandidate_'+btaggr] > float(btagwp)]
+            
+            #normdf1 = alphahptdf
+            #lowsbh  = normdf1[normdf1['hCandidate_sd'] <= 70.]
+            #lowsb  = lowsbh[lowsbh['hCandidate_sd'] > 30.]
+            #highsb = normdf1[normdf1['hCandidate_sd'] >= 150.]
+            #sbdf   = pd.concat([lowsb,highsb])
+            #srbtdf = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
+            #srdflow = srbtdf[srbtdf['hCandidate_sd'] < 150.]
+            #srdf = srdflow[srdflow['hCandidate_sd'] > 110]
+            #bldf   = srup[srup['hCandidate_sd'] < 150.]#full blinded region
+            #totdf = pd.concat([bldf,lowsb,highsb])
 
 
         region = "sideband"
