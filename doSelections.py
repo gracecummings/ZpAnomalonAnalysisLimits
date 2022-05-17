@@ -14,6 +14,7 @@ def makeEventWeightSeries(df,syststr):
     colnames = list(df.columns)
     wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
     sfnames = [x.split("event_weight_")[1]+"nom" for x in wnames]
+
     sfname = "_".join(sfnames)
     
     wdf = df[wnames]
@@ -26,6 +27,8 @@ def makeEventWeightSeriesWithUncertainties(df,syststr):
         
     sfnames = [x.split("event_weight_")[1]+"nom" for x in wnames]
     sfname = "_".join(sfnames)
+
+    #print(sfnames)
 
     if "up" in syststr:
         uncname = syststr.split("up")[0]
@@ -48,6 +51,7 @@ def makeEventWeightSeriesWithUncertainties(df,syststr):
         
     unccol = df["event_weight_"+unctag]        
     wcol   = df[wcolname]
+    #print(wcol)
     wnames.remove(wcolname)
     
     wdf = df[wnames].copy()
@@ -131,9 +135,12 @@ if __name__=='__main__':
     channel = args.chan
     topdir = args.directory
 
+    print(sampname)
+
     inputfiles = glob.glob(topdir+'/'+sampname+'*_topiary_'+channel+'*.root')
     #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-14/noLeadingReq/Run2016H-17Jul2018-v1.SingleElectron_topiary_emu_systnominal_elecTrigNoLeadingRequirement_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
-    #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-28/Autumn18.TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8_topiary_mumu_systnominal_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
+    #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-28/Autumn18.TTToSemiLeptonic_TuneCP5_13TV-powheg-pythia8_topiary_mumu_systnominal_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
+    print(inputfiles)
     innames,jecs = getContentsOfSample(inputfiles)
     samp = innames[0]
     print("The parameters you are invoking: ")
@@ -212,7 +219,8 @@ if __name__=='__main__':
             mixdf = pd.concat(frames)
             print("Number of events in straight mixed set ",len(mixdf))
             print("dropping duplicates")
-            mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
+            #mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
+            mixdf = mixdf.drop_duplicates(subset = ['RunNum','LumiBlockNum','EvtNum'])
             print("Number of events after dropping duplicates ",len(mixdf))
             events = mixdf
             #print(events)
@@ -267,7 +275,8 @@ if __name__=='__main__':
             #lowsb = btdf[btdf['hCandidate_sd'] <= 70.]#old way
             highsb = btdf[btdf['hCandidate_sd'] >= 150.]
             sbdf   = pd.concat([lowsb,highsb])
-            totdf = pd.concat([sbdf,srdf])
+            #totdf = pd.concat([sbdf,srdf])
+            totdf = pd.concat([bldf,lowsb,highsb])
             
         #Validation region for alpha method for DY
         if valid:
@@ -341,22 +350,23 @@ if __name__=='__main__':
             leadmu = fdf[fdf['LMuCandidate_pt'] > fdf['LEleCandidate_pt']]
             leadel = fdf[fdf['LEleCandidate_pt'] > fdf['LMuCandidate_pt']]
 
+            #print(leadmu)
+            #print(leadel)
+
             print(" Length of leading muon df in final selection ",len(leadmu))
             print(" Length of leading electron df in",len(leadel))
 
-            #get the event weights in order for these reordered series
-            lepordrkfw         = leadmu['event_weight_kf'].append(leadel['event_weight_kf'])
-            lepordrbtagw       = leadmu['event_weight_btag'].append(leadel['event_weight_btag'])
-            lepordrbtaguncdwnw = leadmu['event_weight_btaguncdwn'].append(leadel['event_weight_btaguncdwn'])
-            lepordrbtaguncupw  = leadmu['event_weight_btaguncup'].append(leadel['event_weight_btaguncup'])
-            lepordrmuidw       = leadmu['event_weight_muid'].append(leadel['event_weight_muid'])
-            lepordrmuidwuncdwn = leadmu['event_weight_muiduncdwn'].append(leadel['event_weight_muiduncdwn'])
-            lepordrmuidwuncup  = leadmu['event_weight_muiduncup'].append(leadel['event_weight_muiduncup'])
+            ###new way
+            leadmuc = leadmu.copy()
+            leadelc = leadel.copy()
+
+            leadordered = pd.concat([leadmuc,leadelc])
 
             #gotta make the hCandidate stuff with the same variables
+            #not really, could use the leadordered dataframe
             leadinglephcandphi = leadmu['hCandidate_phi'].append(leadel['hCandidate_phi'])
             leadinglephcandeta = leadmu['hCandidate_eta'].append(leadel['hCandidate_eta'])
-            
+
             leadpt = leadmu['LMuCandidate_pt'].append(leadel['LEleCandidate_pt'])
             leadphi = leadmu['LMuCandidate_phi'].append(leadel['LEleCandidate_phi'])
             leadeta = leadmu['LMuCandidate_eta'].append(leadel['LEleCandidate_eta'])
@@ -370,21 +380,22 @@ if __name__=='__main__':
             allmueta =  leadmu['LMuCandidate_eta'].append(leadel['sLMuCandidate_eta'])
             alleleta = leadmu['sLEleCandidate_eta'].append(leadel['LEleCandidate_eta'])
             deltaRllephdf   = deltaR(leadphi,leadinglephcandphi,leadeta,leadinglephcandeta)
+            #deltaR(leadphi,leadordered['hCandidate_phi'],leadeta,leadordered['hCandidate_eta'])
             deltaRslephdf   = deltaR(sleadphi,leadinglephcandphi,sleadeta,leadinglephcandeta)
             deltaRsleplepdf = deltaR(sleadphi,leadphi,sleadeta,leadeta)
-            #print(" lenght of leading phi series ",len(leadphi))
-            #print(" lenght of leading eta series ",len(leadeta))
-            #print(" lenght of hcandidare phi ",len(fdf['hCandidate_phi']))
-            #print(" lenght of hcandidare eta ",len(fdf['hCandidate_eta']))
-            #print(" lenght of leading lep dr h series ",len(deltaRllephdf))
-            #print("printing the weird series")
-            #print(deltaRllephdf)
-            #print("the leading series")
-            #print(leadphi)
-            #print(leadeta)
-            #print(fdf['hCandidate_phi'])
-            #print(fdf['hCandidate_eta'])
-            #print(fdf)
+            deltaRemuLeadMuh = deltaR(leadmuc['LMuCandidate_phi'],leadmuc['hCandidate_phi'],leadmuc['LMuCandidate_eta'],leadmuc['hCandidate_eta'])
+            deltaRemuSubLeadElh = deltaR(leadmuc['sLEleCandidate_phi'],leadmuc['hCandidate_phi'],leadmuc['sLEleCandidate_eta'],leadmuc['hCandidate_eta'])
+            deltaRemuLeadElh = deltaR(leadelc['LEleCandidate_phi'],leadelc['hCandidate_phi'],leadelc['LEleCandidate_eta'],leadelc['hCandidate_eta'])
+            deltaRemuSubLeadMuh = deltaR(leadelc['sLMuCandidate_phi'],leadelc['hCandidate_phi'],leadelc['sLMuCandidate_eta'],leadelc['hCandidate_eta'])
+
+            if not systl:
+                lepdrweights,notused  = makeEventWeightSeries(leadordered,systl)
+                lmuweights,notused2   = makeEventWeightSeries(leadmuc,systl)
+                lelweights,notused3   = makeEventWeightSeries(leadelc,systl)
+            if systl:
+                lepdrweights,notused = makeEventWeightSeriesWithUncertainties(lead,systl)
+                lmuweights,notused2   = makeEventWeightSeriesWithUncertainties(leadmuc,systl)
+                lelweights,notused3   = makeEventWeightSeriesWithUncertainties(leadelc,systl)
 
         if (stype > 0 and channel != "emu"):#reclustering comments
             deltaRlmughdf  = deltaR(fdf['LMuCandidate_phi'],fdf['ghCandidate_phi'],fdf['LMuCandidate_eta'],fdf['ghCandidate_eta'])
@@ -411,6 +422,9 @@ if __name__=='__main__':
         #calculate the event weight
         #print(fdf['event_weight_btag'])
         eventweights = fdf['event_weight_kf']
+        #lepdrweights = leadordered['event_weight_kf']
+        #lmuweights   = leadmuc['event_weight_kf']
+        #lelweights   = leadelc['event_weight_kf']
         
         #print("btagging systematics debug")
         #print(" systl: ",systl)
@@ -433,6 +447,9 @@ if __name__=='__main__':
         else:
             print("Doing scale factor variations of type: ",systl)
             eventweights,systname = makeEventWeightSeriesWithUncertainties(fdf,systl)
+            #lepdrweights,notused = makeEventWeightSeriesWithUncertainties(lead,systl)
+            #lmuweights,notused2   = makeEventWeightSeriesWithUncertainties(leadmuc,systl)
+            #lelweights,notused3   = makeEventWeightSeriesWithUncertainties(leadelc,systl)
 #            if "btagup" == systl:
 #                print("    Applying uncUp btagging SF")
 #                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']+fdf['event_weight_btaguncup'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
@@ -630,9 +647,9 @@ if __name__=='__main__':
             unc_names.extend(addnames)
             
         if (channel == "emu"):
-            rootOutFile["h_dr_leadleph"]  = np.histogram(deltaRllephdf,bins=30,range=(0,6),weights=eventweights)
-            rootOutFile["h_dr_sleadleph"] = np.histogram(deltaRslephdf,bins=30,range=(0,6),weights=eventweights)
-            rootOutFile["h_dr_leps"]      = np.histogram(deltaRsleplepdf,bins=30,range=(0,6),weights=eventweights)
+            rootOutFile["h_dr_leadleph"]  = np.histogram(deltaRllephdf,bins=30,range=(0,6),weights=lepdrweights)
+            rootOutFile["h_dr_sleadleph"] = np.histogram(deltaRslephdf,bins=30,range=(0,6),weights=lepdrweights)
+            rootOutFile["h_dr_leps"]      = np.histogram(deltaRsleplepdf,bins=30,range=(0,6),weights=lepdrweights)
             rootOutFile["h_leadlep_pt"]   = np.histogram(leadpt,bins=50,range=(0,500),weights=eventweights)
             rootOutFile["h_sleadlep_pt"]  = np.histogram(sleadpt,bins=50,range=(0,500),weights=eventweights)
             rootOutFile["h_leadlep_phi"]  = np.histogram(leadphi,bins=30,range=(-3.14159,3.14159),weights=eventweights)
@@ -645,11 +662,27 @@ if __name__=='__main__':
             rootOutFile["h_muon_pt"]  = np.histogram(allmupt,bins=50,range=(0,500),weights=eventweights)
             rootOutFile["h_muon_phi"]  = np.histogram(allmuphi,bins=30,range=(-3.14159,3.14159),weights=eventweights)
             rootOutFile["h_muon_eta"]  = np.histogram(allmueta,bins=30,range=(-5,5),weights=eventweights)
+            #new kinematic plots
+            rootOutFile["h_lmuon_pt"]  = np.histogram(leadmuc['LMuCandidate_pt'],bins=50,range=(0,500),weights=lmuweights)
+            rootOutFile["h_lmuon_phi"]  = np.histogram(leadmuc['LMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=lmuweights)
+            rootOutFile["h_lmuon_eta"]  = np.histogram(leadmuc['LMuCandidate_eta'],bins=30,range=(-5,5),weights=lmuweights)
+            rootOutFile["h_slelectron_pt"]  = np.histogram(leadmuc['sLEleCandidate_pt'],bins=50,range=(0,500),weights=lmuweights)
+            rootOutFile["h_slelectron_phi"]  = np.histogram(leadmuc['sLEleCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=lmuweights)
+            rootOutFile["h_slelectron_eta"]  = np.histogram(leadmuc['sLEleCandidate_eta'],bins=30,range=(-5,5),weights=lmuweights)
+            rootOutFile["h_lelectron_pt"]  = np.histogram(leadelc['LEleCandidate_pt'],bins=50,range=(0,500),weights=lelweights)
+            rootOutFile["h_lelectron_phi"]  = np.histogram(leadelc['LEleCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=lelweights)
+            rootOutFile["h_lelectron_eta"]  = np.histogram(leadelc['LEleCandidate_eta'],bins=30,range=(-5,5),weights=lelweights)
+            rootOutFile["h_slmuon_pt"]  = np.histogram(leadelc['sLMuCandidate_pt'],bins=50,range=(0,500),weights=lelweights)
+            rootOutFile["h_slmuon_phi"]  = np.histogram(leadelc['sLMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=lelweights)
+            rootOutFile["h_slmuon_eta"]  = np.histogram(leadelc['sLMuCandidate_eta'],bins=30,range=(-5,5),weights=lelweights)
+            rootOutFile["h_dr_leadmuonh"]  = np.histogram(deltaRemuLeadMuh,bins=30,range=(0,6),weights=lmuweights)
+            rootOutFile["h_dr_subleadingeleh"]  = np.histogram(deltaRemuSubLeadElh,bins=30,range=(0,6),weights=lmuweights)
+            rootOutFile["h_dr_leadeleh"]  = np.histogram(deltaRemuLeadElh,bins=30,range=(0,6),weights=lelweights)
+            rootOutFile["h_dr_subleadingmuh"]  = np.histogram(deltaRemuSubLeadMuh,bins=30,range=(0,6),weights=lelweights)
 
-
-            drllherrs   = boostUnc(deltaRllephdf,eventweights,30,0,6)
-            drsllherrs  = boostUnc(deltaRslephdf,eventweights,30,0,6)
-            drsllllerrs = boostUnc(deltaRsleplepdf,eventweights,30,0,6)
+            drllherrs   = boostUnc(deltaRllephdf,lepdrweights,30,0,6)
+            drsllherrs  = boostUnc(deltaRslephdf,lepdrweights,30,0,6)
+            drsllllerrs = boostUnc(deltaRsleplepdf,lepdrweights,30,0,6)
             llpterrs    = boostUnc(leadpt,eventweights,50,0,500)
             sllpterrs   = boostUnc(sleadpt,eventweights,50,0,500)
             llphierrs   = boostUnc(leadphi,eventweights,30,-3.14159,3.14159)
@@ -662,6 +695,24 @@ if __name__=='__main__':
             allmupterrs = boostUnc(allmupt,eventweights,50,0,500)
             allmuphierrs = boostUnc(allmuphi,eventweights,30,-3.14159,3.14159)
             allmuetaerrs = boostUnc(allmueta,eventweights,30,-5,5)
+            emulmupterrs  = boostUnc(leadmuc['LMuCandidate_pt'],lmuweights,50,0,500)
+            emulmuphierrs = boostUnc(leadmuc['LMuCandidate_phi'],lmuweights,30,-3.14159,3.14159)
+            emulmuetaerrs = boostUnc(leadmuc['LMuCandidate_eta'],lmuweights,30,-5,5)
+            emuslelpterrs = boostUnc(leadmuc['sLEleCandidate_pt'],lmuweights,50,0,500)
+            emuslelphierrs = boostUnc(leadmuc['sLEleCandidate_phi'],lmuweights,30,-3.14159,3.14159)
+            emusleletaerrs = boostUnc(leadmuc['sLEleCandidate_eta'],lmuweights,30,-5,5)
+            emulelpterrs = boostUnc(leadelc['LEleCandidate_pt'],lelweights,50,0,500)
+            emulelphierrs = boostUnc(leadelc['LEleCandidate_phi'],lelweights,30,-3.14159,3.14159)
+            emuleletaerrs = boostUnc(leadelc['LEleCandidate_eta'],lelweights,30,-5,5)
+            emuslmupterrs = boostUnc(leadelc['sLMuCandidate_pt'],lelweights,50,0,500)
+            emuslmuphierrs = boostUnc(leadelc['sLMuCandidate_phi'],lelweights,30,-3.14159,3.14159)
+            emuslmuetaerrs = boostUnc(leadelc['sLMuCandidate_eta'],lelweights,30,-5,5)
+            emudrlmuherrs  = boostUnc(deltaRemuLeadMuh,lmuweights,30,0,6)
+            emudrslelherrs = boostUnc(deltaRemuSubLeadElh,lmuweights,30,0,6)
+            emudrleleherrs = boostUnc(deltaRemuLeadElh,lelweights,30,0,6)
+            emudrslmuherrs = boostUnc(deltaRemuSubLeadMuh,lelweights,30,0,6)
+
+
             addhists  = [drllherrs,
                          drsllherrs,
                          drsllllerrs,
@@ -676,7 +727,23 @@ if __name__=='__main__':
                          alleletaerrs,
                          allmupterrs,
                          allmuphierrs,
-                         allmuetaerrs
+                         allmuetaerrs,
+                         emulmupterrs,
+                         emulmuphierrs,
+                         emulmuetaerrs,
+                         emuslelpterrs,
+                         emuslelphierrs,
+                         emusleletaerrs,
+                         emulelpterrs,
+                         emulelphierrs,
+                         emuleletaerrs,
+                         emuslmupterrs,
+                         emuslmuphierrs,
+                         emuslmuetaerrs,
+                         emudrlmuherrs ,
+                         emudrslelherrs,
+                         emudrleleherrs,
+                         emudrslmuherrs,
             ]
             
             addnames  = ["h_dr_leadleph",
@@ -693,8 +760,24 @@ if __name__=='__main__':
                          "h_electron_eta",
                          "h_muon_pt",
                          "h_muon_phi",
-                         "h_muon_eta"
-                ]
+                         "h_muon_eta",
+                         "h_lmuon_pt",
+                         "h_lmuon_phi",
+                         "h_lmuon_eta",
+                         "h_slelectron_pt",
+                         "h_slelectron_phi",
+                         "h_slelectron_eta",
+                         "h_lelectron_pt",
+                         "h_lelectron_phi",
+                         "h_lelectron_eta",
+                         "h_slmuon_pt",
+                         "h_slmuon_phi",
+                         "h_slmuon_eta",
+                         "h_dr_leadmuonh",
+                         "h_dr_subleadingeleh",
+                         "h_dr_leadeleh",
+                         "h_dr_subleadingmuh"
+            ]
             unc_arrays.extend(addhists)
             unc_names.extend(addnames)
             
