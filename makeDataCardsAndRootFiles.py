@@ -8,10 +8,23 @@ import pandas as pd
 import configparser
 import argparse
 
-def writeDataCard(processes,rootFileName,channel,yearstr):
+def makeSignalInfoDict(sigclass, region,sigxs):
+    sigs = sigclass.getPreppedSig(region,sigxs)
+    sigdict = {}
+    for sig in sigs:
+        sigdict[sig["name"]] = sig
+    return sigdict
+
+def checkBinNumbers(histlist):
+    binnums = [hist.GetNbinsX() for hist in histlist]
+    testl = [num == binnums[0] for num in binnums]
+    aok = all(testl)
+    return aok
+
+def writeDataCard(processes,rootFileName,channel,yearstr,hdat):
     signame = processes["processnames"][0]
     nbkg = len(processes["processnames"])-1
-    obsEvents = 0
+    obsEvents = hdat.Integral()
     binname = signame+"_"+channel
     namestr = " ".join(processes["processnames"])
     rates   = [str(hist.Integral()) for hist in processes["hists"]]
@@ -104,9 +117,7 @@ if __name__=='__main__':
     sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
     dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
-    dykeys = dyEst.GetListOfKeys()
-    for k in dykeys:
-        print(k.GetName())
+
     ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_zp_jigm')
@@ -116,7 +127,6 @@ if __name__=='__main__':
     empty3 = empty.Clone()
     
     ####Getting the Estimations####
-    hdat = empty.Clone()
     hdy    = dyEst.Get("extrphistnoerrs").Clone()
     htt = bkgs.getAddedHist(empty1,"TT","sr","h_zp_jigm")
     hzz  = bkgs.getAddedHist(empty2,"ZZTo2L2Q","sr","h_zp_jigm")
@@ -124,17 +134,24 @@ if __name__=='__main__':
     hvv  = hzz.Clone()
     hvv.Add(hwz)
 
+
     ####Rename and restucture
     htt = newNameAndStructure(htt,"TT",rebindiv,limrangelow,limrangehigh)
     hdy = newNameAndStructure(hdy,"DY",1,limrangelow,limrangehigh)
     hvv = newNameAndStructure(hvv,"VV",rebindiv,limrangelow,limrangehigh)
-    hdat = newNameAndStructure(hdat,"data_obs",rebindiv,limrangelow,limrangehigh)
+    hdat = hdy.Clone()
+    hdat.SetName("data_obs")
+    hdat.Add(htt)
+    hdat.Add(hvv)
+
 
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.getPreppedSig('sr',sigxs)
+    signom = makeSignalInfoDict(sig,'sr',sigxs)
     sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
-    for s,sig in enumerate(siginfo):
-        name = sig["name"]
+    nomsigs = [s["name"] for s in siginfo]
+    for s in nomsigs:
+        name = signom[s]["name"]
         signame = "holder"
         if "Tune" in name:
             strippedname = name.split("_Tune")[0]
@@ -143,7 +160,7 @@ if __name__=='__main__':
             signame = name.replace("-","")
         print("------- Looking at signal sample ",signame)
 
-        if "Zp4000ND800NS200" not in signame:
+        if "Zp5500ND600NS200" not in signame:
             continue
 
         ####Make Files
@@ -151,13 +168,18 @@ if __name__=='__main__':
         prepRootFile = ROOT.TFile(prepRootName,"recreate")
             
         ####Nominal Signal
-        hsigori = sig["tfile"].Get("h_zp_jigm")
+        hsigori = signom[s]["tfile"].Get("h_zp_jigm")
         hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
         hsig = hsigori.Clone()
-        hsig.Scale(sig["scale"])
+        hsig.Scale(signom[s]["scale"])
 
         hsig = newNameAndStructure(hsig,signame,rebindiv,limrangelow,limrangehigh)
-        prepRootFile.cd() 
+        prepRootFile.cd()
+
+        #print("!!!!!!!!artificially scaling the nominal backgrounds!!!!")
+        #bkghists = [htt,hvv,hdy,hdat]
+        #for hist in bkghists:
+        #    hist.Scale(10)
         htt.Write()
         hvv.Write()
         hdy.Write()
@@ -165,16 +187,17 @@ if __name__=='__main__':
         hsig.Write()
 
         #####Gather Systematics
-        systdictrate = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":["0","1.018","1.018","1.018"]}
+        systdictrate = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":["1.018","1.018","1.018","1.018"]}
                     }
         systdictshape = {}
+
 
         for syst in systs:
             #print("YOU HAVE CURRENTLY TURNED OFF SYSTEMATICS")
             #continue
             if syst == 'nominal':
                 continue
-            print("------- Looking at systematic ",syst)
+            print("        Looking at systematic ",syst)
 
             
             systbkgsup  = go.backgrounds(config.get(syst,'pathup'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strup'))
@@ -190,72 +213,115 @@ if __name__=='__main__':
             appcode = config.get(syst,'applist').split(',')
             ratenums = config.get(syst,'rate').split(',')
             ratelist = ratenums
-            applist = [float(x) for x in appcode]
-            systdictshape[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
-            systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
+            if len(appcode > 1):#If the shape systematic never gets applied
+                applist = [float(x) for x in appcode]
+                systdictshape[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
+                systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
+            else:
+                systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
             
             if rebindiv == 2:
                 dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_161718_dy_extraploation'+config.get(syst,'strup')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
                 dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_161718_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
             ####Make it useful
-            sigup  = systsigup.getPreppedSig('sr',sigxs)#systsigup.prepsigsr
-            sigdwn = systsigdwn.getPreppedSig('sr',sigxs)#systsigdwn.prepsigsr
-            if name != sigup[s]["name"] !=  sigdwn[s]["name"]:
-                print("Cannot find matching entries in systematics collections, aborting")
-                break
+            #sigup  = systsigup.getPreppedSig('sr',sigxs)#systsigup.prepsigsr
+            #sigupdict = {}
+            sigup = makeSignalInfoDict(systsigup,'sr',sigxs)
+            sigdwn = makeSignalInfoDict(systsigdwn,'sr',sigxs)
+            keyup = sigup[s]["tfile"].GetListOfKeys()
+            keydwn = sigdwn[s]["tfile"].GetListOfKeys()
+            keyup = [k.GetName() for k in keyup]
+            keydwn = [k.GetName() for k in keydwn]
 
-            ####Prepping holders####
-            empty4 = empty.Clone()
-            empty5 = empty.Clone()
-            empty6 = empty.Clone()
-            empty7 = empty.Clone()
-            empty8 = empty.Clone()
-            empty9 = empty.Clone()
+            #for k,key in enumerate(keyup):
+            #    if "hnevents" in key:
+            #        break
+            #    print("Up key:   ",key)
+            #    print("Down key: ",keydwn[k])
+            #    print(" Up bins: ",sigup[s]["tfile"].Get(key).GetNbinsX())
+            #    print("Dwn bins: ",sigdwn[s]["tfile"].Get(key).GetNbinsX())
 
-            ####Gathering the Systematic
-            #Background
-            httup  = systbkgsup.getAddedHist(empty4,"TT","sr","h_zp_jigm")
-            httdwn = systbkgsdwn.getAddedHist(empty5,"TT","sr","h_zp_jigm")
-            hzzup  = systbkgsup.getAddedHist(empty6,"ZZTo2L2Q","sr","h_zp_jigm")
-            hzzdwn = systbkgsdwn.getAddedHist(empty7,"ZZTo2L2Q","sr","h_zp_jigm")
-            hwzup  = systbkgsup.getAddedHist(empty8,"WZTo2L2Q","sr","h_zp_jigm")
-            hwzdwn = systbkgsdwn.getAddedHist(empty9,"WZTo2L2Q","sr","h_zp_jigm")
-            hvvup  = hzzup.Clone()
-            hvvdwn = hzzdwn.Clone()
-            hvvup.Add(hwzup)
-            hvvdwn.Add(hwzdwn)
-            hdyup  = dyEstup.Get("extrphistnoerrs").Clone()
-            hdydwn = dyEstdwn.Get("extrphistnoerrs").Clone()
+            ####Check is the keys exist
+            if (s in sigup) and (s in sigdwn): 
+                ####Prepping holders####
+                empty4 = empty.Clone()
+                empty5 = empty.Clone()
+                empty6 = empty.Clone()
+                empty7 = empty.Clone()
+                empty8 = empty.Clone()
+                empty9 = empty.Clone()
 
-            #Rename and Restructure
-            httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
-            httdwn = newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-            hvvup = newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh) 
-            hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-            hdyup  = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
-            hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
-            
-            #Signal
-            hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
-            hsigup = hsigupori.Clone()
-            hsigup.Scale(sigup[s]["scale"])
-            hsigup = newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
-            hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
-            hsigdwn = hsigdwnori.Clone()
-            hsigdwn.Scale(sigdwn[s]["scale"])
-            hsigdwn = newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-            #Write the histograms
-            prepRootFile.cd()
-            print("------- Writing the up/dwn histograms")
-            hsigup.Write()
-            hsigdwn.Write()
-            httup.Write()
-            httdwn.Write()
-            hvvup.Write()
-            hvvdwn.Write()
-            hdyup.Write()
-            hdydwn.Write()
+                ####Gathering the Systematic
+                #Background
+                httup  = systbkgsup.getAddedHist(empty4,"TT","sr","h_zp_jigm")
+                httdwn = systbkgsdwn.getAddedHist(empty5,"TT","sr","h_zp_jigm")
+                hzzup  = systbkgsup.getAddedHist(empty6,"ZZTo2L2Q","sr","h_zp_jigm")
+                hzzdwn = systbkgsdwn.getAddedHist(empty7,"ZZTo2L2Q","sr","h_zp_jigm")
+                hwzup  = systbkgsup.getAddedHist(empty8,"WZTo2L2Q","sr","h_zp_jigm")
+                hwzdwn = systbkgsdwn.getAddedHist(empty9,"WZTo2L2Q","sr","h_zp_jigm")
+                hvvup  = hzzup.Clone()
+                hvvdwn = hzzdwn.Clone()
+                hvvup.Add(hwzup)
+                hvvdwn.Add(hwzdwn)
+                hdyup  = dyEstup.Get("extrphistnoerrs").Clone()
+                hdydwn = dyEstdwn.Get("extrphistnoerrs").Clone()
+
+                #Signal
+                hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
+                #print("              hup nbins  ",hsigupori.GetNbinsX())
+                hsigup = hsigupori.Clone()
+                hsigup.Scale(sigup[s]["scale"])
+                hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
+                #print("              hdwn nbins ",hsigdwnori.GetNbinsX())
+
+                #if hsigupori.GetNbinsX() != hsigdwnori.GetNbinsX():
+                #    print("___________________________________________________--bins weird")
+                #    print("___________________________________________________-- ",sigdwn[s]["tfile"])
+
+                hsigdwn = hsigdwnori.Clone()
+                hsigdwn.Scale(sigdwn[s]["scale"])
+                #print(sigdwn[s]["tfile"])
+                #print(hsigdwnori)
+                #print(hsigdwnori.Integral())
+                #print(hsigdwn.Integral())
+
+                #Rename and Restructure
+                hsigdwn = newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+                hsigup = newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+                httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+                httdwn = newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+                hvvup = newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh) 
+                hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+                hdyup  = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
+                hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
+
+                allsysthists = [hsigdwn,hsigup,httup,httdwn,hvvup,hvvdwn,hdyup,hdydwn]
+                allthesame = checkBinNumbers(allsysthists)
+                if not allthesame:
+                    print("              NOT ALL OF THE BINS NUMBERS ARE THE SAME")
+                    print("              NOT WRITING THE {0} UP/DWN HISTOGRAMS".format(syst))
+                    continue
+
+
+                #Write the histograms
+                
+                prepRootFile.cd()
+                print("        Writing the up/dwn histograms")
+                #print("!!!!!!!!artificially scaling the up/dwn backgrounds!!!!")
+                #bkghists = [httup,hvvup,hdyup,httdwn,hvvdwn,hdydwn]
+                #for hist in bkghists:
+                #    hist.Scale(10)
+                hsigup.Write()
+                hsigdwn.Write()
+                httup.Write()
+                httdwn.Write()
+                hvvup.Write()
+                hvvdwn.Write()
+                hdyup.Write()
+                hdydwn.Write()
+            else:
+                print("****************{0} Does not have {1} systematic".format(s,syst))
 
         #For writing the datacard
         procdict = {"processnames":[signame,"DY","TT","VV"],
@@ -264,9 +330,9 @@ if __name__=='__main__':
                     "systshapes":systdictshape,
                     "systrates":systdictrate,
         }
-        print("------- Defined the Datacard Dict")
-        print("------- Writing the Datacard")
-        writeDataCard(procdict,prepRootName,chan,yearstr)
-        print("------- About to close the root file")
+        print("        Defined the Datacard Dict")
+        print("        Writing the Datacard")
+        writeDataCard(procdict,prepRootName,chan,yearstr,hdat)
+        print("        About to close the root file")
         prepRootFile.Close()
 
