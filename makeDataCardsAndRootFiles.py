@@ -8,6 +8,29 @@ import pandas as pd
 import configparser
 import argparse
 
+def doStatsUncertainty(hist):
+    bins = hist.GetNbinsX()
+    name = hist.GetName()
+    histlist = []
+    for b in range(bins+1):
+        #print("The content of bin {0} is {1} with an error of {2}".format(b,hist.GetBinContent(b),hist.GetBinError(b)))
+        if b == 0:
+            continue
+        hname = name+"_StatsUncBin"+str(b)
+        bincont = hist.GetBinContent(b)
+        binunc  = hist.GetBinError(b)
+        hup = hist.Clone()
+        hdwn = hist.Clone()
+        hup.SetBinContent(b,bincont+binunc)
+        hdwn.SetBinContent(b,bincont-binunc)
+        hup.SetName(hname+"Up")
+        hdwn.SetName(hname+"Down")
+        histlist.append(hup)
+        histlist.append(hdwn)
+    return histlist
+        
+        
+
 def makeSignalInfoDict(sigclass, region,sigxs):
     sigs = sigclass.getPreppedSig(region,sigxs)
     sigdict = {}
@@ -144,6 +167,8 @@ if __name__=='__main__':
     hdat.Add(htt)
     hdat.Add(hvv)
 
+    ####Do bkg stats unc explicitly
+    httstatsunc = doStatsUncertainty(htt)
 
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.getPreppedSig('sr',sigxs)
@@ -160,12 +185,16 @@ if __name__=='__main__':
             signame = name.replace("-","")
         print("------- Looking at signal sample ",signame)
 
-        if "Zp5500ND600NS200" not in signame:
+        if "Zp4000ND800NS200" not in signame:
             continue
 
         ####Make Files
         prepRootName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET',chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         prepRootFile = ROOT.TFile(prepRootName,"recreate")
+
+        ###Write bkg stats files
+        for hist in httstatsunc:
+            hist.Write()
             
         ####Nominal Signal
         hsigori = signom[s]["tfile"].Get("h_zp_jigm")
