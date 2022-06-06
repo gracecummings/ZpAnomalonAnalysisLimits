@@ -8,15 +8,31 @@ import pandas as pd
 import configparser
 import argparse
 
+def applyStatsUncToSignal(hist,errseries):
+    for ibin in range(hist.GetNbinsX()+1):
+        if ibin == 0:
+            continue
+        else:
+            binerr = errseries[ibin-1]
+            hist.SetBinError(ibin,binerr)
+    return hist
+
+
 def doStatsUncertainty(hist):
     bins = hist.GetNbinsX()
     name = hist.GetName()
+    appdict = {"TT":[0,0,1.0,0],"DY":[0,1.0,0,0],"VV":[0,0,0,1.0],"sig":[1.0,0,0,0]}
+    napp = name
+    if "Zp" in name:
+        napp = "sig"
+    applist = appdict[napp]
     histlist = []
+    statsdict = {}
     for b in range(bins+1):
         #print("The content of bin {0} is {1} with an error of {2}".format(b,hist.GetBinContent(b),hist.GetBinError(b)))
         if b == 0:
             continue
-        hname = name+"_StatsUncBin"+str(b)
+        hname = name+"_"+name+"_StatsUncBin"+str(b)
         bincont = hist.GetBinContent(b)
         binunc  = hist.GetBinError(b)
         hup = hist.Clone()
@@ -27,10 +43,12 @@ def doStatsUncertainty(hist):
         hdwn.SetName(hname+"Down")
         histlist.append(hup)
         histlist.append(hdwn)
-    return histlist
-        
-        
-
+        uncdict  = {name+"_StatsUncBin"+str(b):{"type":"shapeN2","unc":1.0,"proc":applist}}
+        statsdict.update(uncdict)
+        #print(updict)
+        #print(dwndict)
+        #print(statsdict)
+    return histlist,statsdict
 def makeSignalInfoDict(sigclass, region,sigxs):
     sigs = sigclass.getPreppedSig(region,sigxs)
     sigdict = {}
@@ -88,7 +106,7 @@ def writeDataCard(processes,rootFileName,channel,yearstr,hdat):
         cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst)+" "*nameoffset,processes["systshapes"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
 
-    card.write("* autoMCStats 1\n")
+    #card.write("* autoMCStats 1\n")
     card.close()
 
 #def gatherSystematics(confsecsyst):
@@ -168,7 +186,8 @@ if __name__=='__main__':
     hdat.Add(hvv)
 
     ####Do bkg stats unc explicitly
-    httstatsunc = doStatsUncertainty(htt)
+    httstatsunc,httuncdict = doStatsUncertainty(htt)
+    hvvstatsunc,hvvuncdict = doStatsUncertainty(hvv)
 
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.getPreppedSig('sr',sigxs)
@@ -192,15 +211,12 @@ if __name__=='__main__':
         prepRootName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET',chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         prepRootFile = ROOT.TFile(prepRootName,"recreate")
 
-        ###Write bkg stats files
-        for hist in httstatsunc:
-            hist.Write()
-            
         ####Nominal Signal
         hsigori = signom[s]["tfile"].Get("h_zp_jigm")
         hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
         hsig = hsigori.Clone()
         hsig.Scale(signom[s]["scale"])
+        hsig = applyStatsUncToSignal(hsig,signom[s]["errdf"]["h_zp_jigm"]*signom[s]["scale"])
 
         hsig = newNameAndStructure(hsig,signame,rebindiv,limrangelow,limrangehigh)
         prepRootFile.cd()
@@ -209,18 +225,34 @@ if __name__=='__main__':
         #bkghists = [htt,hvv,hdy,hdat]
         #for hist in bkghists:
         #    hist.Scale(10)
+
+        ###Write the Standard Stuff
         htt.Write()
         hvv.Write()
         hdy.Write()
         hdat.Write()
         hsig.Write()
 
+        ###Do signal statistical uncs
+        hsigstatsunc,hsiguncdict = doStatsUncertainty(hsig)
+
+        ###Write bkg stats files
+        for h in range(len(httstatsunc)):
+            httstatsunc[h].Write()
+            hvvstatsunc[h].Write()
+            hsigstatsunc[h].Write()
+            
         #####Gather Systematics
         systdictrate = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":["1.018","1.018","1.018","1.018"]}
                     }
         systdictshape = {}
 
-
+        ####Add the statistical uncertainites
+        systdictshape.update(httuncdict)
+        systdictshape.update(hvvuncdict)
+        systdictshape.update(hsiguncdict)
+        
+        
         for syst in systs:
             #print("YOU HAVE CURRENTLY TURNED OFF SYSTEMATICS")
             #continue
@@ -242,7 +274,7 @@ if __name__=='__main__':
             appcode = config.get(syst,'applist').split(',')
             ratenums = config.get(syst,'rate').split(',')
             ratelist = ratenums
-            if len(appcode > 1):#If the shape systematic never gets applied
+            if (len(appcode) > 1):#If the shape systematic never gets applied
                 applist = [float(x) for x in appcode]
                 systdictshape[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
                 systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
@@ -301,6 +333,7 @@ if __name__=='__main__':
                 #print("              hup nbins  ",hsigupori.GetNbinsX())
                 hsigup = hsigupori.Clone()
                 hsigup.Scale(sigup[s]["scale"])
+                hsigup = applyStatsUncToSignal(hsigup,sigup[s]["errdf"]["h_zp_jigm"]*sigup[s]["scale"])
                 hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
                 #print("              hdwn nbins ",hsigdwnori.GetNbinsX())
 
@@ -310,6 +343,7 @@ if __name__=='__main__':
 
                 hsigdwn = hsigdwnori.Clone()
                 hsigdwn.Scale(sigdwn[s]["scale"])
+                hsigdwn = applyStatsUncToSignal(hsigdwn,sigdwn[s]["errdf"]["h_zp_jigm"]*sigdwn[s]["scale"])
                 #print(sigdwn[s]["tfile"])
                 #print(hsigdwnori)
                 #print(hsigdwnori.Integral())
