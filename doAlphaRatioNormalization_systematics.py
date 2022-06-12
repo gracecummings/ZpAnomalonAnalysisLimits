@@ -29,15 +29,23 @@ def makeTPadOfFitGOF(fit,normfits = False):
     fitlabel.SetFillColor(0)
     return chi2,ndof,fitlabel
 
+def makeTPadOfIntegrals(hist,fit,fitlowr,fithighr):
+    histint = hist.Integral(hist.FindBin(fitlowr),hist.FindBin(fithighr))
+    fitint = fit.Integral(fitlowr,fithighr)/hist.GetBinWidth(1)
+    intlabel = ROOT.TPaveText(.2,.8,.45,.9,"NBNDC")
+    intlabel.AddText("MC Int: "+str(round(histint,2)))
+    intlabel.AddText("Fit Int    : "+str(round(fitint,2)))
+    intlabel.SetFillColor(0)
+    return intlabel
 
 def setLogAxis(pad,islog):
     if islog:
         pad.SetLogy()
 
-def plotMsd(pad,hist,islog=False,logmin=0.1,isData=False):
-    maxi = hist.GetMaximum()
-    mr   = round(maxi,0)
-    histmax = mr+mr*0.30
+def plotMsd(pad,hist,histmax,islog=False,logmin=0.1,isData=False):
+    #maxi = hist.GetMaximum()
+    #`mr   = round(maxi,0)
+    #histmax = mr+mr*0.30
     histmin = 0
     if islog:
         histmax = mr*10
@@ -64,6 +72,75 @@ def plotMsd(pad,hist,islog=False,logmin=0.1,isData=False):
     
     hist.Draw(drawopts)
 
+
+def doTemplateFitShifts(nomfit,multi,parnum,name,shiftedparamsin = ROOT.TVector()):
+    fitpars = []
+    fiterrs = []
+    shiftedfits = []
+    parvecedit = ROOT.TVector(parnum)
+    parsysdict = {"2":"up","0":"down"}
+    #if paramsin.Norm1() > 0 and errssin.Norm1() > 0:
+    #    for par in range(parnum):
+    #        parvecedit[par] = paramsin[par]
+    #        fitpars.append(paramsin[par])
+    #        fiterrs.append(errssin[par])
+    #else:
+    for par in range(parnum):
+        parvecedit[par] = nomfit.GetParameter(par)
+        fitpars.append(nomfit.GetParameter(par))
+        fiterrs.append(nomfit.GetParError(par))
+    for i in range(parnum):
+        par = fitpars[i]
+        if shiftedparamsin.Norm1() > 0:
+            parvecedit[i] = shiftedparamsin[i]
+        else:
+            parup =par+multi*fiterrs[i]
+            parvecedit[i] = parup#change the value of that param's index to shifted param
+        if "TT" in name:
+            fitup = ROOT.gaus2Fit2SetParsAndErrs("par"+str(i)+parsysdict[str(multi+1)],parvecedit,30,400)
+            #here is where we feed the fits to the othersx
+        if "VV" in name:
+            fitup = ROOT.gausPoly1FitSetParsAndErrs("par"+str(i)+parsysdict[str(multi+1)],parvecedit,30,250)
+        if "DY" in name:
+            #print(parvecedit[0],parvecedit[1],parvecedit[2],parvecedit[3],parvecedit[4],parvecedit[5])
+            fitup = ROOT.poly5mod5FitSetParsAndErrs("par"+str(i)+parsysdict[str(multi+1)],parvecedit,30,250)
+        shiftedfits.append(fitup)
+        parvecedit[i] = fitpars[i]#reset the fit params
+
+    return fitpars,fiterrs,shiftedfits
+
+def plotShiftedFits(nomfit,hist,shiftedfits,name,plotmax,errhist=None,addname=""):
+    tcshift = ROOT.TCanvas("tcshift","tcshift",800,800)
+    hist.SetLineColor(ROOT.kBlack)
+    hist.SetLineWidth(1)
+    leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
+    #leg = ROOT.TLegend(0.2,0.2,0.5,0.6)
+    leg.SetBorderSize(0)
+    tcshift.cd()
+    #tcshift.SetLogy()
+    nomfit.Draw()
+    nomfit.GetYaxis().SetRangeUser(0,plotmax)
+    if errhist:
+        errhist.SetFillColor(ROOT.kGreen-6)
+        errhist.SetMarkerSize(0)
+        errhist.Draw("sameCE4")
+        leg.AddEntry(errhist,"nominal fit envelope","f")
+    shiftcols = go.colsFromPalette(shiftedfits,ROOT.kCMYK)
+    for i,fit in enumerate(shiftedfits):
+        fit.SetLineColor(shiftcols[i])
+        leg.AddEntry(fit,"par[{0}] {1}".format(i,parsysdict[str(multi+1)]),"l")
+        fit.Draw("same")
+    nomfit.Draw("same")
+    leg.AddEntry(nomfit,"nominal","l")
+    hist.Draw("sameE1")
+    leg.AddEntry(hist,"fitted hist","pe")
+    leg.Draw()
+    tcshift.Update()
+    shiftfitsfile = go.makeOutFile('Run2_'+yearstr,name+'_'+addname+'_shifted_shapes'+parsysdict[str(multi+1)]+'_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    tcshift.SaveAs(shiftfitsfile)
+
+
+
 ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
 ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
 
@@ -82,6 +159,7 @@ if __name__=='__main__':
     #will replace with command line options
     pathbkg    = args.directory#'pfMETNominal/'
     pathdata   = args.directory#'pfMETNominal/'
+    #pathdata   = "mumu_2022-03-31_ProperREOIDSF"
     zptcut  = args.zptcut#'150.0'
     hptcut  = args.hptcut#'300.0'
     metcut  = args.metcut#'200.0'
@@ -111,7 +189,10 @@ if __name__=='__main__':
     #systr = 'systnominal_btagnom_muidnom'
 
     bkgs  = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
-    data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr.replace("_elidnom_elreconom","").replace("_kfnom",""))
+    #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr.replace("_mutrignom_elidnom_elreconom","").replace("_kfnom",""))
+    #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"systnominal_kfnom_btagnom_muidnom_elidnom_elreconom")
+    data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_btagnom_muidnom")
+    #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
 
     #print(bkgs.bkgs)
     #print(data.data)
@@ -149,7 +230,7 @@ if __name__=='__main__':
     htrzz.SetFillColor(bkgcols[3])
     htrzz.SetLineColor(bkgcols[3])
 
-    plotmax = 35 #550 for btag region .#35 for nominal
+    plotmax = 125 #550 for btag region .#35 for nominal # 125 for met region
     linemax = plotmax*.8
     labelmin = plotmax*.75
 
@@ -162,11 +243,30 @@ if __name__=='__main__':
     hsbkg.SetMaximum(plotmax)
     hsbkg.SetMinimum(0.0)
 
+    #DY fit debug!
+    dyeyeballbin = htrdy.FindBin(250)
+    dybins = htrdy.GetNbinsX()
+    dybinwidth = htrdy.GetBinWidth(2)
+    hdyshift = ROOT.TH1D("hdyshift","hdyshift",int(dybins),-1*htrdy.GetBinLowEdge(dyeyeballbin),-1*htrdy.GetBinLowEdge(dyeyeballbin)+dybinwidth*dybins)
+    for i in range(dybins+1):
+        hdyshift.SetBinContent(i,htrdy.GetBinContent(i))
+        hdyshift.SetBinError(i,htrdy.GetBinError(i))
+        #print("(lowedge,bincontent) Good Hist, New hist: ({0},{1}) ({2},{3})".format(htrdy.GetBinLowEdge(i),htrdy.GetBinContent(i),hdyshift.GetBinLowEdge(i),hdyshift.GetBinContent(i)))
+
     #makes some fits
-    dyfit = ROOT.poly5Fit(htrdy,"dyl","QR0+",30,250)
+    print("======Doing the DY total region fit======")
+    dyfitrange = 225
+    dyfit = ROOT.poly5mod5Fit(htrdy.Clone(),"dylprint","ER0+",30,dyfitrange)
+    dyfithist = ROOT.poly5mod5FitErrBands(htrdy.Clone(),"dylprint","QER0+",30,dyfitrange)
+    #dyfit = ROOT.poly5Fit(hdyshift,"dyl","ER0+",-220,0)#Doing the fit on the shifted histogram
+    #dyfit = ROOT.poly5Fit(htrdy,"dyl","ER0+",30,250)
     #ttfit = ROOT.gaus2Fit(htrtt,"ttl","QR0+",30,400)
-    ttfit = ROOT.gaus2Fit2(htrtt,"ttl","QR0+",30,400)
-    vvfit = ROOT.gausPoly1Fit(htrvv,"vvl","QR0+",30,250,90,5)
+    print("======Doing the TT total region fit======")
+    ttfit = ROOT.gaus2Fit2(htrtt,"ttl","SQER0+",30,400)
+    ttfithist = ROOT.gaus2Fit2ErrBands(htrtt,"ttl","SQER0+",30,400)
+    print("======Doing the VV total region fit======")
+    vvfit = ROOT.gausPoly1Fit(htrvv,"vvl","SQER0+",30,250,90,5)
+    print("======Doing the Total region fit======")
     normfits = ROOT.totalFit(hsbkg.GetStack().Last(),htrdy,htrtt,htrvv,hdatsb,"R0+",validation)
     bkgfit = normfits[0]#fit to un-normalized MC
     sbdatfit = normfits[1]#Fit with blinded region, bad for visuals
@@ -179,7 +279,21 @@ if __name__=='__main__':
     print("MC only Normalization:  ",dynormprefit)
     print("Data sideband Normalization: ",dynormpostfit)
 
+
+    #Do the systematic shifts
+    multi = -1#-1 for down shifts
+    parsysdict = {"2":"up","0":"down"}
+    dydecorrshiftedparams = ROOT.poly5mod5FitDecorrParamsShifted(htrdy.Clone(),"dyl",multi,"ER0+",30,dyfitrange)
+    dyfitpars,dyfiterrs,shiftedupdyfits = doTemplateFitShifts(dyfit,multi,6,"DY")
+    dyfitparsdeco,dyfiterrdeco,sdyfitsdeco = doTemplateFitShifts(dyfit,multi,6,"DY",dydecorrshiftedparams)
+    ttfitpars,ttfiterrs,shiftedupttfits = doTemplateFitShifts(ttfit,multi,6,"TT",)#6 num of fit pars
+    vvfitpars,vvfiterrs,shiftedupvvfits = doTemplateFitShifts(vvfit,multi,5,"VV")#5 num of fit pars
+        
     #Get Some fit info
+    dyintlab = makeTPadOfIntegrals(htrdy,dyfit,30,250)
+    ttintlab = makeTPadOfIntegrals(htrtt,ttfit,30,400)
+    vvintlab = makeTPadOfIntegrals(htrvv,vvfit,30,250)
+    
     dychi2f,dyndoff,dyfitpavetext = makeTPadOfFitGOF(dyfit)
     ttchi2f,ttndoff,ttfitpavetext = makeTPadOfFitGOF(ttfit)
     vvchi2f,vvndoff,vvfitpavetext = makeTPadOfFitGOF(vvfit)
@@ -280,31 +394,35 @@ if __name__=='__main__':
     tc.cd()
     p11.Draw()
     p11.cd()
-    plotMsd(p11,htrdy)
+    plotMsd(p11,htrdy,100)#100
+    #plotMsd(p11,hdyshift,100)#100
     CMS_lumi.CMS_lumi(p11,4,13)
     dyfit.Draw('same')
     dyleg.Draw()
     dyfitpavetext.Draw()
+    dyintlab.Draw()
     p11.Update()
     
     tc.cd()
     p12.Draw()
     p12.cd()
-    plotMsd(p12,htrtt)
+    plotMsd(p12,htrtt,45)#45
     CMS_lumi.CMS_lumi(p12,4,13)
     ttfit.Draw("same")
     ttleg.Draw()
     ttfitpavetext.Draw()
+    ttintlab.Draw()
     p12.Update()
 
     tc.cd()
     p13.Draw()
     p13.cd()
-    plotMsd(p13,htrvv)
+    plotMsd(p13,htrvv,25)#25
     CMS_lumi.CMS_lumi(p13,4,13)
     vvfit.Draw("same")
     vvleg.Draw()
     vvfitpavetext.Draw()
+    vvintlab.Draw()
     p13.Update()
     tc.cd()
     
@@ -441,9 +559,28 @@ if __name__=='__main__':
     stackedfit = go.makeOutFile('Run2_'+yearstr,'norm_stackfit_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc1.SaveAs(stackedfit)
 
-    
-    #ttbarhist = go.makeOutFile('Run2_'+yearstr,'ttbar_hist','.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
 
-    #rootfile = ROOT.TFile(ttbarhist,"recreate")
-    #htrtt.Write()
-    #rootfile.Close()
+    #Plot the systematic shifted hists
+    plotShiftedFits(dyfit,htrdy,shiftedupdyfits,"DY",100,dyfithist)
+    plotShiftedFits(dyfit,htrdy,sdyfitsdeco,"DY",100,dyfithist,"decor")
+    plotShiftedFits(ttfit,htrtt,shiftedupttfits,"TT",35,ttfithist)
+    plotShiftedFits(vvfit,htrvv,shiftedupvvfits,"VV",25)
+    
+    debughists = go.makeOutFile('Run2_'+yearstr,'norm_debug_shapes_'+systr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+
+    rootfile = ROOT.TFile(debughists,"recreate")
+    savehists = [htrtt,htrdy,htrvv,hdatsb]
+    histnames = ["TT","DY","VV","data"]
+    for h,hist in enumerate(savehists):
+        hist.SetName("h_h_sd_"+histnames[h])
+        hist.Write()
+    dyfit.Write()
+    vvfit.Write()
+    ttfit.Write()
+    bkgfit.Write()#fit to un-normalized MC
+    sbdatfit.Write()#Fit with blinded region, bad for visuals
+    totnormfit.Write()#Uses params of fit above to draw full line
+    lsbdatfit.Write()#low sideband of fit above
+    hsbdatfit.Write()#high sideband of fit 2 above
+
+    rootfile.Close()
