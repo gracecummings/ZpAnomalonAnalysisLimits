@@ -8,6 +8,7 @@ import gecorg_test as go
 import numpy as np
 import pandas as pd
 import configparser
+import pickle
 import argparse
 
 #tdrstyle.setTDRStyle()
@@ -103,7 +104,7 @@ def doTemplateFitShifts(nomfit,multi,parnum,name,shiftedparamsin = ROOT.TVector(
             fitup = ROOT.gausPoly1FitSetParsAndErrs("par"+str(i)+parsysdict[str(multi+1)],parvecedit,30,250)
         if "DY" in name:
             #print(parvecedit[0],parvecedit[1],parvecedit[2],parvecedit[3],parvecedit[4],parvecedit[5])
-            fitup = ROOT.poly5mod5FitSetParsAndErrs("par"+str(i)+parsysdict[str(multi+1)],parvecedit,30,250)
+            fitup = ROOT.poly5mod5FitSetParsAndErrs("par"+str(i)+parsysdict[str(multi+1)],parvecedit,30,225)
         shiftedfits.append(fitup)
         parvecedit[i] = fitpars[i]#reset the fit params
 
@@ -123,7 +124,7 @@ def plotShiftedFits(nomfit,hist,shiftedfits,name,plotmax,errhist=None,addname=""
     if errhist:
         errhist.SetFillColor(ROOT.kGreen-6)
         errhist.SetMarkerSize(0)
-        errhist.Draw("sameCE4")
+        errhist.Draw("sameCE3")
         leg.AddEntry(errhist,"nominal fit envelope","f")
     shiftcols = go.colsFromPalette(shiftedfits,ROOT.kCMYK)
     for i,fit in enumerate(shiftedfits):
@@ -139,6 +140,60 @@ def plotShiftedFits(nomfit,hist,shiftedfits,name,plotmax,errhist=None,addname=""
     shiftfitsfile = go.makeOutFile('Run2_'+yearstr,name+'_'+addname+'_shifted_shapes'+parsysdict[str(multi+1)]+'_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tcshift.SaveAs(shiftfitsfile)
 
+def plotEnvelopeFits(nomfit,hist,shiftedfits,name,plotmax,errhist=None,addname=""):
+    tcshift = ROOT.TCanvas("tcshift","tcshift",800,800)
+    hist.SetLineColor(ROOT.kBlack)
+    hist.SetLineWidth(1)
+    leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
+    #leg = ROOT.TLegend(0.2,0.2,0.5,0.6)
+    leg.SetBorderSize(0)
+    tcshift.cd()
+    #tcshift.SetLogy()
+    nomfit.Draw()
+    nomfit.GetYaxis().SetRangeUser(0,plotmax)
+    if errhist:
+        errhist.SetFillColor(ROOT.kGreen-6)
+        errhist.SetMarkerSize(0)
+        errhist.Draw("sameCE3")
+        leg.AddEntry(errhist,"nominal fit envelope","f")
+    shiftcols = [ROOT.kRed,ROOT.kBlue]
+    names = ["high","low"]
+    for i,fit in enumerate(shiftedfits):
+        fit.SetLineColor(shiftcols[i])
+        leg.AddEntry(fit,"envoplefit {0}".format(names[i]),"l")
+        fit.Draw("same")
+    nomfit.Draw("same")
+    leg.AddEntry(nomfit,"nominal","l")
+    hist.Draw("sameE1")
+    leg.AddEntry(hist,"fitted hist","pe")
+    leg.Draw()
+    tcshift.Update()
+    shiftfitsfile = go.makeOutFile('Run2_'+yearstr,name+'_'+addname+'_shifted_shapes'+parsysdict[str(multi+1)]+'_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    tcshift.SaveAs(shiftfitsfile)
+
+def shiftedFitNormalization(listoffits,name,hsbkg,htrtt,htrdy,htrvv,hdatsb):
+    fitresults = []
+    shiftednorms = {}
+    paramcounter = 0
+    for fit in listoffits:
+        if "DY" in name:
+            shiftres = ROOT.totalFitDYTemplateVaried(hsbkg.GetStack().Last(),fit,htrtt.Clone(),htrvv.Clone(),hdatsb.Clone(),"R0+")
+        if "TT" in name:
+            shiftres = ROOT.totalFitTTTemplateVaried(hsbkg.GetStack().Last(),fit,htrdy.Clone(),htrvv.Clone(),hdatsb.Clone(),"R0+")
+        if "VV" in name:
+            shiftres = ROOT.totalFitVVTemplateVaried(hsbkg.GetStack().Last(),fit,htrtt.Clone(),htrdy.Clone(),hdatsb.Clone(),"R0+")
+        #print("The shifted normalization: ",shiftres[2].GetParameters()[17]),
+        fitresults.append(shiftres)
+        shiftednorms[name+"_par"+str(paramcounter)] = shiftres[2].GetParameters()[17]
+        paramcounter +=1
+    return fitresults,shiftednorms
+
+def makeNormPickleFile(name,normdict,nomnorm,multi):
+    normdict[name+"_nominal"] = nomnorm
+    uncf = go.makeOutFile('Run2_'+yearstr,name+'shiftednormsforuncs_'+str(multi)+'_dynormalization_'+systr+'_'+rstr,'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    f = open(uncf,'wb')
+    pickle.dump(normdict,f)
+    f.close()
 
 
 ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
@@ -244,13 +299,13 @@ if __name__=='__main__':
     hsbkg.SetMinimum(0.0)
 
     #DY fit debug!
-    dyeyeballbin = htrdy.FindBin(250)
-    dybins = htrdy.GetNbinsX()
-    dybinwidth = htrdy.GetBinWidth(2)
-    hdyshift = ROOT.TH1D("hdyshift","hdyshift",int(dybins),-1*htrdy.GetBinLowEdge(dyeyeballbin),-1*htrdy.GetBinLowEdge(dyeyeballbin)+dybinwidth*dybins)
-    for i in range(dybins+1):
-        hdyshift.SetBinContent(i,htrdy.GetBinContent(i))
-        hdyshift.SetBinError(i,htrdy.GetBinError(i))
+    #dyeyeballbin = htrdy.FindBin(250)
+    #dybins = htrdy.GetNbinsX()
+    #dybinwidth = htrdy.GetBinWidth(2)
+    #hdyshift = ROOT.TH1D("hdyshift","hdyshift",int(dybins),-1*htrdy.GetBinLowEdge(dyeyeballbin),-1*htrdy.GetBinLowEdge(dyeyeballbin)+dybinwidth*dybins)
+    #for i in range(dybins+1):
+     #   hdyshift.SetBinContent(i,htrdy.GetBinContent(i))
+     #   hdyshift.SetBinError(i,htrdy.GetBinError(i))
         #print("(lowedge,bincontent) Good Hist, New hist: ({0},{1}) ({2},{3})".format(htrdy.GetBinLowEdge(i),htrdy.GetBinContent(i),hdyshift.GetBinLowEdge(i),hdyshift.GetBinContent(i)))
 
     #makes some fits
@@ -258,14 +313,11 @@ if __name__=='__main__':
     dyfitrange = 225
     dyfit = ROOT.poly5mod5Fit(htrdy.Clone(),"dylprint","ER0+",30,dyfitrange)
     dyfithist = ROOT.poly5mod5FitErrBands(htrdy.Clone(),"dylprint","QER0+",30,dyfitrange)
-    #dyfit = ROOT.poly5Fit(hdyshift,"dyl","ER0+",-220,0)#Doing the fit on the shifted histogram
-    #dyfit = ROOT.poly5Fit(htrdy,"dyl","ER0+",30,250)
-    #ttfit = ROOT.gaus2Fit(htrtt,"ttl","QR0+",30,400)
     print("======Doing the TT total region fit======")
     ttfit = ROOT.gaus2Fit2(htrtt,"ttl","SQER0+",30,400)
-    ttfithist = ROOT.gaus2Fit2ErrBands(htrtt,"ttl","SQER0+",30,400)
+    ttfithist = ROOT.gaus2Fit2ErrBands(htrtt,"ttl","SER0+",30,400)
     print("======Doing the VV total region fit======")
-    vvfit = ROOT.gausPoly1Fit(htrvv,"vvl","SQER0+",30,250,90,5)
+    vvfit = ROOT.gausPoly1Fit(htrvv,"vvl","SER0+",30,250,90,5)
     print("======Doing the Total region fit======")
     normfits = ROOT.totalFit(hsbkg.GetStack().Last(),htrdy,htrtt,htrvv,hdatsb,"R0+",validation)
     bkgfit = normfits[0]#fit to un-normalized MC
@@ -280,15 +332,21 @@ if __name__=='__main__':
     print("Data sideband Normalization: ",dynormpostfit)
 
 
-    #Do the systematic shifts
+    #Do the systematic shifts, param by param
     multi = -1#-1 for down shifts
     parsysdict = {"2":"up","0":"down"}
-    dydecorrshiftedparams = ROOT.poly5mod5FitDecorrParamsShifted(htrdy.Clone(),"dyl",multi,"ER0+",30,dyfitrange)
-    dyfitpars,dyfiterrs,shiftedupdyfits = doTemplateFitShifts(dyfit,multi,6,"DY")
-    dyfitparsdeco,dyfiterrdeco,sdyfitsdeco = doTemplateFitShifts(dyfit,multi,6,"DY",dydecorrshiftedparams)
+    #DY
+    dydecorrshiftedparams = ROOT.poly5mod5FitDecorrParamsShifted(htrdy.Clone(),"dyl",multi,"ER0+",30,dyfitrange)#getting shifted parameters after decorrelation
+    dyfitpars,dyfiterrs,shiftedupdyfits = doTemplateFitShifts(dyfit,multi,6,"DY")#doing the individual shifts without decorr
+    dyfitparsdeco,dyfiterrdeco,sdyfitsdeco = doTemplateFitShifts(dyfit,multi,6,"DY",dydecorrshiftedparams)#doing individual fits with decorrel
+    dyenvelopefits = ROOT.poly5mod5FitErrFunctions(htrdy.Clone(),"dylforuncs","QER0+",30,dyfitrange)
+    dyshiftedbkgfits,dyshiftnorms = shiftedFitNormalization(sdyfitsdeco,"DY",hsbkg,htrtt.Clone(),htrdy.Clone(),htrvv.Clone(),hdatsb.Clone())#re-deriving the norm with the decor params
+    makeNormPickleFile("DY",dyshiftnorms,dynormpostfit,multi)
+    #TT
     ttfitpars,ttfiterrs,shiftedupttfits = doTemplateFitShifts(ttfit,multi,6,"TT",)#6 num of fit pars
+    #VV
     vvfitpars,vvfiterrs,shiftedupvvfits = doTemplateFitShifts(vvfit,multi,5,"VV")#5 num of fit pars
-        
+
     #Get Some fit info
     dyintlab = makeTPadOfIntegrals(htrdy,dyfit,30,250)
     ttintlab = makeTPadOfIntegrals(htrtt,ttfit,30,400)
@@ -565,6 +623,7 @@ if __name__=='__main__':
     plotShiftedFits(dyfit,htrdy,sdyfitsdeco,"DY",100,dyfithist,"decor")
     plotShiftedFits(ttfit,htrtt,shiftedupttfits,"TT",35,ttfithist)
     plotShiftedFits(vvfit,htrvv,shiftedupvvfits,"VV",25)
+    plotEnvelopeFits(dyfit,htrdy,dyenvelopefits,"DY",100,dyfithist,"envelopefits")
     
     debughists = go.makeOutFile('Run2_'+yearstr,'norm_debug_shapes_'+systr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
 
