@@ -8,6 +8,12 @@ import pandas as pd
 import configparser
 import argparse
 
+def getDeviatedOverNominal(hist,histnom):
+    interest = hist.Integral()
+    intnom = histnom.Integral()
+    devonom = interest/intnom
+    return devonom
+
 def applyStatsUncToSignal(hist,errseries):
     for ibin in range(hist.GetNbinsX()+1):
         if ibin == 0:
@@ -125,6 +131,49 @@ def newNameAndStructure(hist,name,rebindiv,limrangelow,limrangehigh):
         nh.SetBinError(b+1,binerror)
 
     return nh
+def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
+    rateuncdict = {}
+    shapeuncdict = {}
+    histlist = []
+
+    keys = dytf.GetListOfKeys()
+    keys = [key.GetName() for key in keys]
+    unckeys = [key for key in keys if "extrap_" in key]
+    unckeysup = [key for key in unckeys if "Up" in key]
+    unckeysdn = [key for key in unckeys if "Down" in key]
+    unckeysup = sorted(unckeysup)
+    unckeysdn = sorted(unckeysdn)
+
+    for i in range(len(unckeysup)):
+        upkey = unckeysup[i]
+        dnkey = unckeysdn[i]
+        upr = tf.Get(upkey)
+        dnr = tf.Get(dnkey)
+        up = newNameAndStructure(upr,"DY_"+upkey,1,limrangelow,limrangehigh)
+        dn = newNameAndStructure(dnr,"DY_"+dnkey,1,limrangelow,limrangehigh)
+
+        #gather this histograms
+        histlist.append(up)
+        histlist.append(dn)
+
+        #make the rate uncertainties
+        uprate = getDeviatedOverNominal(up,nomdy)
+        dwnrate = getDeviatedOverNominal(dn,nomdy)
+        genname = upkey.split("Up")[0]
+        ratestr = "-"
+        if abs(round(1-uprate,2))-abs(round(1-dwnrate,2)) == 0:
+            ratestr = str(max(round(uprate,2),round(dwnrate,2)))
+        elif "vv" not in genname:
+             ratestr = str(round(dwnrate,2))+"/"+str(round(uprate,2))
+        else:
+            ratestr = str(round(dwnrate,3))+"/"+str(round(uprate,3))
+        rateuncdict[genname] = {"type":"lnN","proc":["-",ratestr,"-","-"]}
+
+        #make the shape uncertainties (can probably omit some later)
+        shapeuncdict[genname] = {"type":"shape","unc":1.0,"proc":[0,1,0,0]}
+
+    return histlist,shapeuncdict,rateuncdict
+
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-m","--metcut", type=float,help = "met cut of samples")
@@ -188,6 +237,11 @@ if __name__=='__main__':
     ####Do bkg stats unc explicitly
     httstatsunc,httuncdict = doStatsUncertainty(htt)
     hvvstatsunc,hvvuncdict = doStatsUncertainty(hvv)
+
+
+    ###Do alpha method unc
+    #dymethunchists,dymethshapedict,dymethratedict = gatherAlphaMethodUncs(dyEst,hdy,limrangelow,limrangehigh)
+    
 
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.getPreppedSig('sr',sigxs)
