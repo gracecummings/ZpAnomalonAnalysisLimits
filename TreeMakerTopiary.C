@@ -18,6 +18,40 @@ using std::string;
 RestFrames::RFKey ensure_autoload(1);
 using namespace RestFrames;
 
+std::vector<double> getMuonTriggerSF(std::vector<double> sfvec1,std::vector<double> sfvec2,TLorentzVector obj1,TLorentzVector obj2,float highbinedge,TH2 *heff) {
+  std::vector<double> sfvec;
+  double leptonsf  = 1;
+  double lsfup     = 0;
+  double lsfdwn    = 0;
+  int leptonbin1   = -1;
+  int leptonbin2   = -1;
+  double ptcheck1 = obj1.Pt();
+  double ptcheck2 = obj2.Pt();
+  double obj1eff = -1;
+  double obj2eff = -1;
+  if (ptcheck1 >= highbinedge) {
+    ptcheck1 =  highbinedge - 20.0;//safely within last bin, but a hack
+  }
+  if (ptcheck2 >= highbinedge) {
+    ptcheck2 =  highbinedge - 20.0;//safely within last bin, but a hack
+  }
+  leptonbin1 = heff->FindBin(ptcheck1,std::fabs(obj1.Eta()));
+  leptonbin2 = heff->FindBin(ptcheck2,std::fabs(obj2.Eta()));
+  obj1eff = heff->GetBinContent(leptonbin1);
+  obj2eff = heff->GetBinContent(leptonbin2);
+  leptonsf = (1-(1-sfvec1[0]*obj1eff)*(1-sfvec2[0]*obj2eff))/(1-(1-obj1eff)*(1-obj1eff));
+  //The unc will only include the sf unc, as the eff should be small
+  double dsf1 = obj1eff*(1-sfvec2[0]*obj2eff)/(obj2eff+obj1eff-obj2eff*obj1eff);
+  double dsf2 = obj2eff*(1-sfvec1[0]*obj1eff)/(obj2eff+obj1eff-obj2eff*obj1eff);
+  lsfup = sqrt(dsf1*dsf1*sfvec1[1]*sfvec1[1]+dsf2*dsf2*sfvec2[1]*sfvec2[1]);
+  lsfup = lsfdwn;
+  //write the output
+  sfvec.push_back(leptonsf);
+  sfvec.push_back(lsfup);
+  sfvec.push_back(lsfdwn);
+  return sfvec;
+}
+
 std::vector<double> combineTheLeptonSF(std::vector<double> sfvec1,std::vector<double> sfvec2) {
   std::vector<double> outv;
   double sf = 1;
@@ -71,20 +105,12 @@ std::vector<double> GetMuonPtEtaSF(int year,TH2 *hist,TLorentzVector obj,float h
   }
   if (year == 16 && isID) {
     leptonbin = hist->FindBin(ptcheck,obj.Eta());
-    //std::cout<<"We are in the ID and 2016 place"<<std::endl;
   }
   else{
     leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
-    //std::cout<<"We are in the non 2016 muon id placee"<<std::endl;
   }
   leptonsf = hist->GetBinContent(leptonbin);
-  // std::cout<<"the scale factor bin is "<<leptonbin<<std::endl;
-  //std::cout<<"the scale factor is "<<leptonsf<<std::endl;
   lsfup    = hist->GetBinErrorUp(leptonbin);
-  //std::cout<<"the scale factor up unc is "<<lsfup<<std::endl;
-  //if (leptonsf > 0 && not isID) {
-  //std::cout<<"Found a nonzero trigger SF+++++++++++++++++++++++"<<std::endl;
-  //}
   lsfdwn   = hist->GetBinErrorLow(leptonbin);
   sfvec.push_back(leptonsf);
   sfvec.push_back(lsfup);
@@ -322,6 +348,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TString muonsfhname = "badstring";
    TString muontrigsffile = "badstring";
    TString muontrigsfhname = "badstring";
+   TString muontrigefhname = "badstring";
    TString electronsffile = "badstring";
    TString electronsfhname = "badstring";
    TString electronIDsffile = "badstring";
@@ -334,6 +361,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TH2F *helectronsf = 0;
    TH2F *helectronIDsf = 0;
    TH2F *hmuontrigsf = 0;
+   TH2F *hmuontrigef = 0;
    
    if (sampleType == 3) {//ttbar
      btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_ttscalefactors_Zptcut_Hptcut_metcut_btagwp.root";
@@ -372,10 +400,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      //Muon Trigger SF
      //std::cout<<"About to try and do the muon trigger sf"<<std::endl;
      muontrigsffile = "leptonsf/Run2018_muon_SF_TRIGGER.root";
-     muontrigsfhname = "hflip";
+     muontrigsfhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt";
+     muontrigefhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt_efficiencyMC";
      TFile muontrigsff(muontrigsffile,"READ");
      hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigef = new TH2F(*((TH2F*)muontrigsff.Get(muontrigefhname)));
      hmuontrigsf->SetDirectory(0);
+     hmuontrigef->SetDirectory(0);
      muontrigsff.Close();
      //Electron reco SF
      electronsffile = "leptonsf/Run2018_electron_SF.root";
@@ -413,10 +444,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      //Muon Trigger SF
      std::cout<<"About to try and do the muon trigger sf"<<std::endl;
      muontrigsffile = "leptonsf/Run2017_muon_SF_TRIGGER.root";
-     muontrigsfhname = "hflip";
+     muontrigsfhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt";
+     muontrigefhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt_efficiencyMC";
      TFile muontrigsff(muontrigsffile,"READ");
      hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigef = new TH2F(*((TH2F*)muontrigsff.Get(muontrigefhname)));
      hmuontrigsf->SetDirectory(0);
+     hmuontrigef->SetDirectory(0);
      muontrigsff.Close();
      //Electron reco SF
      electronsffile = "leptonsf/Run2017BCDEF_electron_SF.root";
@@ -467,10 +501,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      //Muon Trigger SF
      std::cout<<"About to try and do the muon trigger sf"<<std::endl;
      muontrigsffile = "leptonsf/Run2016_muon_SF_TRIGGER.root";
-     muontrigsfhname = "hflip";
+     muontrigsfhname = "NUM_Mu50_TkMu50_DEN_TightID_abseta_pt";
+     muontrigefhname = "NUM_Mu50_TkMu50_DEN_TightID_abseta_pt_efficiencyMC";
      TFile muontrigsff(muontrigsffile,"READ");
      hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigef = new TH2F(*((TH2F*)muontrigsff.Get(muontrigefhname)));
      hmuontrigsf->SetDirectory(0);
+     hmuontrigef->SetDirectory(0);
      muontrigsff.Close();
      //Electron reco SF
      electronsffile = "leptonsf/Run2016BCDEFGH_electron_SF.root";
@@ -829,7 +866,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       int elld = 0;
 
       //Channel Flags
-     ///*
+     /*
       //std::cout<<"At the part for before the Z"<<std::endl;
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	if (passTrig) countzcand += 1;
@@ -1014,7 +1051,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
       //Z Candidate Build
       //For old ntuples
-      /*
+      ///*
       if (nselmu > 0 && nselel == 0 && anchan == 4) {
       	mumuchan = true;
 	channel = 4;
