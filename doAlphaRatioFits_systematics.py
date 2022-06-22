@@ -101,7 +101,6 @@ def plotSubtractedDistributions(sbdyhist,sbdatfitfit,shiftedfits,dycolor,addname
     sbdyhist.GetYaxis().SetRangeUser(0,100)
     sbdyhist.GetXaxis().SetRangeUser(1500,3000)
     sbdatfitfit.SetLineColor(ROOT.kBlack)#nominal subtractions
-    print("nominal fit value ",sbdatfitfit.Eval(1500))
     tcsub = ROOT.TCanvas("tcsub","tcsub",800,800)
     leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
     leg.SetBorderSize(0)
@@ -115,7 +114,6 @@ def plotSubtractedDistributions(sbdyhist,sbdatfitfit,shiftedfits,dycolor,addname
     for i,key in enumerate(shiftedfits.keys()):
         fit = shiftedfits[key]
         fit.SetLineColor(shiftcols[i])
-        print("   shifted fit value at ",fit.Eval(1500))
         fit.Draw("same")
         leg.AddEntry(fit,key,"l")
     leg.Draw()
@@ -165,10 +163,11 @@ def plotShiftedFits(nomfit,hist,shiftedfits,name,direc,plotmax,systr,errhist=Non
     shiftcols = go.colsFromPalette(shiftedfits,ROOT.kCMYK)
     for i,fit in enumerate(shiftedfits):
         fit.SetLineColor(shiftcols[i])
+        #print("While plotting a fit this is the param ",fit.GetParameter(0))
+        #print("While plotting a fit this is the param ",fit.GetParameter(1))
         leg.AddEntry(fit,"par[{0}] {1}".format(i,direc),"l")
         fit.Draw("same")
-    #shiftedfits[0].SetLineColor(ROOT.kRed)
-    #shiftedfits[0].Draw()
+        #fit.Draw()
     nomfit.Draw("same")
     leg.AddEntry(nomfit,"nominal","l")
     hist.Draw("sameE1")
@@ -209,20 +208,30 @@ def getShiftedAlphaRatios(sbnom,srnom,sbshifts,srshifts,direc):
     
 
 def doExpFitShifts(nomfit,parnum,name,lowr,highr,shiftedparamsin = ROOT.TVector()):
+    print("doing the shifted fits!")
     fitpars = []
     fiterrs = []
     shiftedfits = []
-    parvecedit = ROOT.TVector(parnum)
-    parsysdict = {"2":"up","0":"down"}
-    for par in range(parnum):
-        parvecedit[par] = nomfit.GetParameter(par)
-        fitpars.append(nomfit.GetParameter(par))
-        fiterrs.append(nomfit.GetParError(par))
     for i in range(parnum):
-        parvecedit[i] = shiftedparamsin[i]
-        fitup = ROOT.expFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,highr)
-        shiftedfits.append(fitup)
-        parvecedit[i] = fitpars[i]#reset the fit params
+        parvecedit = ROOT.TVector(parnum)
+        for j in range(parnum):
+            parvecedit[j] = shiftedparamsin[i][j]
+        fit = ROOT.expFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,highr)
+        shiftedfits.append(fit)
+    #parvecedit = ROOT.TVector(parnum)
+    #parsysdict = {"2":"up","0":"down"}
+    #for par in range(parnum):
+    #    parvecedit[par] = nomfit.GetParameter(par)
+    #    fitpars.append(nomfit.GetParameter(par))
+    #    fiterrs.append(nomfit.GetParError(par))
+    #for i in range(parnum):
+    #    #print("Looking to shift par ",i)
+    #    #print("The shifted pars")
+    #    parvecedit[i] = shiftedparamsin[i]
+    #    parvecedit.Print()
+    #    fitup = ROOT.expFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,highr)
+    #    shiftedfits.append(fitup)
+    #    parvecedit[i] = fitpars[i]#reset the fit params
 
     return fitpars,fiterrs,shiftedfits
 
@@ -515,9 +524,11 @@ if __name__=='__main__':
     vvsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hsbvv.Clone(),"vvsbshiftfinder","ER0+",vvsbxmax,vvsbxmin)
     vvsbparsdecodn,vvsbfiterrdecodn,vvsbfitsdecodn = doExpFitShifts(sbvvfit,2,"vvsbdwn",vvsbxmax,vvsbxmin,vvsbfitdecorrparamsdn)
     print("================= doing data sb fit =================")
-    sbdatfit = ROOT.expFit(hdatsb,"datsbl","EQR0+",datsbxmax,datsbxmin)#5000)
+    sbdatfit = ROOT.expFit(hdatsb,"datsbl","ER0+",datsbxmax,datsbxmin)#5000)
     sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","ER0+",sigmabars,datsbxmax,datsbxmin)#5000)
     datsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,datsbxmin)
+    #print("The vector of shifted parameters returned to python")
+    #datsbfitdecorrparamsup.Print()
     datsbparsdecoup,datsbfiterrdecoup,datsbfitsdecoup = doExpFitShifts(sbdatfit,2,"datsbup",datsbxmax,datsbxmin,datsbfitdecorrparamsup)
     datsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,datsbxmin)
     datsbparsdecodn,datsbfiterrdecodn,datsbfitsdecodn = doExpFitShifts(sbdatfit,2,"datsbdwn",datsbxmax,datsbxmin,datsbfitdecorrparamsdn)
@@ -543,7 +554,7 @@ if __name__=='__main__':
     subdatafit = ROOT.subtractionFromFits(sbdatfit,sbttfit,sbvvfit,"subtracteddatasbfit")
     shiftedsubsup = getShiftedSubtractions(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecoup,ttsbfitsdecoup,vvsbfitsdecoup,"up")
     shiftedsubsdn = getShiftedSubtractions(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecodn,ttsbfitsdecodn,vvsbfitsdecodn,"dwn")
-
+    print(shiftedsubsdn)
     print("=========doing sb extrapolation fit==================")
     extrap  = ROOT.alphaExtrapolation(hsbdy,hsrdy,sbdatuncsub,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
     extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,sbdatuncsub,1,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
