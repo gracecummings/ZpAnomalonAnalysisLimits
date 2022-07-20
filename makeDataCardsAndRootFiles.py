@@ -49,7 +49,7 @@ def doStatsUncertainty(hist):
         hdwn.SetName(hname+"Down")
         histlist.append(hup)
         histlist.append(hdwn)
-        uncdict  = {name+"_StatsUncBin"+str(b):{"type":"shapeN2","unc":1.0,"proc":applist}}
+        uncdict  = {name+"_StatsUncBin"+str(b):{"type":"shape","unc":1.0,"proc":applist}}
         statsdict.update(uncdict)
         #print(updict)
         #print(dwndict)
@@ -68,7 +68,7 @@ def checkBinNumbers(histlist):
     aok = all(testl)
     return aok
 
-def writeDataCard(processes,rootFileName,channel,yearstr,hdat):
+def writeDataCard(processes,rootFileName,channel,yearstr,hdat,noratel,noshapel):
     signame = processes["processnames"][0]
     nbkg = len(processes["processnames"])-1
     obsEvents = hdat.Integral()
@@ -97,19 +97,28 @@ def writeDataCard(processes,rootFileName,channel,yearstr,hdat):
     maxnamelength = max([len(x) for x in processes["systrates"].keys()])
 
     for syst in processes["systrates"].keys():
+        if syst in noratel:
+            systname = "#"+str(syst)
+        else:
+            systname = str(syst)
         vals = processes["systrates"][syst]["proc"]
         sval = [x if len(x) > 1 else "-" for x in vals]
 
         nameoffset = maxnamelength - len(syst)
         
-        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst)+" "*nameoffset,processes["systrates"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
+        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(systname+" "*nameoffset,processes["systrates"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
     
     for syst in processes["systshapes"].keys():
+        if syst in noshapel:
+            systname = "#"+str(syst)
+        else:
+            systname = str(syst)
+
         vals = processes["systshapes"][syst]["proc"]
         sval = [x if x != 0 else "-" for x in vals]
         nameoffset = maxnamelength - len(syst)
-        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst)+" "*nameoffset,processes["systshapes"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
+        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(systname+" "*nameoffset,processes["systshapes"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
         card.write(cardstr)
 
     #card.write("* autoMCStats 1\n")
@@ -131,6 +140,7 @@ def newNameAndStructure(hist,name,rebindiv,limrangelow,limrangehigh):
         nh.SetBinError(b+1,binerror)
 
     return nh
+
 def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
     rateuncdict = {}
     shapeuncdict = {}
@@ -147,8 +157,8 @@ def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
     for i in range(len(unckeysup)):
         upkey = unckeysup[i]
         dnkey = unckeysdn[i]
-        upr = tf.Get(upkey)
-        dnr = tf.Get(dnkey)
+        upr = dytf.Get(upkey)
+        dnr = dytf.Get(dnkey)
         up = newNameAndStructure(upr,"DY_"+upkey,1,limrangelow,limrangehigh)
         dn = newNameAndStructure(dnr,"DY_"+dnkey,1,limrangelow,limrangehigh)
 
@@ -163,8 +173,8 @@ def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
         ratestr = "-"
         if abs(round(1-uprate,2))-abs(round(1-dwnrate,2)) == 0:
             ratestr = str(max(round(uprate,2),round(dwnrate,2)))
-        elif "vv" not in genname:
-             ratestr = str(round(dwnrate,2))+"/"+str(round(uprate,2))
+        #elif "vv" not in genname:
+        #     ratestr = str(round(dwnrate,2))+"/"+str(round(uprate,2))
         else:
             ratestr = str(round(dwnrate,3))+"/"+str(round(uprate,3))
         rateuncdict[genname] = {"type":"lnN","proc":["-",ratestr,"-","-"]}
@@ -173,6 +183,116 @@ def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
         shapeuncdict[genname] = {"type":"shape","unc":1.0,"proc":[0,1,0,0]}
 
     return histlist,shapeuncdict,rateuncdict
+
+def gatherEmuUncs(procname,tf,hnom,limrangelow,limrangehigh):
+    rateuncdict = {}
+    shapeuncdict = {}
+    histlist = []
+    
+    keys = tf.GetListOfKeys()
+    keys = [key.GetName() for key in keys]
+    unckeys = [key for key in keys if "nom" not in key]
+    unckeysup = [key for key in unckeys if "Up" in key]
+    unckeysdn = [key for key in unckeys if "Down" in key]
+    unckeysup = sorted(unckeysup)
+    unckeysdn = sorted(unckeysdn)
+
+    for i in range(len(unckeysup)):
+        upkey = unckeysup[i]
+        dnkey = unckeysdn[i]
+        upr = tf.Get(upkey)
+        dnr = tf.Get(dnkey)
+        up = newNameAndStructure(upr,procname+"_"+upkey,1,limrangelow,limrangehigh)
+        dn = newNameAndStructure(dnr,procname+"_"+dnkey,1,limrangelow,limrangehigh)
+
+        #gather this histograms
+        histlist.append(up)
+        histlist.append(dn)
+
+        #make the rate uncertainties
+        uprate = getDeviatedOverNominal(up,hnom)
+        dwnrate = getDeviatedOverNominal(dn,hnom)
+        genname = upkey.split("Up")[0]
+        ratestr = "-"
+        if abs(round(1-uprate,2))-abs(round(1-dwnrate,2)) == 0:
+            ratestr = str(max(round(uprate,2),round(dwnrate,2)))
+        #elif "vv" not in genname:
+        #     ratestr = str(round(dwnrate,2))+"/"+str(round(uprate,2))
+        else:
+            ratestr = str(round(dwnrate,3))+"/"+str(round(uprate,3))
+        rateuncdict[genname] = {"type":"lnN","proc":["-","-",ratestr,"-"]}
+
+        #make the shape uncertainties (can probably omit some later)
+        shapeuncdict[genname] = {"type":"shape","unc":1.0,"proc":[0,0,1,0]}
+
+    return histlist,shapeuncdict,rateuncdict
+
+
+def makeDeviatedTPave(histup,hist,histdwn,name):
+    updiv  = getDeviatedOverNominal(histup,hist)
+    dwndiv = getDeviatedOverNominal(histdwn,hist)
+    updiv = "up deviated over nominal: "+str(round(updiv,3))
+    dwndiv = "dwn deviated over nominal: "+str(round(dwndiv,3))
+    lab = ROOT.TPaveText(.2,.5,.55,.65,"NBNDC")
+    lab.AddText(updiv)
+    lab.AddText(dwndiv)
+    lab.SetFillColor(0)
+    return lab
+
+
+def plotSignalSystematics(hup,hdwn,hnom,name):
+    tc = ROOT.TCanvas("tc","tc",700,600)
+    p1 = ROOT.TPad("p1","plot",0,0.3,1.0,1.0)
+    p2 = ROOT.TPad("p2","ratio",0,0,1.0,0.3)
+    leg = ROOT.TLegend(0.15,0.7,0.55,0.85)
+    lab = makeDeviatedTPave(hup,hnom,hdwn,name)
+
+    #drawing style
+    #ROOT.gStyle.SetErrorX(0)
+    plotmax = max([hup.GetMaximum(),hdwn.GetMaximum(),hnom.GetMaximum()])*1.3
+    hists = [hup,hdwn,hnom]
+    for h in hists:
+        h.GetYaxis().SetRangeUser(0,plotmax)
+    hup.SetLineColor(ROOT.kRed)
+    hdwn.SetLineColor(ROOT.kBlue)
+    hnom.SetLineColor(ROOT.kBlack)
+    leg.SetBorderSize(0)
+    leg.AddEntry(hup,name+" up","l")
+    leg.AddEntry(hnom,name+" nominal","l")
+    leg.AddEntry(hdwn,name+" down","l")
+    hdiv = hup.Clone()
+    hdiv.Divide(hup,hdwn)
+    hdiv.SetLineColor(ROOT.kBlack)
+    hdiv.SetMarkerStyle(8)
+    hdiv.SetMarkerSize(0.7)
+    hdiv.SetMarkerColor(ROOT.kBlack)
+    hdiv.SetStats(0)
+    hdiv.GetXaxis().SetLabelSize(0.075)
+    hdiv.GetYaxis().SetTitle("up/dwn")
+    hdiv.GetYaxis().SetTitleSize(0.11)
+    hdiv.GetYaxis().SetTitleOffset(.45)
+    hdiv.GetYaxis().SetLabelSize(0.08)
+    hdiv.GetYaxis().SetLabelOffset(0.02)
+    hdiv.GetYaxis().SetNdivisions(503)
+    
+
+    #Draw
+    tc.Draw()
+    tc.cd()
+    p1.Draw()
+    p1.cd()
+    hnom.Draw("hist")
+    hup.Draw("histsame")
+    hdwn.Draw("histsame")
+    leg.Draw()
+    lab.Draw()
+    tc.cd()
+    p2.Draw()
+    p2.cd()
+    hdiv.Draw("e1")
+    tc.Update()
+    tc.SaveAs(go.makeOutFile('Run2_161718_ZllHbbMET_sigalSystematics',name,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp)))
+    
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
@@ -206,7 +326,7 @@ if __name__=='__main__':
     bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
     sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
     dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-
+    ttEst = ROOT.TFile(config.get('nominal','pathemu')+'/Run2_161718_emu_extrapolation_'+config.get('nominal','stremu')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
     ####Prepping holders####
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
@@ -218,7 +338,8 @@ if __name__=='__main__':
     
     ####Getting the Estimations####
     hdy    = dyEst.Get("extrphistnoerrs").Clone()
-    htt = bkgs.getAddedHist(empty1,"TT","sr","h_zp_jigm")
+    htt    = ttEst.Get("TT_scalenominal").Clone()
+    #htt = bkgs.getAddedHist(empty1,"TT","sr","h_zp_jigm")#mc way
     hzz  = bkgs.getAddedHist(empty2,"ZZTo2L2Q","sr","h_zp_jigm")
     hwz  = bkgs.getAddedHist(empty3,"WZTo2L2Q","sr","h_zp_jigm")
     hvv  = hzz.Clone()
@@ -226,22 +347,31 @@ if __name__=='__main__':
 
 
     ####Rename and restucture
-    htt = newNameAndStructure(htt,"TT",rebindiv,limrangelow,limrangehigh)
+    #htt = newNameAndStructure(htt,"TT",rebindiv,limrangelow,limrangehigh)#mc way
+    htt = newNameAndStructure(htt,"TT",1,limrangelow,limrangehigh)
     hdy = newNameAndStructure(hdy,"DY",1,limrangelow,limrangehigh)
     hvv = newNameAndStructure(hvv,"VV",rebindiv,limrangelow,limrangehigh)
-    hdat = hdy.Clone()
-    hdat.SetName("data_obs")
-    hdat.Add(htt)
-    hdat.Add(hvv)
+
+    ####Make data obs hist
+    tfd = ROOT.TFile(config.get('nominal','pathnom')+"/Run2_161718_gofplots_"+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+    hdat = tfd.Get("h_zp_jigm").Clone()
+    hdat = newNameAndStructure(hdat,"data_obs",1,limrangelow,limrangehigh)
+    
+    #Old way of making data hist
+    #hdat = hdy.Clone()
+    #hdat.SetName("data_obs")
+    #hdat.Add(htt)
+    #hdat.Add(hvv)
 
     ####Do bkg stats unc explicitly
     httstatsunc,httuncdict = doStatsUncertainty(htt)
     hvvstatsunc,hvvuncdict = doStatsUncertainty(hvv)
 
-
     ###Do alpha method unc
-    #dymethunchists,dymethshapedict,dymethratedict = gatherAlphaMethodUncs(dyEst,hdy,limrangelow,limrangehigh)
-    
+    dymethunchists,dymethshapedict,dymethratedict = gatherAlphaMethodUncs(dyEst,hdy,limrangelow,limrangehigh)
+
+    ###Do emu tt extrp unc
+    emuunchists,emushapedict,emuratedict = gatherEmuUncs("TT",ttEst,htt,limrangelow,limrangehigh)
 
     ####For Each signal, make a datacard, and a root file with all systematics
     siginfo = sig.getPreppedSig('sr',sigxs)
@@ -258,7 +388,7 @@ if __name__=='__main__':
             signame = name.replace("-","")
         print("------- Looking at signal sample ",signame)
 
-        if "Zp4000ND800NS200" not in signame:
+        if "Zp5500ND1800NS200" not in signame:
             continue
 
         ####Make Files
@@ -275,8 +405,10 @@ if __name__=='__main__':
         hsig = newNameAndStructure(hsig,signame,rebindiv,limrangelow,limrangehigh)
         prepRootFile.cd()
 
-        #print("!!!!!!!!artificially scaling the nominal backgrounds!!!!")
+
         #bkghists = [htt,hvv,hdy,hdat]
+        bkghists = [htt,hvv,hdy]
+        #print("!!!!!!!!artificially scaling the nominal backgrounds!!!!")
         #for hist in bkghists:
         #    hist.Scale(10)
 
@@ -292,6 +424,10 @@ if __name__=='__main__':
 
         ###Write bkg stats files
         for h in range(len(httstatsunc)):
+            #print("!!!!!!!!artificially scaling the nominal background stats unc!!!!")
+            #httstatsunc[h].Scale(10)
+            #hvvstatsunc[h].Scale(10)
+            
             httstatsunc[h].Write()
             hvvstatsunc[h].Write()
             hsigstatsunc[h].Write()
@@ -305,7 +441,20 @@ if __name__=='__main__':
         systdictshape.update(httuncdict)
         systdictshape.update(hvvuncdict)
         systdictshape.update(hsiguncdict)
-        
+
+        ####Add the alphamethod uncertainties
+        systdictshape.update(dymethshapedict)
+        systdictrate.update(dymethratedict)
+        for hist in dymethunchists:
+            #print("ARTIFICIALLY SCALING THE ALPHA METHOD HISTS")
+            #hist.Scale(10)
+            hist.Write()
+
+        ###Add the emu uncertainties
+        systdictshape.update(emushapedict)
+        systdictrate.update(emuratedict)
+        for hist in emuunchists:
+            hist.Write()
         
         for syst in systs:
             #print("YOU HAVE CURRENTLY TURNED OFF SYSTEMATICS")
@@ -344,10 +493,12 @@ if __name__=='__main__':
             #sigupdict = {}
             sigup = makeSignalInfoDict(systsigup,'sr',sigxs)
             sigdwn = makeSignalInfoDict(systsigdwn,'sr',sigxs)
-            keyup = sigup[s]["tfile"].GetListOfKeys()
-            keydwn = sigdwn[s]["tfile"].GetListOfKeys()
-            keyup = [k.GetName() for k in keyup]
-            keydwn = [k.GetName() for k in keydwn]
+
+            #Some sort of debug
+            #keyup = sigup[s]["tfile"].GetListOfKeys()
+            #keydwn = sigdwn[s]["tfile"].GetListOfKeys()
+            #keyup = [k.GetName() for k in keyup]
+            #keydwn = [k.GetName() for k in keydwn]
 
             #for k,key in enumerate(keyup):
             #    if "hnevents" in key:
@@ -358,87 +509,93 @@ if __name__=='__main__':
             #    print("Dwn bins: ",sigdwn[s]["tfile"].Get(key).GetNbinsX())
 
             ####Check is the keys exist
-            if (s in sigup) and (s in sigdwn): 
-                ####Prepping holders####
-                empty4 = empty.Clone()
-                empty5 = empty.Clone()
-                empty6 = empty.Clone()
-                empty7 = empty.Clone()
-                empty8 = empty.Clone()
-                empty9 = empty.Clone()
-
-                ####Gathering the Systematic
-                #Background
-                httup  = systbkgsup.getAddedHist(empty4,"TT","sr","h_zp_jigm")
-                httdwn = systbkgsdwn.getAddedHist(empty5,"TT","sr","h_zp_jigm")
-                hzzup  = systbkgsup.getAddedHist(empty6,"ZZTo2L2Q","sr","h_zp_jigm")
-                hzzdwn = systbkgsdwn.getAddedHist(empty7,"ZZTo2L2Q","sr","h_zp_jigm")
-                hwzup  = systbkgsup.getAddedHist(empty8,"WZTo2L2Q","sr","h_zp_jigm")
-                hwzdwn = systbkgsdwn.getAddedHist(empty9,"WZTo2L2Q","sr","h_zp_jigm")
-                hvvup  = hzzup.Clone()
-                hvvdwn = hzzdwn.Clone()
-                hvvup.Add(hwzup)
-                hvvdwn.Add(hwzdwn)
-                hdyup  = dyEstup.Get("extrphistnoerrs").Clone()
-                hdydwn = dyEstdwn.Get("extrphistnoerrs").Clone()
-
+            if (s in sigup) and (s in sigdwn): #Checks that the syst key exist for SIGNAl
                 #Signal
                 hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
-                #print("              hup nbins  ",hsigupori.GetNbinsX())
                 hsigup = hsigupori.Clone()
                 hsigup.Scale(sigup[s]["scale"])
                 hsigup = applyStatsUncToSignal(hsigup,sigup[s]["errdf"]["h_zp_jigm"]*sigup[s]["scale"])
                 hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
-                #print("              hdwn nbins ",hsigdwnori.GetNbinsX())
-
-                #if hsigupori.GetNbinsX() != hsigdwnori.GetNbinsX():
-                #    print("___________________________________________________--bins weird")
-                #    print("___________________________________________________-- ",sigdwn[s]["tfile"])
-
                 hsigdwn = hsigdwnori.Clone()
                 hsigdwn.Scale(sigdwn[s]["scale"])
                 hsigdwn = applyStatsUncToSignal(hsigdwn,sigdwn[s]["errdf"]["h_zp_jigm"]*sigdwn[s]["scale"])
-                #print(sigdwn[s]["tfile"])
-                #print(hsigdwnori)
-                #print(hsigdwnori.Integral())
-                #print(hsigdwn.Integral())
-
                 #Rename and Restructure
                 hsigdwn = newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
                 hsigup = newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
-                httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
-                httdwn = newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-                hvvup = newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh) 
-                hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-                hdyup  = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
-                hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
+                #Get the proper signal rate systematics
+                siguprate = getDeviatedOverNominal(hsigup,hsig)
+                sigdwnrate = getDeviatedOverNominal(hsigdwn,hsig)
+                sigratestr = str(round(sigdwnrate,3))+"/"+str(round(siguprate,3))
+                if (round(sigdwnrate,3) == 1.0) or( round(siguprate,3) == 1.0):
+                    sigratestr = "-"
+                ratelist[0] = sigratestr
 
-                allsysthists = [hsigdwn,hsigup,httup,httdwn,hvvup,hvvdwn,hdyup,hdydwn]
-                allthesame = checkBinNumbers(allsysthists)
-                if not allthesame:
-                    print("              NOT ALL OF THE BINS NUMBERS ARE THE SAME")
-                    print("              NOT WRITING THE {0} UP/DWN HISTOGRAMS".format(syst))
-                    continue
-
-
-                #Write the histograms
-                
-                prepRootFile.cd()
-                print("        Writing the up/dwn histograms")
-                #print("!!!!!!!!artificially scaling the up/dwn backgrounds!!!!")
-                #bkghists = [httup,hvvup,hdyup,httdwn,hvvdwn,hdydwn]
-                #for hist in bkghists:
-                #    hist.Scale(10)
+                #Write the Signal Hists
                 hsigup.Write()
                 hsigdwn.Write()
-                httup.Write()
-                httdwn.Write()
-                hvvup.Write()
-                hvvdwn.Write()
-                hdyup.Write()
-                hdydwn.Write()
             else:
-                print("****************{0} Does not have {1} systematic".format(s,syst))
+                print("****************{0} Does not have {1} systematic for signal".format(s,syst))
+
+                
+            ####Prepping holders####
+            empty4 = empty.Clone()
+            empty5 = empty.Clone()
+            empty6 = empty.Clone()
+            empty7 = empty.Clone()
+            empty8 = empty.Clone()
+            empty9 = empty.Clone()
+
+            ####Gathering the Systematic
+            #Background
+            #httup  = systbkgsup.getAddedHist(empty4,"TT","sr","h_zp_jigm")
+            #httdwn = systbkgsdwn.getAddedHist(empty5,"TT","sr","h_zp_jigm")
+            hzzup  = systbkgsup.getAddedHist(empty6,"ZZTo2L2Q","sr","h_zp_jigm")
+            hzzdwn = systbkgsdwn.getAddedHist(empty7,"ZZTo2L2Q","sr","h_zp_jigm")
+            hwzup  = systbkgsup.getAddedHist(empty8,"WZTo2L2Q","sr","h_zp_jigm")
+            hwzdwn = systbkgsdwn.getAddedHist(empty9,"WZTo2L2Q","sr","h_zp_jigm")
+            hvvup  = hzzup.Clone()
+            hvvdwn = hzzdwn.Clone()
+            hvvup.Add(hwzup)
+            hvvdwn.Add(hwzdwn)
+            hdyup  = dyEstup.Get("extrphistnoerrs").Clone()
+            hdydwn = dyEstdwn.Get("extrphistnoerrs").Clone()
+
+            
+            ####Rename and Restructure
+            #httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+            #httdwn = newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            hvvup = newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh) 
+            hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            hdyup  = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
+            hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
+            
+            #allsysthists = [httup,httdwn,hvvup,hvvdwn,hdyup,hdydwn]
+            allsysthists = [hvvup,hvvdwn,hdyup,hdydwn]
+            allthesame = checkBinNumbers(allsysthists)
+            if not allthesame:
+                print("              NOT ALL OF THE BINS NUMBERS ARE THE SAME")
+                print("              NOT WRITING THE {0} UP/DWN HISTOGRAMS".format(syst))
+                continue
+
+                
+            #Write the histograms
+            prepRootFile.cd()
+            print("        Writing the up/dwn histograms")
+                
+            #bkghists = [httup,hvvup,hdyup,httdwn,hvvdwn,hdydwn]
+            bkghists = [hvvup,hdyup,hvvdwn,hdydwn]
+            print("!!!!!!!!!!!!put back in ttbar up/downs!!!!!!!!!!!!!!!!!!!!!!!")
+            #print("!!!!!!!!artificially scaling the up/dwn backgrounds!!!!")
+            #for hist in bkghists:
+            #    hist.Scale(10)
+            #httup.Write()
+            #httdwn.Write()
+            hvvup.Write()
+            hvvdwn.Write()
+            hdyup.Write()
+            hdydwn.Write()
+
+            #plotSignalSystematics(hsigup,hsigdwn,hsig,signame+"_"+syst)
 
         #For writing the datacard
         procdict = {"processnames":[signame,"DY","TT","VV"],
@@ -449,7 +606,10 @@ if __name__=='__main__':
         }
         print("        Defined the Datacard Dict")
         print("        Writing the Datacard")
-        writeDataCard(procdict,prepRootName,chan,yearstr,hdat)
+
+        ignorerates = ["extrap_subdatasb_vvfit_par1","extrap_subdatasb_vvfit_par0","extrap_subdatasb_ttfit_par0"]
+        ignoreshapes = ["extrap_subdatasb_vvfit_par1","extrap_subdatasb_vvfit_par0","extrap_subdatasb_ttfit_par1","extrap_subdatasb_ttfit_par0","extrap_alpha_DY_sr_par0","extrap_alpha_DY_sb_par1","extrap_alpha_DY_sb_par0","muonid","TT_scale"]
+        writeDataCard(procdict,prepRootName,chan,yearstr,hdat,ignorerates,ignoreshapes)
         print("        About to close the root file")
         prepRootFile.Close()
 
