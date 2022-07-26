@@ -71,9 +71,13 @@ if __name__=='__main__':
         print('You know you are not plotting data, right?')
 
     #Gather Input
+    #print(pathplots)
     ttmcemu  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
-    dataemu  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,systr)
+    dataemu  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,'systnominal_btagnom_muidnom')
 
+    #print(ttmcemu.bkgs)
+    #print(dataemu.data[int(year)])
+    
     #Colors, Naming, general style
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
     bkgcols  = go.colsFromPalette(bkgnames,ROOT.kLake)
@@ -92,57 +96,131 @@ if __name__=='__main__':
     keys = testtfile.GetListOfKeys()
 
     #names and param.
+    #titles = {
+    #    "h_z_pt":["Z p_{T} (GeV)",0,800,1],
+    #    "h_z_eta":["\eta_{Z}",0,1200,1],
+    #    "h_z_phi":["\phi_{Z}",0,700,2],
+    #    "h_z_phiw":["\phi_{Z}",0,700,2],
+    #    "h_z_m":["m_{Z} (GeV)",0,500,1],
+    #    "h_h_pt":["Higgs p_{T} (GeV)",0,1100,1],
+    #    "h_h_eta":["\eta_{Higss}",0,1100,1],
+    #    "h_h_phi":["\phi_{Higgs}",0,600,2],
+    #    "h_h_phiw":["\phi_{Higgs}",0,600,2],
+    #    "h_h_m":["m_{h} (GeV)",0,450,1],
+    #    "h_h_sd":["Higgs Soft Drop Mass (GeV)",0,350,1],#45 normally max
+    #    "h_met":["p_{T}^{miss} (GeV)",0,2200,1],
+    #    "h_met_phi":["\phi p_{T}^{miss}",0,750,2],
+    #    "h_met_phiw":["\phi p_{T}^{miss}",0,750,2],
+    #    "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,1700,2],
+    #    "h_nd_jigm":["Jigsaw Mass Estimator ND",0,1600,1],
+    #    "h_ns_jigm":["Jigsaw Mass Estimator NS",0,3000,1],
+    #    "h_btag":["btag operating point",0,2000,1],
+    #    "h_dphi_zh":["\Delta\phi_{ZH}",0,900,2],
+    #    "h_dphi_zmet":["\Delta\phi_{ZMET}",0,350,2],
+    #    "h_dphi_hmet":["\Delta\phi_{HMET}",0,550,2],
+    #    "h_dr_zh":["\Delta R(ZH)",0,1500,1],
+    #    "h_dr_lmuh":["\Delta R(lmu,H)",0,800,1],
+    #    "h_dr_slmuh":["\Delta R(slmu,H)",0,800,1],
+    #    "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,5200,1],
+    #    "h_dr_gz_gh":["\Delta R(genZ,genH)",0,250,1],
+    #    "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,250,1],
+    #    "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,250,1],
+    #    "h_LMu_pt":["leading \mu p_{T} (GeV)",0,5500,1],
+    #    "h_LMu_phi":["\phi_{leading \mu}",0,5500,2],
+    #    "h_LMu_eta":["\eta_{leading \mu }",0,5500,1],
+    #    "h_sLMu_pt":["subleading \mu p_{T} (GeV)",0,5500,1],
+    #    "h_sLMu_phi":["\phi_{subleading \mu}",0,5500,2],
+    #    "h_sLMu_eta":["\eta_{subleading \mu}",0,5500,1],
+    #    "h_dr_leadleph":["\Delta R(leading lepton,H)",0,800,1],
+    #    "h_dr_sleadleph":["\Delta R(subleading lepton,H)",0,800,1],
+    #    "h_dr_leps":["\Delta R(leptons)",0,800,1],
+    #    "h_leadlep_pt":["leading lepton p_{T} (GeV)",0,5500,1],
+    #    "h_sleadlep_pt":["subleading lepton p_{T} (GeV)",0,5500,1],
+    #    "h_leadlep_phi":["\phi_{leading lepton}",0,5500,2],
+    #    "h_sleadlep_phi":["\phi_{subleading lepton}",0,5500,2],
+    #    "h_leadlep_eta":["\eta_{leading lepton}",0,5500,1],
+    #    "h_sleadlep_eta":["\eta_{subleading lepton}",0,5500,1],
+    #    "h_electron_pt":["electron p_{T} (GeV)",0,800,1],
+    #    "h_electron_phi":["\phi_{electron}",0,700,2],
+    #    "h_electron_eta":["\eta_{electron}",0,1200,1],
+    #    "h_muon_pt":["muon p_{T} (GeV)",0,800,1],
+    #    "h_muon_phi":["\phi_{muon}",0,700,2],
+    #    "h_muon_eta":["\eta_{muon}",0,1200,1],
+    #}
+
     titles = {
-        "h_z_pt":["Z p_{T} (GeV)",0,800,1],
-        "h_z_eta":["\eta_{Z}",0,1200,1],
-        "h_z_phi":["\phi_{Z}",0,700,2],
-        "h_z_phiw":["\phi_{Z}",0,700,2],
-        "h_z_m":["m_{Z} (GeV)",0,500,1],
-        "h_h_pt":["Higgs p_{T} (GeV)",0,1100,1],
-        "h_h_eta":["\eta_{Higss}",0,1100,1],
-        "h_h_phi":["\phi_{Higgs}",0,600,2],
-        "h_h_phiw":["\phi_{Higgs}",0,600,2],
-        "h_h_m":["m_{h} (GeV)",0,450,1],
-        "h_h_sd":["Higgs Soft Drop Mass (GeV)",0,350,1],#45 normally max
-        "h_met":["p_{T}^{miss} (GeV)",0,2200,1],
-        "h_met_phi":["\phi p_{T}^{miss}",0,750,2],
-        "h_met_phiw":["\phi p_{T}^{miss}",0,750,2],
-        "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,1700,2],
-        "h_nd_jigm":["Jigsaw Mass Estimator ND",0,1600,1],
-        "h_ns_jigm":["Jigsaw Mass Estimator NS",0,3000,1],
-        "h_btag":["btag operating point",0,2000,1],
-        "h_dphi_zh":["\Delta\phi_{ZH}",0,900,2],
-        "h_dphi_zmet":["\Delta\phi_{ZMET}",0,350,2],
-        "h_dphi_hmet":["\Delta\phi_{HMET}",0,550,2],
-        "h_dr_zh":["\Delta R(ZH)",0,1500,1],
-        "h_dr_lmuh":["\Delta R(lmu,H)",0,800,1],
-        "h_dr_slmuh":["\Delta R(slmu,H)",0,800,1],
-        "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,5200,1],
+        "h_z_pt":["Z p_{T} (GeV)",0,30,2],
+        "h_z_eta":["\eta_{Z}",0,40,1],
+        "h_z_phi":["\phi_{Z}",0,40,2],
+        "h_z_phiw":["\phi_{Z}",0,90,2],
+        "h_z_m":["m_{Z} (GeV)",0,30,2],
+        "h_h_pt":["Higgs p_{T} (GeV)",0,30,1],
+        "h_h_eta":["\eta_{Higss}",0,40,1],
+        "h_h_phi":["\phi_{Higgs}",0,40,2],
+        "h_h_phiw":["\phi_{Higgs}",0,40,2],
+        "h_h_m":["m_{h} (GeV)",0,30,1],
+        "h_h_sd":["Higgs Soft Drop Mass (GeV)",0,30,1],#45 normally max
+        "h_met":["p_{T}^{miss} (GeV)",0,50,1],
+        "h_met_phi":["\phi p_{T}^{miss}",0,30,2],
+        "h_met_phiw":["\phi p_{T}^{miss}",0,80,2],
+        "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,30,2],
+        "h_nd_jigm":["Jigsaw Mass Estimator ND",0,60,1],
+        "h_ns_jigm":["Jigsaw Mass Estimator NS",0,100,1],
+        "h_btag":["btag operating point",0,40,1],
+        "h_dphi_zh":["\Delta\phi_{ZH}",0,50,2],
+        "h_dphi_zmet":["\Delta\phi_{ZMET}",0,40,2],
+        "h_dphi_hmet":["\Delta\phi_{HMET}",0,40,2],
+        "h_dr_zh":["\Delta R(ZH)",0,80,1],
+        "h_dr_lmuh":["\Delta R(lmu,H)",0,200,1],
+        "h_dr_slmuh":["\Delta R(slmu,H)",0,200,1],
+        "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,60,1],
         "h_dr_gz_gh":["\Delta R(genZ,genH)",0,250,1],
         "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,250,1],
         "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,250,1],
-        "h_LMu_pt":["leading \mu p_{T} (GeV)",0,5500,1],
-        "h_LMu_phi":["\phi_{leading \mu}",0,5500,2],
-        "h_LMu_eta":["\eta_{leading \mu }",0,5500,1],
-        "h_sLMu_pt":["subleading \mu p_{T} (GeV)",0,5500,1],
-        "h_sLMu_phi":["\phi_{subleading \mu}",0,5500,2],
-        "h_sLMu_eta":["\eta_{subleading \mu}",0,5500,1],
-        "h_dr_leadleph":["\Delta R(leading lepton,H)",0,800,1],
-        "h_dr_sleadleph":["\Delta R(subleading lepton,H)",0,800,1],
-        "h_dr_leps":["\Delta R(leptons)",0,800,1],
-        "h_leadlep_pt":["leading lepton p_{T} (GeV)",0,5500,1],
-        "h_sleadlep_pt":["subleading lepton p_{T} (GeV)",0,5500,1],
-        "h_leadlep_phi":["\phi_{leading lepton}",0,5500,2],
-        "h_sleadlep_phi":["\phi_{subleading lepton}",0,5500,2],
-        "h_leadlep_eta":["\eta_{leading lepton}",0,5500,1],
-        "h_sleadlep_eta":["\eta_{subleading lepton}",0,5500,1],
-        "h_electron_pt":["electron p_{T} (GeV)",0,800,1],
-        "h_electron_phi":["\phi_{electron}",0,700,2],
-        "h_electron_eta":["\eta_{electron}",0,1200,1],
-        "h_muon_pt":["muon p_{T} (GeV)",0,800,1],
-        "h_muon_phi":["\phi_{muon}",0,700,2],
-        "h_muon_eta":["\eta_{muon}",0,1200,1],
+        "h_LMu_pt":["leading \mu p_{T} (GeV)",0,40,1],
+        "h_LMu_phi":["\phi_{leading \mu",0,100,2],
+        "h_LMu_eta":["\eta_{leading \mu ",0,100,1],
+        "h_sLMu_pt":["subleading \mu p_{T} (GeV)",0,40,1],
+        "h_sLMu_phi":["\phi_{subleading \mu}",0,100,2],
+        "h_sLMu_eta":["\eta_{subleading \mu}",0,100,1],
+        "h_electron_pt":["electron p_{T} (GeV)",0,20,1],
+        "h_electron_phi":["\phi_{electron}",0,40,2],
+        "h_electron_eta":["\eta_{electron}",0,60,1],
+        "h_muon_pt":["muon p_{T} (GeV)",0,25,1],
+        "h_muon_phi":["\phi_{muon}",0,40,2],
+        "h_muon_eta":["\eta_{muon}",0,60,1],
+        "h_dr_leps":["\Delta R(leptons)",0,60,1],
+        "h_leadlep_pt":["leading lepton p_{T} (GeV)",0,20,1],
+        "h_sleadlep_pt":["subleading lepton p_{T} (GeV)",0,30,1],
+        "h_leadlep_phi":["\phi_{leading lepton}",0,60,2],
+        "h_sleadlep_phi":["\phi_{subleading lepton}",0,60,2],
+        "h_leadlep_eta":["\eta_{leading lepton}",0,60,1],
+        "h_sleadlep_eta":["\eta_{subleading lepton}",0,60,1],
+        "h_dr_leadleph":["\Delta R(leading lepton,H)",0,40,1],
+        "h_dr_sleadleph":["\Delta R(subleading lepton,H)",0,40,1],
+        "h_lmuon_pt":["leading muon p_{T} (GeV)",0,15,1],
+        "h_lmuon_phi":["leading muom \phi",0,40,1],
+        "h_lmuon_eta":["leading muon \phi",0,40,1],
+        "h_slelectron_pt":["subleading electron p_{T} (GeV)",0,15,1],
+        "h_slelectron_phi":["subleading electron \phi",0,40,1],
+        "h_slelectron_eta":["subleading electron \eta",0,40,1],
+        "h_lelectron_pt":["Leading electron p_{T} (GeV)",0,30,1],
+        "h_lelectron_phi":["Leading electron \phi ",0,40,1],
+        "h_lelectron_eta":["leading electron \eta ",0,40,1],
+        "h_slmuon_pt":["subleading muon p_{T} ",0,30,1],
+        "h_slmuon_phi":["subleading muon \phi ",0,40,1],
+        "h_slmuon_eta":["subleading muon \eta ",0,40,1],
+        "h_dr_leadmuonh":["\Delta R(leading muon,H)",0,40,1],
+        "h_dr_subleadingeleh":["\Delta R(subleading electron,H)",0,40,1],
+        "h_dr_leadeleh":["\Delta R(leading electron,H)",0,40,1],
+        "h_dr_subleadingmuh":["\Delta R(subleading muon,H)",0,40,1],
+        "h_metxy":["p_{T}^{miss} xy corrected (GeV)",0,100,1],
+        "h_metxy_phi":["\phi p_{T}^{miss} xy corrected",0,80,2],
+        "h_metxy_phiw":["\phi p_{T}^{miss} xy corrected",0,80,2],
+
     }
+
+
 
         #make the plots
     for key in keys:
@@ -167,18 +245,26 @@ if __name__=='__main__':
         htt.SetLineColor(bkgcols[1])
         htt.Rebin(titles[hname][3])
         print("Plot maximum: ",htt.GetMaximum())
-        htt.GetYaxis().SetRangeUser(titles[hname][1],titles[hname][2])
+        htt.GetYaxis().SetRangeUser(titles[hname][1],titles[hname][2]*1.5)
+        print("Plot integral, mc: ",htt.Integral())
+
 
         #legend
         leg = ROOT.TLegend(0.5,0.7,0.88,0.80)
         leg.SetBorderSize(0)
         leg.AddEntry(htt,"TT, emu","f")
 
+        #intrgral label
+        yieldlabel = ROOT.TPaveText(0.5,0.6,0.88,0.7,"NBNDC")
+        yieldlabel.SetFillColor(0)
+        yieldlabel.AddText("Plot integral, mc: "+str(round(htt.Integral(),2)))
 
         if plot_data:
             #Make the data histograms
             hdat = dataemu.getAddedHist(empty4,reg,hname,years=years)
             #hdat = data.getAddedHist(empty6,'sb',hname,years=years)
+            print("Plot integral, data: ",hdat.Integral())
+            yieldlabel.AddText("Plot integral, data: "+str(round(hdat.Integral(),2)))
             hdat.Rebin(titles[hname][3])
             hdat.SetBinErrorOption(1)
             hdat.SetMarkerStyle(8)
@@ -220,6 +306,7 @@ if __name__=='__main__':
         CMS_lumi.CMS_lumi(p1,4,13)
 
         leg.Draw()
+        yieldlabel.Draw()
         p1.Update()
         tc.cd()
 

@@ -488,6 +488,7 @@ class backgrounds:
         xspairs = self.config.items(samp)
         #print(xspairs)
         bkgdfs  = []
+        scales = []
         for year in years:
             if year == 16:
                 lumi = 35.9
@@ -516,6 +517,7 @@ class backgrounds:
                 xs = float(xspairs[i][1].split()[0])*1000#Into Femtobarn
                 #print("The cross section read from ini file, in femtobarns: ",xs)
                 scale = findScale(numevents,xs,lumi)
+                scales.append(scale)
                 #print("The scaling applied: ",scale)
                 h = tf.Get(hname)
                 hscaled = h.Clone()
@@ -539,12 +541,21 @@ class backgrounds:
         uncsqdDYJetsdf = sum(bkgdfs)
         uncDYJetsdf    = uncsqdDYJetsdf**(1/2)
 
+        alpha = 1.- 0.682689492
         for ibin in range(hist.GetNbinsX()+1):
             if ibin == 0:
                 continue
-            else:
+            elif hist.GetBinContent(ibin) > 0:
                 binerr = uncDYJetsdf[hname][ibin-1]
                 hist.SetBinError(ibin,binerr)
+            else:
+                binerrbase = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                errs = [binerrbase*scale for scale in scales]
+                erssq = [err*err for err in errs]
+                sumer = sum(erssq)
+                binerr = (sumer)**(1/2)
+                hist.SetBinError(ibin,binerr)
+                
 
         #print("    integral added hist: ",hist.Integral())
         return hist
@@ -645,6 +656,34 @@ class run2:
                 continue
             else:
                 binerr = uncdf[hname][ibin-1]
+                hist.SetBinError(ibin,binerr)
+
+        return hist
+
+    def getAddedHistPoissonErrors(self,hist,region,hname,years = [16,17,18]):
+        data = self.data
+        datadfs = []
+        alpha = 1.- 0.682689492
+        for year in years:
+            files = data[year][region][0]
+            errs  = data[year][region][1]
+            files.sort()
+            errs.sort()
+            for i,f in enumerate(files):
+                tf = ROOT.TFile(f)
+                h = tf.Get(hname)
+                #print(h.Integral())
+                hist.Add(h)
+        
+        for ibin in range(hist.GetNbinsX()+1):
+            if ibin == 0:
+                continue
+            else:
+                binerr = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                #binerrdn = hist.GetBinContent(ibin) - ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin)),1)
+                #if int(hist.GetBinContent(ibin)) == 0:
+                #    binerrdn = 0
+                
                 hist.SetBinError(ibin,binerr)
 
         return hist

@@ -3,6 +3,7 @@
 #include "RestFrames/RestFrames.hh"
 #include "JetCorrectionUncertainty.h"
 #include "JetCorrectorParameters.h"
+#include "XYMETCorrection_withUL17andUL18andUL16.h"
 #include <TLeaf.h>
 #include <TVector.h>
 #include <TH1.h>
@@ -18,7 +19,44 @@ using std::string;
 RestFrames::RFKey ensure_autoload(1);
 using namespace RestFrames;
 
-std::vector<double> getMuonTriggerSF(std::vector<double> sfvec1,std::vector<double> sfvec2,TLorentzVector obj1,TLorentzVector obj2,float highbinedge,TH2 *heff) {
+TLorentzVector doHEMshiftJet(TLorentzVector jet,bool fid){
+  if ((jet.Eta() < -1.3) && (jet.Eta() > -2.5) && (jet.Phi() > -1.57) && (jet.Phi() < -0.87) && fid) {
+    jet = jet*0.80;//scale down the energy by 20%
+    }
+  if ((jet.Eta() < -2.5) && (jet.Eta() > -3.0) && (jet.Phi() > -1.57) && (jet.Phi() < -0.87) && fid) {
+    jet = jet*0.70;//scale down the energy by 20%
+    }
+  return jet;
+}
+  
+std::pair<double,double> getMETCorrHEM(TLorentzVector ojet, TLorentzVector njet){
+  //double  getMETCorrHEM(TLorentzVector ojet, TLorentzVector njet){
+  double oldphi = ojet.Phi();
+  double newphi = njet.Phi();
+  double oldpt = ojet.Pt();
+  double newpt = njet.Pt();
+  TLorentzVector diff = ojet-njet;
+  double diffx = diff.Pt()*std::cos(newphi);
+  double diffy = diff.Pt()*std::sin(newphi);
+  std::pair<double,double> metshift(diffx,diffy);
+
+  /*
+  std::cout<<"    Original Jet Pt "<<ojet.Pt()<<std::endl;
+  std::cout<<"   Original Jet Phi "<<ojet.Phi()<<std::endl;
+  std::cout<<"        new Jet Pt  "<<njet.Pt()<<std::endl;
+  std::cout<<"        new Jet Phi "<<njet.Phi()<<std::endl;
+  std::cout<<"       diff Jet Pt  "<<diff.Pt()<<std::endl;
+  std::cout<<"       diff Jet Phi "<<diff.Phi()<<std::endl;
+
+  std::cout<<"       diff ptx     "<<metshift.first<<std::endl;
+  std::cout<<"       diff pty     "<<metshift.second<<std::endl;
+  //*/  
+  return metshift;
+}
+  
+
+
+std::vector<double> GetMuonTriggerSF(std::vector<double> sfvec1,std::vector<double> sfvec2,TLorentzVector obj1,TLorentzVector obj2,float highbinedge,TH2 *heff) {
   std::vector<double> sfvec;
   double leptonsf  = 1;
   double lsfup     = 0;
@@ -44,11 +82,18 @@ std::vector<double> getMuonTriggerSF(std::vector<double> sfvec1,std::vector<doub
   double dsf1 = obj1eff*(1-sfvec2[0]*obj2eff)/(obj2eff+obj1eff-obj2eff*obj1eff);
   double dsf2 = obj2eff*(1-sfvec1[0]*obj1eff)/(obj2eff+obj1eff-obj2eff*obj1eff);
   lsfup = sqrt(dsf1*dsf1*sfvec1[1]*sfvec1[1]+dsf2*dsf2*sfvec2[1]*sfvec2[1]);
-  lsfup = lsfdwn;
+  lsfdwn = lsfup;
   //write the output
   sfvec.push_back(leptonsf);
   sfvec.push_back(lsfup);
   sfvec.push_back(lsfdwn);
+
+  /*
+  std::cout<<"    The scale factor of the leading muon is "<<sfvec1[0]<<std::endl;
+  std::cout<<"    The scale factor of the sleading muon is "<<sfvec2[0]<<std::endl;
+  std::cout<<"    The scale factor of the event  is "<<sfvec[0]<<std::endl;
+  std::cout<<"    The scale unc    of the event  is "<<sfvec[1]<<std::endl;
+  */
   return sfvec;
 }
 
@@ -70,7 +115,17 @@ std::vector<double> combineTheLeptonSF(std::vector<double> sfvec1,std::vector<do
   //std::cout<<"Value of combined sf:   "<<sf<<std::endl;
   return outv;
 }
-std::vector<double> GetElectronPtEtaSF(int year,TH2F *hist,TLorentzVector obj) {
+
+float getMagnitude(std::vector<int> vec){
+  float sum2 = 0;
+  for (std::size_t i = 0;i < vec.size();++i){
+    sum2 += vec[i]*vec[i];
+  }
+  float mag = sqrt(sum2);
+  return mag;
+}
+
+std::vector<double> GetElectronPtEtaSF(int year,TH2 *hist,TLorentzVector obj, bool isTrig) {
   std::vector<double> sfvec;
   double leptonsf  = 1;
   double lsfup  = 0;
@@ -78,14 +133,29 @@ std::vector<double> GetElectronPtEtaSF(int year,TH2F *hist,TLorentzVector obj) {
   int leptonbin    = -1;
   double ptcheck = obj.Pt();
 
-  if (ptcheck >= 500.0) {
+  if (isTrig) {
+      if (year == 18  && ptcheck >= 2000.0){
+	ptcheck = 1990.0;
+      }
+      if (year != 18 && ptcheck >= 1000.0){
+	ptcheck == 990.0;
+      }
+    }
+
+  else if (ptcheck >= 500.0) {
     ptcheck = 400.0;//safely within last bin, but a hack
   }
+
   //Gather the electron's scale factors
   leptonbin = hist->FindBin(obj.Eta(),ptcheck);
   leptonsf  = hist->GetBinContent(leptonbin);
   lsfup     = hist->GetBinErrorUp(leptonbin);
   lsfdwn    = hist->GetBinErrorLow(leptonbin);
+
+  if (isTrig){
+    lsfup = 0.005;
+    lsfdwn = 0.005;
+  }
   sfvec.push_back(leptonsf);
   sfvec.push_back(lsfup);
   sfvec.push_back(lsfdwn);
@@ -135,11 +205,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    fChain->SetBranchStatus("GenMETPhi",1);
    fChain->SetBranchStatus("TriggerPass",1);
    fChain->SetBranchStatus("JetsAK8Clean*",1);
-   //fChain->SetBranchStatus("JetsAK8*",1);//turn off
    fChain->SetBranchStatus("Muons*",1);
-    fChain->SetBranchStatus("Electrons*",1);
-   //fChain->SetBranchStatus("METclean*",1);
-   //fChain->SetBranchStatus("METPhiclean",1);
+   fChain->SetBranchStatus("Electrons*",1);
    fChain->SetBranchStatus("MET",1);
    fChain->SetBranchStatus("METPhi",1);
    fChain->SetBranchStatus("METUp",1);
@@ -153,9 +220,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    fChain->SetBranchStatus("ZCandidatesMuMu",1);
    fChain->SetBranchStatus("ZCandidatesEE",1);
    fChain->SetBranchStatus("ZCandidatesEU",1);
+   fChain->SetBranchStatus("NVtx",1);
 
    if (sampleType > 0){
      fChain->SetBranchStatus("GenParticles*",1);
+   }
+
+   if (year == 16 or year == 17 && sampleType > 0){
+     fChain->SetBranchStatus("NonPrefiringProb*",1);
    }
 
 
@@ -188,6 +260,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double mEstZp;
    double mEstND;
    double mEstNS;
+   double evntwhem;
    double  evntwkf;
    double  evntwbtag;
    double  evntwmusf;
@@ -196,6 +269,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double  muiduncdwn;
    double  mutriguncup;
    double  mutriguncdwn;
+   double  evntweltrig;
+   double  eltriguncup;
+   double  eltriguncdwn;
    double  evntwelidsf;
    double  eliduncup;
    double  eliduncdwn;
@@ -234,6 +310,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double gzCandidate_m;
    double channelflag;
    double metusable;
+   double metxycorr;
+   double metxyphicorr;
    double metphiusable;
    TLorentzVector eventleade;
    TLorentzVector eventleadmu;
@@ -260,6 +338,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TH1F* hlmupasstrig_eta = new TH1F("hlmupasstrig_eta","Z pt > 100and passing triggers",24,-2.4,2.4);
    TH1F* hlmubuild_eta = new TH1F("hlmubuild_eta","Z pt > 100",24,-2.4,2.4);
 
+   TH1F* hjetpt = new TH1F("hjetpt","All Jet Pt",48,0,1200);
+   TH1F* hjeteta = new TH1F("hjeteta","All Jet eta",30,-2.8,2.8);
+   TH1F* hjetphi = new TH1F("hjetphi","All Jet phi",30,-3.14159,3.14159);
+
    
    TBranch *hCand     = trimTree->Branch("hCandidate","TLorentzVector",&hCandidate);
    TBranch *hCand_pt  = trimTree->Branch("hCandidate_pt",&hCandidate_pt,"hCandidate_pt/D");
@@ -279,16 +361,20 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *ZpMest    = trimTree->Branch("ZPrime_mass_est",&mEstZp,"mEstZp/D");
    TBranch *NDMest    = trimTree->Branch("ND_mass_est",&mEstND,"mEstND/D");
    TBranch *NSMest    = trimTree->Branch("NS_mass_est",&mEstNS,"mEstNS/D");
+   TBranch *evntweighthem = trimTree->Branch("event_weight_hem",&evntwhem,"evntwhem/D");
    TBranch *evntweightkf = trimTree->Branch("event_weight_kf",&evntwkf,"evntwkf/D");
    TBranch *evntweightbtag = trimTree->Branch("event_weight_btag",&evntwbtag,"evntwbtag/D");
    TBranch *evntbtaguncup = trimTree->Branch("event_weight_btaguncup",&btaguncup,"btaguncup/D");
    TBranch *evntbtaguncdwn = trimTree->Branch("event_weight_btaguncdwn",&btaguncdwn,"btaguncdwn/D");
    TBranch *evntweightmuid = trimTree->Branch("event_weight_muid",&evntwmusf,"evntwmusf/D");
    TBranch *evntweightmutrig = trimTree->Branch("event_weight_mutrig",&evntwmutrig,"evntwmutrig/D");
+   TBranch *evntweighteltrig = trimTree->Branch("event_weight_eltrig",&evntweltrig,"evntweltrig/D");
    TBranch *evntmuiduncup = trimTree->Branch("event_weight_muiduncup",&muiduncup,"muiduncup/D");
    TBranch *evntmuiduncdwn = trimTree->Branch("event_weight_muiduncdwn",&muiduncdwn,"muiduncdwn/D");
    TBranch *evntmutriguncup = trimTree->Branch("event_weight_mutriguncup",&mutriguncup,"mutriguncup/D");
    TBranch *evntmutriguncdwn = trimTree->Branch("event_weight_mutriguncdwn",&mutriguncdwn,"mutriguncdwn/D");
+   TBranch *evnteltriguncup = trimTree->Branch("event_weight_eltriguncup",&eltriguncup,"eltriguncup/D");
+   TBranch *evnteltriguncdwn = trimTree->Branch("event_weight_eltriguncdwn",&eltriguncdwn,"eltriguncdwn/D");
    TBranch *evntweightelid = trimTree->Branch("event_weight_elid",&evntwelidsf,"evntwelidsf/D");
    TBranch *evnteliduncup = trimTree->Branch("event_weight_eliduncup",&eliduncup,"eliduncup/D");
    TBranch *evnteliduncdwn = trimTree->Branch("event_weight_eliduncdwn",&eliduncdwn,"eliduncdwn/D");
@@ -322,6 +408,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
    TBranch *metu       = trimTree->Branch("metsuable",&metusable,"metusable/D");
    TBranch *metu_phi   = trimTree->Branch("metphiusable",&metphiusable,"metphiusable/D");
+   TBranch *metuxy       = trimTree->Branch("metxycorr",&metxycorr,"metxycorr/D");
+   TBranch *metuxy_phi   = trimTree->Branch("metxyphicorr",&metxyphicorr,"metxyphicorr/D");
 
    //Uncertainty + Scale Factor Stuff
    //The index of the nonzero place is the ssytematic explored
@@ -353,6 +441,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TString electronsfhname = "badstring";
    TString electronIDsffile = "badstring";
    TString electronIDsfhname = "badstring";
+   TString eltrigsffile = "badstring";
+   TString eltrigsfhname = "badstring";
+   TString yearstr = "badstring";
 
    TH1F *hbtagsf = 0;
    TH1F *hbtagsfuncup = 0;
@@ -360,6 +451,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TH2D *hmuonsf = 0;
    TH2F *helectronsf = 0;
    TH2F *helectronIDsf = 0;
+   TH2D *helectronTRIGsf = 0;
    TH2F *hmuontrigsf = 0;
    TH2F *hmuontrigef = 0;
    
@@ -375,18 +467,23 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::cout<<"Looking at year  "<<year<<std::endl;
    if (year == 180){
      std::cout<<"In Run2018RunA"<<std::endl;
+     yearstr = "2018";
      uncfile = "JEC/Autumn18_RunA_V19_DATA/Autumn18_RunA_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 181){
+     yearstr = "2018";
      uncfile = "JEC/Autumn18_RunB_V19_DATA/Autumn18_RunB_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 182){
+     yearstr = "2018";
      uncfile = "JEC/Autumn18_RunC_V19_DATA/Autumn18_RunC_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 183){
+     yearstr = "2018";
      uncfile = "JEC/Autumn18_RunD_V19_DATA/Autumn18_RunD_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 18) {
+     yearstr = "2018";
      //JEC
      std::cout<<"In Autumn18"<<std::endl;
      uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
@@ -422,6 +519,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      helectronIDsf = new TH2F(*((TH2F*)elecIDsff.Get(electronIDsfhname)));
      helectronIDsf->SetDirectory(0);
      elecIDsff.Close();
+     //Electron Tigger SF
+     eltrigsffile = "leptonsf/Ele115orEleIso32orPho200_SF_2018.root";
+     eltrigsfhname = "SF_TH2F";
+     TFile elecTRIGsff(eltrigsffile,"READ");
+     helectronTRIGsf = new TH2D(*((TH2D*)elecTRIGsff.Get(eltrigsfhname)));
+     helectronTRIGsf->SetDirectory(0);
+     elecTRIGsff.Close();
      //Btag SF
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2018sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2018uncUp")));
@@ -432,6 +536,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      btagsf.Close();
    }
    if (year == 17) {
+     yearstr = "2017";
      //JEC
      uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
      //Muon ID SF
@@ -466,6 +571,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      helectronIDsf = new TH2F(*((TH2F*)elecIDsff.Get(electronIDsfhname)));
      helectronIDsf->SetDirectory(0);
      elecIDsff.Close();
+     //Electron Tigger SF
+     eltrigsffile = "leptonsf/Ele115orEleIso35orPho200_SF_2017.root";
+     eltrigsfhname = "SF_TH2F";
+     TFile elecTRIGsff(eltrigsffile,"READ");
+     helectronTRIGsf = new TH2D(*((TH2D*)elecTRIGsff.Get(eltrigsfhname)));
+     helectronTRIGsf->SetDirectory(0);
+     elecTRIGsff.Close();
      //Btag SF
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2017sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2017uncUp")));
@@ -477,18 +589,23 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      btagsf.Close();
    }
    if (year == 170) {
+     yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017B_V32_DATA/Fall17_17Nov2017B_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
        }
    if (year == 171) {
+     yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017C_V32_DATA/Fall17_17Nov2017C_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 172) {
+     yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017DE_V32_DATA/Fall17_17Nov2017DE_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 173) {
+     yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017F_V32_DATA/Fall17_17Nov2017F_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 16) {
+     yearstr = "2016";
      //JEC
      uncfile = "JEC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK8PFPuppi.txt";
      //Muon ID SF
@@ -523,6 +640,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      helectronIDsf = new TH2F(*((TH2F*)elecIDsff.Get(electronIDsfhname)));
      helectronIDsf->SetDirectory(0);
      elecIDsff.Close();
+     //Electron Tigger SF
+     eltrigsffile = "leptonsf/Ele115orEleIso27orPho175_SF_2016.root";
+     eltrigsfhname = "SF_TH2F";
+     TFile elecTRIGsff(eltrigsffile,"READ");
+     helectronTRIGsf = new TH2D(*((TH2D*)elecTRIGsff.Get(eltrigsfhname)));
+     helectronTRIGsf->SetDirectory(0);
+     elecTRIGsff.Close();
      //Btag SF
      hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2016sf")));
      hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2016uncUp")));
@@ -534,12 +658,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      btagsf.Close();
    }
    if (year == 160) {
+     yearstr = "2016";
      uncfile = "JEC/Summer16_07Aug2017BCD_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 161) {
+     yearstr = "2016";
      uncfile = "JEC/Summer16_07Aug2017EF_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    if (year == 162) {
+     yearstr = "2016";
      uncfile = "JEC/Summer16_07Aug2017GH_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
    }
    std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
@@ -628,9 +755,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::vector<string> trig18e = {"HLT_Ele32_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
    std::vector<string> trig17e = {"HLT_Ele35_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
    std::vector<string> trig16e = {"HLT_Ele27_WPTight_Gsf_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v","HLT_Photon175_v"};
-   std::vector<string> trig18emu = {"HLT_Mu55_v","HLT_Ele32_WPTight_Gsf_v"};
-   std::vector<string> trig17emu = {"HLT_Mu50_v","HLT_Ele35_WPTight_Gsf_v"};
-   std::vector<string> trig16emu = {"HLT_Mu50_v","HLT_Ele27_WPTight_Gsf_v"};
+   std::vector<string> trig18emu = {"HLT_Mu50_v","HLT_TkMu100_v","HLT_Ele32_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig17emu = {"HLT_Mu50_v","HLT_TkMu100_v","HLT_Ele35_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig16emu = {"HLT_Mu50_v","HLT_TkMu50_v","HLT_Ele27_WPTight_Gsf_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v","HLT_Photon175_v"};
 
 
    std::vector<std::vector<string>> trig18 = {{"no"},trig18emu,trig18e,{"no"},trig18mu};
@@ -674,6 +801,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       bool passTrig = false;
       bool passFil  = false;
       bool mumuchan = false;
+      bool killelHEM = false;
       double channel = -1.0;
 
       //A counter, for my sanity
@@ -683,10 +811,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       
       //debug
-      std::cout<<"    analyzing event "<<jentry<<std::endl;
-      if (jentry == 200) {
-	break;
-      }
+      //std::cout<<"    analyzing event "<<jentry<<std::endl;
+      //if (jentry%20 == 0) {
+      //	      	std::cout<<"    analyzing event "<<jentry<<std::endl;
+      //}
+      //if (jentry == 200) {
+      //break;
+      //}
      
 
       //Trigger decisions
@@ -695,93 +826,32 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       std::vector<int> checktrgidxs;
       thetrigs = trigs[year-16][anchan];
 	for (std::size_t i = 0; i < thetrigs.size();++i){
-	  //std::cout<<"The trigs we are checking are "<<thetrigs[i]<<std::endl;
 	  ourtrg = thetrigs[i];
 	  trgtit = fChain->GetBranch("TriggerPass")->GetTitle();
 	  fthen = fChain->GetFile();
-	  //std::cout<<"The file we are checking is  "<<fthen<<std::endl;
 	  while ((pos = trgtit.find(delim)) != std::string::npos+1 && token != ourtrg) {
 	    token = trgtit.substr(0,pos);
-	    //std::cout<<"    This trigger name "<<token<<std::endl;
 	    trgidx += 1;
 	    trgtit.erase(0,pos+delim.length());
-	    //std::cout<<"    This trig's idx "<<trgidx<<std::endl;
 	  }
 	  checktrgidxs.push_back(trgidx);
-	  //std::cout<<"The found trig idx is "<<trgidx<<std::endl;
 	  trgidx = -1;
 	}
-	//}
-      /*
-      else {
-	fnow = fChain->GetFile();
-	if (fnow != fthen) {
-	  std::cout<< "New file in TChain" <<std::endl;
-	  std::cout<<"The file we are checking is  "<<fthen<<std::endl;
-	  checktrgidxs.clear();
-	  trgtit = fChain->GetBranch("TriggerPass")->GetTitle();
-	  trgidx = -1;
-	  fthen = fnow;
-	  for (std::size_t i = 0; i < thetrigs.size();++i){
-	    std::cout<<"The trigs we are checking are "<<thetrigs[i]<<std::endl;
-	    ourtrg = thetrigs[i];
-	    while ((pos = trgtit.find(delim)) != std::string::npos && token != ourtrg) {
-	      //std::cout<<"The trigger name "<<pos<<std::endl;
-	      token = trgtit.substr(0,pos);
-	      std::cout<<"    This trigger name "<<token<<std::endl;
-	      trgidx += 1;
-	      std::cout<<"    This trig's idx "<<trgidx<<std::endl;
-	      trgtit.erase(0,pos+delim.length());
-	    }
-	    checktrgidxs.push_back(trgidx);
-	    std::cout<<"The found trig idx is "<<trgidx<<std::endl;
-	    trgidx = -1;
-	  }
-	}
-      }
-      */
-      
       if (checktrgidxs.size() != 0) {//This keeps the trg indexs in scope
 	trgidxs = checktrgidxs;
       }
-
-      //std::cout<<"The size of the trigger checking vector is "<<trgidxs.size()<<std::endl;
-
       trgvals.clear();
       for (std::size_t i = 0; i < trgidxs.size();++i){
-	//std::cout<<"the idx is "<<trgidxs[i]<<std::endl;
-	//std::cout<<"The trigger value at that idx is "<<TriggerPass->at(65)<<std::endl;
 	trgval = TriggerPass->at(trgidxs[i]);
-	//std::cout<<"The trigger value is "<<trgval<<std::endl;
 	trgvals.push_back(trgval);
-	//trgvals[i] = trgval;
       }
 
-      //std::cout<<"The size of the trigger decsion vector is "<<trgvals.size()<<std::endl;
-      //std::cout<<"The trigger decision is  "<<trgvals[0]<<std::endl;
-      //std::cout<<"   The trigger truth is  "<<TriggerPass->at(65)<<std::endl;
 
       //Do the trigger for non-emu samples
-      if (trgvals[0] == 1 || trgvals[1] == 1 && anchan != 1) {//if not emu channel
+      if ((trgvals[0] == 1 || trgvals[1] == 1) && anchan != 1) {//if not emu channel !!! Only works for mumu channerl at the moment
 	passTrig = true;
 	counttrigpass += 1;
       }
-
-      /*
-      //if (trgval == 1 && anchan != 1) {//if not the emu channel, check trigger
-      if (trgvals[0] == 1) {//hacked for muon triggers
-	passTrig = true;
-	counttrigpass += 1;
-      }
-      //else if (anchan == 1) {//if emu channel, have it pass trigger, but there is no trigger
-      if (anchan) { // == 1) {//if emu channel, have it pass trigger, but there is no trigger
-	//std::cout<<"++++++new events+++++++"<<std::endl;
-	//std::cout<<"This trig values for the emu channel: "<<passTrig<<std::endl;
-	//std::cout<<"This is the trigger idx looked at: "<<ourtrg<<std::endl;
-	//std::cout<<"This is the trigger value looked at: "<<trgval<<std::endl;
-	passTrig = true;
-       }
-      */
 
       //eeBadScFilter
       if (sampleType < 0) {
@@ -833,22 +903,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //Only deal with exact events
       unsigned int nmutest = Muons->size();
       unsigned int neltest = Electrons->size();
-      //if (nmutest+neltest != 2) continue;
-      //std::cout<<"Number of muons "<<nmutest<<std::endl;
-      //std::cout<<"Number of electrons "<<neltest<<std::endl;
       
       //Z exploration
-      //std::cout<<"Checking the Z consituents"<<std::endl;
-      //std::cout<<"We are about to find a Z"<<std::endl;
       unsigned int nselmu = SelectedMuons->size();
-      //std::cout<<"Checking the SelectedMuons "<<nselmu<<std::endl;
       unsigned int nselel = SelectedElectrons->size();
-      //std::cout<<"Checking the SelectedElectrons "<<nselel<<std::endl;
       unsigned int nZmumu = ZCandidatesMuMu->size();
       unsigned int nZee = ZCandidatesEE->size();
       unsigned int nZeu = 0;  
       //unsigned int nZeu = ZCandidatesEU->size();//Does not work on old DY ntuples
-      //std::cout<<"We found all of the number we needed"<<std::endl;
 
       emcounter += nZeu;
       
@@ -864,6 +926,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double baseZdiff = 99999;
       int muld = 0;
       int elld = 0;
+      double evntwhem_hold = 1.0;
 
       //Channel Flags
      /*
@@ -898,7 +961,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  }
 	}
       }
-      if (nZmumu > 0 && nZee > 0 && nZeu == 0 && anchan == 6) {
+      if (nZmumu > 0 && nZee > 0 && nZeu == 0  && anchan == 6) {
 	//110 in binary, 6 in decimal
 	channel = 6.;//
 	//if (passTrig){
@@ -923,7 +986,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  }
 	}
       }
-      if (nZmumu > 0 && nZee > 0 && nZeu > 0 && anchan == 7) {
+      if (nZmumu > 0 && nZee > 0 && nZeu > 0  && anchan == 7) {
 	//111 in binary, 7 in decimal
 	channel = 7.;
 	//if (passTrig) {
@@ -976,16 +1039,14 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    baseZdiff = massZdiff;
 	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
 	    passZ = true;
-	    //if (passTrig) {
-	      zemu += 1;
-	      //}
-	    //std::cout<<"Next event!"<<std::endl;
-	    //std::cout<<"    The number of selected muons is "<<nselmu<<std::endl;
-	    //std::cout<<"                      Muon's pT: "<<SelectedMuons->at(0).Pt()<<std::endl;
-	    //std::cout<<"    The number of selected electronss is "<<nselel<<std::endl;
-	    //std::cout<<"                 Electrons's pT: "<<SelectedElectrons->at(0).Pt()<<std::endl;
+	    zemu += 1;
 	    testmu = SelectedMuons->at(0);
 	    teste = SelectedElectrons->at(0);
+	    //HEM Test
+	    if (teste.Eta() > -3.0 && teste.Eta() < -1.3 && teste.Phi() > -1.57 && teste.Phi() < -0.87 && ((year >= 180) or year == 18)){
+	      killelHEM = true;
+	      evntwhem_hold = 0.36;
+	    }
 	    if (testmu.Pt() > teste.Pt()) {
 	      leadmu = testmu;
 	      subleade = teste;
@@ -1003,55 +1064,52 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
      //*/
       //Do the emu trigger
+      //emutrig
       //passTrig = true;
-      //eventleade.SetPtEtaPhiM(0,0,0,0);
-      //eventleadmu.SetPtEtaPhiM(0,0,0,0);
+      bool passmu = false;
+      bool passel = false;
       if (Electrons->size() > 0){
 	eventleade = Electrons->at(0);
       }
       if (Muons->size() > 0){
 	eventleadmu = Muons->at(0);
       }
-      //std::cout<<"   The leading electron pt should be 0: "<<eventleade.Pt()<<std::endl;
       if (sampleType > 0 && anchan == 1 ) {//if emu channel
 	if (Electrons->size() > 0 && Muons->size() > 0) {
-	  //std::cout<<"   The leading electron pt should be nonzero: "<<eventleade.Pt()<<std::endl;
-	  if (eventleade.Pt() > 27 ) { //&& trgvals[1] == 1) {
-	    if (trgvals[1] == 1) {
+	  if (eventleade.Pt() > 27 ) {
+	    if (trgvals[2] == 1 || trgvals[3] == 1 || trgvals[4] == 1) {
 	      passTrig = true;
 	      counttrigpass += true;
+	      passel = true;
 	    }
-	    //std::cout<<"   Passed trig"<<std::endl;
 	  }
-	  if (eventleadmu.Pt() > 50 ) { //&& trgvals[0] == 1) {
-	    if (trgvals[0] == 1) {
+	  if (eventleadmu.Pt() > 50 ) {
+	    if (trgvals[0] == 1 || trgvals[1] == 1) {
 	      passTrig = true;
 	      counttrigpass += true;
+	      passmu = true;
 	    }
 	  }
 	}
       }
-      else if (sampleType < 0 && anchan == 1 ) {
+      //if (passTrig){
+      //std::cout<<"Passed the trigger"<<std::endl;
+      //}
+      //std::cout<<"Magnitude of trig vals "<<getMagnitude(trgvals)<<std::endl;
+      if (sampleType < 0 && anchan == 1 ) {//if emu channel data
 	if (Electrons->size() > 0 && Muons->size() > 0) {
-	  //std::cout<<"We have an emu event"<<std::endl;
-	  eventleade = Electrons->at(0);
-	  eventleadmu = Muons->at(0);
-	  if (eventleade.Pt() > eventleadmu.Pt() && trgvals[1] == 1) {
+	  //eventleade = Electrons->at(0);
+	  //eventleadmu = Muons->at(0);
+	  if (getMagnitude(trgvals) > 0.0){
 	    passTrig = true;
-	    counttrigpass += true;
+	    counttrigpass += 1;
 	  }
-	  if (eventleade.Pt() <= eventleadmu.Pt() && trgvals[0] == 1) {
-	    passTrig = true;
-	    counttrigpass += true;
-	  }
-	  //std::cout<<"    Trigger Descision "<<passTrig<<std::endl;
-	  //std::cout<<"    Trig counter       "<<counttrigpass<<std::endl;
 	}
 
       }
       //Z Candidate Build
       //For old ntuples
-      ///*
+      //  /*
       if (nselmu > 0 && nselel == 0 && anchan == 4) {
       	mumuchan = true;
 	channel = 4;
@@ -1090,7 +1148,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       std::vector<double> muidsfsublv = {1,0,0};//muon channel subleadmuon
       std::vector<double> elidsfsublv = {1,0,0};//electron channel subleadelectron
       std::vector<double> elrecosublv = {1,0,0};//electron channel subleadelectron
-      std::vector<double> mutrigsfvec= {1,0,0};//muon trigger leading muon in event
+      std::vector<double> mutrigsfvec= {1,0,0};//muon trigger sf
+      std::vector<double> eltrigsfvec= {1,0,0};//electron trigger
       
       if (sampleType > 0 && anchan == 4) {//not data, mumuchannel
 	//std::cout<<"Doing Muon ID sf"<<std::endl;
@@ -1098,28 +1157,41 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	muidsfsublv = GetMuonPtEtaSF(year,hmuonsf,subleadmu,120.0,true);
 	muidsfvec = combineTheLeptonSF(muidsfleadv,muidsfsublv);
 	//std::cout<<"Doing Muon Trigger sf"<<std::endl;
-	mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,200.0,false);
+	//mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,200.0,false);//old way
+	std::vector<double> lmutrigsfv = GetMuonPtEtaSF(year,hmuontrigsf,leadmu,500.0,false);
+	std::vector<double> slmutrigsfv = GetMuonPtEtaSF(year,hmuontrigsf,subleadmu,500.0,false);
+	mutrigsfvec = GetMuonTriggerSF(lmutrigsfv,slmutrigsfv,leadmu,subleadmu,500.0,hmuontrigef);
       }
       else if (sampleType > 0 && anchan == 2) {//not data, ee channel
-	elidsfleadv = GetElectronPtEtaSF(year,helectronIDsf,leade);
-	elidsfsublv = GetElectronPtEtaSF(year,helectronIDsf,subleade);
-	elrecoslleadv = GetElectronPtEtaSF(year,helectronsf,leade);
-	elrecosublv = GetElectronPtEtaSF(year,helectronIDsf,subleade);
+	elidsfleadv = GetElectronPtEtaSF(year,helectronIDsf,leade,false);
+	elidsfsublv = GetElectronPtEtaSF(year,helectronIDsf,subleade,false);
+	elrecoslleadv = GetElectronPtEtaSF(year,helectronsf,leade,false);
+	elrecosublv = GetElectronPtEtaSF(year,helectronIDsf,subleade,false);
 	elidsfvec = combineTheLeptonSF(elidsfleadv,elidsfsublv);
 	elrecosfvec = combineTheLeptonSF(elrecoslleadv,elrecosublv);
       }
       else if (sampleType > 0 && anchan == 1) {//not data, emu channel
 	//Trigger scale factors should be applied based on the trigger object
+	//Done higher in the code, for maximal confusion.
 	//ID scale factors can be based off of the objects, done here
 	if (muld == 1) {
 	  muidsfvec = GetMuonPtEtaSF(year,hmuonsf,leadmu,120.0,true);
-	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,subleade);
-	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,subleade);
+	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,subleade,false);
+	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,subleade,false);
 	}
 	if (elld == 1) {
-	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,leade);
-	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,leade);
+	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,leade,false);
+	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,leade,false);
 	  muidsfvec   = GetMuonPtEtaSF(year,hmuonsf,subleadmu,120.0,true);
+	}
+	if (passmu && not passel) {
+	  mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,500.0,false);
+	}
+	else if (passel && not passmu){
+	  eltrigsfvec = GetElectronPtEtaSF(year,helectronTRIGsf,eventleade,true);
+	}
+	else {//using this background for the muon channel
+	  mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,500.0,false);
 	}
       }
  
@@ -1144,6 +1216,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double hdmdzhbbvqcd = 0;
       double hmiddb = 0;
       bool   fid = 0;
+      std::pair<double,double> metshift;
+      bool hemshift = 0;
+      //double metshift = 0;
 
       /*
       if (nZs > 0 && nfat == 0){
@@ -1170,12 +1245,31 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  fat = JetsAK8Clean->at(i);
 	  fsd = JetsAK8Clean_softDropMass->at(i);
 	  fid = JetsAK8Clean_ID->at(i);
+	  hjetpt->Fill(fat.Pt(),evntwkf_hold);
+	  hjeteta->Fill(fat.Eta(),evntwkf_hold);
+	  hjetphi->Fill(fat.Phi(),evntwkf_hold);
 	  jec_unc->setJetEta(fat.Eta());
 	  jec_unc->setJetPt(fat.Pt());
 	  double unc = 0;
 	  unc = std::abs(jec_unc->getUncertainty(true));
 	  double jecsysfac = 1 + jecsys*unc;
 	  fat = fat*jecsysfac;
+	  /*
+	  TLorentzVector hemfat = doHEMshiftJet(fat,fid);
+	  if (hemfat.M() != fat.M()){
+	    //std::cout<<"Found a shifted jet, need a MET shift"<<std::endl;
+	    //std::cout<<"                   Nominal METx Shift "<<metshift.first<<std::endl;
+	    //std::cout<<"                   Nominal METy Shift "<<metshift.second<<std::endl;
+	    hemshift = 1;
+	    std::pair<double,double> metshiftj = getMETCorrHEM(fat,hemfat);
+	    double metshiftxtot = metshift.first+metshiftj.first;
+	    double metshiftytot = metshift.second+metshiftj.second;
+	    metshift = std::make_pair(metshiftxtot,metshiftytot);
+	    //std::cout<<"                       new METx Shift "<<metshift.first<<std::endl;
+	    //std::cout<<"                       new METy Shift "<<metshift.second<<std::endl;
+	    fat = hemfat;
+	  }
+	  //*/
 	  double masshdiff = std::abs(125.18 - fsd);
 	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
 	    basehdiff = masshdiff;
@@ -1251,9 +1345,58 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	}
       }
 
+      //HEM15/16 test
+      if (hemshift) {
+	double ptmiss_pxbeta  = ptmiss*std::cos(ptmiss_phi);
+	double ptmiss_pybeta  = ptmiss*std::sin(ptmiss_phi);
+	double smetx = ptmiss_pxbeta+metshift.first;
+	double smety = ptmiss_pybeta+metshift.second;
+	double retmet = std::sqrt(smetx*smetx+smety*smety);
+	TVector2 metv(ptmiss_pxbeta,ptmiss_pybeta);
+	TVector2 metshiftv(metshift.first,metshift.second);
+	TVector2 shiftedmetv = metv+metshiftv;
+	double metshiftphi = shiftedmetv.Phi();
+	if (metshiftphi > M_PI){
+	  metshiftphi = metshiftphi - 2*M_PI;
+	}
+
+	ptmiss = shiftedmetv.Mod();
+	ptmiss_phi = metshiftphi;
+	/*
+	std::cout<<"                   Original MET:     "<<ptmiss<<std::endl;
+	std::cout<<"                   Ori_phi  MET:     "<<ptmiss_phi<<std::endl;
+	std::cout<<"      Check of MET nom TVector2, phi "<<metv.Phi()<<std::endl;
+	std::cout<<" Check phi conversion, 2pi + ori phi "<<2*M_PI+ptmiss_phi<<std::endl;
+	std::cout<<" Check phi conversion, back to   val "<<metv.Phi()-2*M_PI<<std::endl;
+	
+	std::cout<<"resummed shifted met:      "<<retmet<<std::endl;
+	std::cout<<"Check of magnitude of shifted met "<<shiftedmetv.Mod()<<std::endl;
+	
+	std::cout<<"Phi of the shifted MET   , phi "<<shiftedmetv.Phi()<<std::endl;
+	std::cout<<"Phi of the shifted MET   , phi "<<metshiftphi<<std::endl;
+	//*/
+      }
+
+
+
+      //Do MET Correction
+      bool isMC = true;
+      if (sampleType < 0) {
+	isMC = false;
+      }
+
+      
+      std::pair<double,double> metxycorrpair = METXYCorr_Met_MetPhi(ptmiss,ptmiss_phi,fChain->GetLeaf("RunNum")->GetValue(0),yearstr,isMC,fChain->GetLeaf("NVtx")->GetValue(0));
+      /*
+      std::cout<<"Original MET:     "<<ptmiss<<std::endl;
+      std::cout<<"correct  MET:     "<<metxycorrpair.first<<std::endl;
+      std::cout<<"Ori_phi  MET:     "<<ptmiss_phi<<std::endl;
+      std::cout<<"correct  MET_phi: "<<metxycorrpair.second<<std::endl;
+      //*/
       double ptmiss_px  = ptmiss*std::cos(ptmiss_phi);
       double ptmiss_py  = ptmiss*std::sin(ptmiss_phi);
       TVector3 met3     = TVector3(ptmiss_px,ptmiss_py,0.0);
+      TVector3 met3xy   = TVector3(metxycorrpair.first*std::cos(metxycorrpair.second),metxycorrpair.first*std::sin(metxycorrpair.second),0.0);
 
       //met jes syst debug
       //std::cout<<"This is the jec syst multiplier: "<<jecsys<<std::endl;
@@ -1265,7 +1408,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       //recursive jigsaw
       //  /*
       LABcontra.ClearEvent();
-      INVcontra.SetLabFrameThreeVector(met3);
+      //INVcontra.SetLabFrameThreeVector(met3);
+      INVcontra.SetLabFrameThreeVector(met3xy);
       Z.SetLabFrameFourVector(theZ);
       h.SetLabFrameFourVector(theh);
       LABcontra.AnalyzeEvent();
@@ -1291,7 +1435,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
 
       //if (passh && passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan
-	if (passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan 
+        if (passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan 
 	//if (passh && passZ ) {//Removed Z Channel Requirement
 	//if (channel == anchan && passZ) {//id'd lepton and gen higgs plots
 	hCandidate = theh;
@@ -1310,10 +1454,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	ZCandidate_eta = theZ.Eta();
 	ZCandidate_m   = theZ.M();
 	//event weight ones
+	evntwhem = evntwhem_hold;
 	evntwkf = evntwkf_hold;
 	evntwbtag = hsf;
 	evntwmusf = muidsfvec[0];
 	evntwmutrig = mutrigsfvec[0];
+	evntweltrig = eltrigsfvec[0];
 	evntwelidsf = elidsfvec[0];
 	evntwelrecosf = elrecosfvec[0];
 	//The scale factor uncertainties
@@ -1323,6 +1469,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	muiduncdwn = muidsfvec[2];
 	mutriguncup  = mutrigsfvec[1];
 	mutriguncdwn = mutrigsfvec[2];
+	eltriguncup  = eltrigsfvec[1];
+	eltriguncdwn = eltrigsfvec[2];
 	eliduncup  = elidsfvec[1];
 	eliduncdwn = elidsfvec[2];
 	elrecouncup = elrecosfvec[1];
@@ -1357,16 +1505,22 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	gzCandidate_m   = theGenZ.M();
 	metusable = ptmiss;
 	metphiusable = ptmiss_phi;
+	metxyphicorr = metxycorrpair.second;
+	metxycorr= metxycorrpair.first;
 	channelflag = channel;
 	counthpass += 1;
 	if (muld > 0) emumulead+=1;
 	if (elld > 0) emuelead+=1; 
       }
+
+	//std::cout<<"Pass Z "<<passZ<<std::endl;
+	//std::cout<<"Pass trig "<<passTrig<<std::endl;
       
       //Fill the Tree
       if (Cut(ientry) < 0) continue;
       //if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
-      if (passZ && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
+
+      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
 	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
 	//if (passZ && (sampleType > 0) && (channel == anchan)){
 	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
@@ -1376,7 +1530,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
 	/////ucomment!!!
 	//else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
-	else if (passZ && passTrig && sampleType < 0 && passFil && (channel == anchan)) {//emu loosened cuts
+      else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan) && not killelHEM) {//emu loosened cuts
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;
@@ -1386,7 +1540,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
    
    std::cout<<"Passing Trigger req:        "<<counttrigpass<<std::endl;
-   std::cout<<"Passing Z  req:             "<<countzpass<<std::endl;
+   std::cout<<"Passing Z  req, w/ pT cut:  "<<countzpass<<std::endl;
    std::cout<<"Passing h  req:             "<<counthpass<<std::endl;
    std::cout<<"Passing    req:             "<<countpass<<std::endl;
    std::cout<<"Passing number of fat jets: "<<countfat<<std::endl;

@@ -45,7 +45,7 @@ if __name__=='__main__':
     limrangelow = 1400
     limrangehigh = 3000
 
-    dytf = ROOT.TFile('analysis_output_ZpAnomalon/2022-06-17/Run2_161718_dy_extraploationalphatest_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    dytf = ROOT.TFile('analysis_output_ZpAnomalon/2022-06-23/Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom__Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.root')
     keys = dytf.GetListOfKeys()
     keys = [key.GetName() for key in keys]
     unckeys = [key for key in keys if "extrap_" in key]
@@ -54,7 +54,7 @@ if __name__=='__main__':
     unckeysup = sorted(unckeysup)
     unckeysdn = sorted(unckeysdn)
     
-    nomdyr = tf.Get('extrphist')
+    nomdyr = dytf.Get('extrphist')
     nomdy = newNameAndStructure(nomdyr,"DY",1,limrangelow,limrangehigh)
     #nomdy.SetLineColor(ROOT.kBlack)
     #nomdy.GetYaxis().SetRangeUser(0,6)
@@ -68,8 +68,8 @@ if __name__=='__main__':
         applist = [0,1.0,0,0]#Setup to only apply to DY
         upkey = unckeysup[i]
         dnkey = unckeysdn[i]
-        upr = tf.Get(upkey)
-        dnr = tf.Get(dnkey)
+        upr = dytf.Get(upkey)
+        dnr = dytf.Get(dnkey)
         up = newNameAndStructure(upr,"DY_"+upkey,1,limrangelow,limrangehigh)
         dn = newNameAndStructure(dnr,"DY_"+dnkey,1,limrangelow,limrangehigh)
         uprate = getDeviatedOverNominal(up,nomdy)
@@ -90,33 +90,33 @@ if __name__=='__main__':
         histlist.append(up)
         histlist.append(dn)
         
+        up.SetLineColor(ROOT.kRed)
+        dn.SetLineColor(ROOT.kBlue)
+
+        upOvnom,dnOvnom = getDeviatedOverNominalSummary(up,nomdy,dn,upkey.split("Up")[0])
+        print(upOvnom)
+        print(dnOvnom)
+        devilab = makeDeviatedTPave(up,nomdy,dn,upkey.split("Up")[0])
+        
+
+        leg = ROOT.TLegend(0.45,0.7,0.85,0.85)
+        leg.SetBorderSize(0)
+        leg.AddEntry(nomdy,"nominal DY extrap","l")
+        leg.AddEntry(up,upkey,"l")
+        leg.AddEntry(dn,dnkey,"l")
+        
+        tc = ROOT.TCanvas("tc"+str(i),"tc"+str(i),500,400)
+        tc.Draw()
+        nomdy.Draw('hist')
+        up.Draw('histsame')
+        dn.Draw('histsame')
+        leg.Draw()
+        devilab.Draw()
+        tc.Update()
+        tc.SaveAs(go.makeOutFile('Run2_161718_ZllHbbMET_dySystematicsComp',upkey.split('Up')[0],'.png','100','300','75','8E-10'))
+    
     print(rateuncdict)
     print(shapeuncdict)
     print(histlist)
 
 
-        #up.SetLineColor(ROOT.kRed)
-        #dn.SetLineColor(ROOT.kBlue)
-
-        #upOvnom,dnOvnom = getDeviatedOverNominalSummary(up,nomdy,dn,upkey.split("Up")[0])
-        #print(upOvnom)
-        #print(dnOvnom)
-        #devilab = makeDeviatedTPave(up,nomdy,dn,upkey.split("Up")[0])
-        
-
-        #leg = ROOT.TLegend(0.45,0.7,0.85,0.85)
-        #leg.SetBorderSize(0)
-        #leg.AddEntry(nomdy,"nominal DY extrap","l")
-        #leg.AddEntry(up,upkey,"l")
-        #leg.AddEntry(dn,dnkey,"l")
-        
-        #tc = ROOT.TCanvas("tc"+str(i),"tc"+str(i),500,400)
-        #tc.Draw()
-        #nomdy.Draw('hist')
-        #up.Draw('histsame')
-        #dn.Draw('histsame')
-        #leg.Draw()
-        #devilab.Draw()
-        #tc.Update()
-        #tc.SaveAs(go.makeOutFile('Run2_161718_ZllHbbMET_dySystematicsComp',upkey.split('Up')[0],'.png','100','300','75','8E-10'))
-    

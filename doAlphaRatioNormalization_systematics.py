@@ -80,12 +80,6 @@ def doTemplateFitShifts(nomfit,multi,parnum,name,shiftedparamsin = ROOT.TVector(
     shiftedfits = []
     parvecedit = ROOT.TVector(parnum)
     parsysdict = {"2":"up","0":"down"}
-    #if paramsin.Norm1() > 0 and errssin.Norm1() > 0:
-    #    for par in range(parnum):
-    #        parvecedit[par] = paramsin[par]
-    #        fitpars.append(paramsin[par])
-    #        fiterrs.append(errssin[par])
-    #else:
     for par in range(parnum):
         parvecedit[par] = nomfit.GetParameter(par)
         fitpars.append(nomfit.GetParameter(par))
@@ -188,7 +182,27 @@ def shiftedFitNormalization(listoffits,name,hsbkg,htrtt,htrdy,htrvv,hdatsb):
         paramcounter +=1
     return fitresults,shiftednorms
 
-def makeNormPickleFile(name,normdict,nomnorm,multi):
+def envelopeFitNormalization(listoffits,name,hsbkg,htrtt,htrdy,htrvv,hdatsb):
+    fitresults = []
+    shiftednorms = {}
+    paramcounter = 0
+    for fit in listoffits:
+        if "DY" in name:
+            shiftres = ROOT.totalFitDYEnvelope(hsbkg.GetStack().Last(),fit,htrtt.Clone(),htrvv.Clone(),hdatsb.Clone(),"R0+")
+        if "TT" in name:
+            shiftres = ROOT.totalFitTTEnvelope(hsbkg.GetStack().Last(),fit,htrdy.Clone(),htrvv.Clone(),hdatsb.Clone(),"R0+")
+        if "VV" in name:
+            shiftres = ROOT.totalFitVVEvelope(hsbkg.GetStack().Last(),fit,htrtt.Clone(),htrdy.Clone(),hdatsb.Clone(),"R0+")
+        #print("The shifted normalization: ",shiftres[2].GetParameters()[17]),
+        fitresults.append(shiftres)
+        shiftednorms[name+"_envelope"+str(paramcounter)] = shiftres[2].GetParameters()[11]
+        paramcounter +=1
+    return fitresults,shiftednorms
+
+def makeNormPickleFile(name,normdict,envnormdict,nomnorm,multi):
+    #print(envnormdict)
+    normdict[name+"_envup"] = envnormdict[name+"_envelope0"]
+    normdict[name+"_envdwn"] = envnormdict[name+"_envelope1"]
     normdict[name+"_nominal"] = nomnorm
     uncf = go.makeOutFile('Run2_'+yearstr,name+'shiftednormsforuncs_'+str(multi)+'_dynormalization_'+systr+'_'+rstr,'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     f = open(uncf,'wb')
@@ -243,10 +257,16 @@ if __name__=='__main__':
 
     #systr = 'systnominal_btagnom_muidnom'
 
+    #linesforjeccheck
+    #bkgs  = go.backgrounds('analysis_output_ZpAnomalon/2022-06-24',zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_kfnom_btagnom_muiddwn_elidnom_elreconom")
+    #data  = go.run2('analysis_output_ZpAnomalon/2022-06-24',zptcut,hptcut,metcut,btagwp,"alphatest_systunclup_btagnom_muidnom")#data uncl up means nothing
+    #print(bkgs.bkgs)
+
+    #nominal paths
     bkgs  = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
-    #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr.replace("_mutrignom_elidnom_elreconom","").replace("_kfnom",""))
+    data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphat_systnominal_btagnom_muidnom')
     #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"systnominal_kfnom_btagnom_muidnom_elidnom_elreconom")
-    data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_btagnom_muidnom")
+    #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_btagnom_muidnom")
     #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
 
     #print(bkgs.bkgs)
@@ -333,19 +353,26 @@ if __name__=='__main__':
 
 
     #Do the systematic shifts, param by param
-    multi = -1#-1 for down shifts
+    multi = 1#-1 for down shifts
     parsysdict = {"2":"up","0":"down"}
     #DY
-    dydecorrshiftedparams = ROOT.poly5mod5FitDecorrParamsShifted(htrdy.Clone(),"dyl",multi,"ER0+",30,dyfitrange)#getting shifted parameters after decorrelation
-    dyfitpars,dyfiterrs,shiftedupdyfits = doTemplateFitShifts(dyfit,multi,6,"DY")#doing the individual shifts without decorr
-    dyfitparsdeco,dyfiterrdeco,sdyfitsdeco = doTemplateFitShifts(dyfit,multi,6,"DY",dydecorrshiftedparams)#doing individual fits with decorrel
-    dyenvelopefits = ROOT.poly5mod5FitErrFunctions(htrdy.Clone(),"dylforuncs","QER0+",30,dyfitrange)
-    dyshiftedbkgfits,dyshiftnorms = shiftedFitNormalization(sdyfitsdeco,"DY",hsbkg,htrtt.Clone(),htrdy.Clone(),htrvv.Clone(),hdatsb.Clone())#re-deriving the norm with the decor params
-    makeNormPickleFile("DY",dyshiftnorms,dynormpostfit,multi)
+    #dydecorrshiftedparams                  = ROOT.poly5mod5FitDecorrParamsShifted(htrdy.Clone(),"dyl",multi,"QER0+",30,dyfitrange)#getting shifted parameters after decorrelation
+    #dyfitpars,dyfiterrs,shiftedupdyfits    = doTemplateFitShifts(dyfit,multi,6,"DY")#doing the individual shifts without decorr
+    #dyfitparsdeco,dyfiterrdeco,sdyfitsdeco = doTemplateFitShifts(dyfit,multi,6,"DY",dydecorrshiftedparams)#doing individual fits with decorrel
+    #dyenvelopefits                         = ROOT.poly5mod5FitErrFunctionsGraphs(htrdy.Clone(),"dylforuncs","QER0+",30,dyfitrange)#finding the envelopes
+    #dyshiftedbkgfits,dyshiftnorms          = shiftedFitNormalization(sdyfitsdeco,"DY",hsbkg,htrtt.Clone(),htrdy.Clone(),htrvv.Clone(),hdatsb.Clone())#re-deriving the norm with the decor params
+    #dyenvbkgfits,dyenvnorms                = envelopeFitNormalization(dyenvelopefits,"DY",hsbkg,htrtt.Clone(),htrdy.Clone(),htrvv.Clone(),hdatsb.Clone())
+    #makeNormPickleFile("DY",dyshiftnorms,dyenvnorms,dynormpostfit,multi)
     #TT
-    ttfitpars,ttfiterrs,shiftedupttfits = doTemplateFitShifts(ttfit,multi,6,"TT",)#6 num of fit pars
+    #ttfitpars,ttfiterrs,shiftedupttfits    = doTemplateFitShifts(ttfit,multi,6,"TT",)#6 num of fit pars, non-decorrelated fits
+    #ttdecorrshiftedparams                  = ROOT.gaus2Fit2DecorrParamsShifted(htrtt.Clone(),"ttforshiftl",multi,"ER0+")
+    #ttfitparsdeco,ttfiterrdeco,sttfitsdeco = doTemplateFitShifts(ttfit,multi,6,"TT",ttdecorrshiftedparams)#doing individual fits with decorrel
+    #ttenvelopefits                         = ROOT.gaus2Fit2ErrFunctionsGraphs(htrtt.Clone(),"ttlforuncs","QER0+")#finding the envelopes
+    #ttshiftedbkgfits,ttshiftnorms          = shiftedFitNormalization(sttfitsdeco,"TT",hsbkg,htrtt.Clone(),htrdy.Clone(),htrvv.Clone(),hdatsb.Clone())#re-deriving the norm with the decor params
+    #ttenvbkgfits,ttenvnorms                = envelopeFitNormalization(ttenvelopefits,"TT",hsbkg,htrtt.Clone(),htrdy.Clone(),htrvv.Clone(),hdatsb.Clone())
+    #makeNormPickleFile("TT",ttshiftnorms,ttenvnorms,dynormpostfit,multi)
     #VV
-    vvfitpars,vvfiterrs,shiftedupvvfits = doTemplateFitShifts(vvfit,multi,5,"VV")#5 num of fit pars
+    #vvfitpars,vvfiterrs,shiftedupvvfits = doTemplateFitShifts(vvfit,multi,5,"VV")#5 num of fit pars, non-decorrelated fits
 
     #Get Some fit info
     dyintlab = makeTPadOfIntegrals(htrdy,dyfit,30,250)
@@ -619,11 +646,13 @@ if __name__=='__main__':
 
 
     #Plot the systematic shifted hists
-    plotShiftedFits(dyfit,htrdy,shiftedupdyfits,"DY",100,dyfithist)
-    plotShiftedFits(dyfit,htrdy,sdyfitsdeco,"DY",100,dyfithist,"decor")
-    plotShiftedFits(ttfit,htrtt,shiftedupttfits,"TT",35,ttfithist)
-    plotShiftedFits(vvfit,htrvv,shiftedupvvfits,"VV",25)
-    plotEnvelopeFits(dyfit,htrdy,dyenvelopefits,"DY",100,dyfithist,"envelopefits")
+    #plotShiftedFits(dyfit,htrdy,shiftedupdyfits,"DY",100,dyfithist)
+    #plotShiftedFits(dyfit,htrdy,sdyfitsdeco,"DY",100,dyfithist,"decor")
+    #plotShiftedFits(ttfit,htrtt,shiftedupttfits,"TT",35,ttfithist)
+    #plotShiftedFits(ttfit,htrtt,sttfitsdeco,"TT",40,ttfithist,"decor")
+    #plotShiftedFits(vvfit,htrvv,shiftedupvvfits,"VV",25)
+    #plotEnvelopeFits(dyfit,htrdy,dyenvelopefits,"DY",100,dyfithist,"envelopefits")
+    #plotEnvelopeFits(ttfit,htrtt,ttenvelopefits,"TT",40,ttfithist,"envelopefits")
     
     debughists = go.makeOutFile('Run2_'+yearstr,'norm_debug_shapes_'+systr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
 

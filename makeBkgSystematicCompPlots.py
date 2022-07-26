@@ -8,44 +8,133 @@ import numpy as np
 import pandas as pd
 import configparser
 
-def writeDataCard(processes,rootFileName,channel):
-    signame = processes["processnames"][0]
-    nbkg = len(processes["processnames"])-1
-    obsEvents = 0
-    binname = signame+"_"+channel
-    namestr = " ".join(processes["processnames"])
-    rates   = [str(hist.Integral()) for hist in processes["hists"]]
-    prepCardName = go.makeOutFile('Run2_2017_2018_ZllHbbMET','datacard_'+chan+'_'+signame,'.txt',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-    card = open(prepCardName,"w")
+def gatherUpDownHists(inifile,hname,reg,dynormup,dynormnom,dynormdwn):
+    emptypt = inifile.Get(hname)
+    emptypt.Reset("ICESM")
+    empty10 = emptypt.Clone()
+    empty11 = emptypt.Clone()
+    empty12 = emptypt.Clone()
+    empty13 = emptypt.Clone()
+    empty14 = emptypt.Clone()
+    empty15 = emptypt.Clone()
+    empty16 = emptypt.Clone()
+    empty17 = emptypt.Clone()
+    empty18 = emptypt.Clone()
+    empty19 = emptypt.Clone()
+    empty20 = emptypt.Clone()
+    empty21 = emptypt.Clone()
 
-    #Write the card
-    card.write("imax 1\n")
-    card.write("jmax {0}\n".format(nbkg))
-    card.write("kmax *\n")              
-    card.write("------------\n")
-    card.write("shapes * * {0} $PROCESS $PROCESS_$SYSTEMATIC \n".format(rootFileName.split("/")[-1]))
-    card.write("------------\n")
-    card.write("bin {0} \n".format(binname))
-    card.write("observation {0} \n".format(obsEvents))
-    card.write("------------\n")
-    card.write("bin {0} {1} {2} {3}\n".format(binname,binname,binname,binname))
-    card.write("process "+namestr+"\n")
-    card.write("process 0 1 2 3\n")#hardcode
-    card.write("rate "+" ".join(rates)+"\n")
-    card.write("------------\n")
+    print("norms not sued in this function for hist gathering.")
+    hdyup  = systbkgsup.getAddedHist(empty19,"DYJetsToLL",reg,hname)#.Scale(dynormup)
+    #hdyup.Scale(dynormup)
+    hdydwn = systbkgsdwn.getAddedHist(empty20,"DYJetsToLL",reg,hname)#.Scale(dynormdwn)
+    #hdydwn.Scale(dynormdwn)
+    httup  = systbkgsup.getAddedHist(empty10,"TT",reg,hname)
+    httdwn = systbkgsdwn.getAddedHist(empty11,"TT",reg,hname)
+    hzzup  = systbkgsup.getAddedHist(empty12,"ZZTo2L2Q",reg,hname)
+    hzzdwn = systbkgsdwn.getAddedHist(empty13,"ZZTo2L2Q",reg,hname)
+    hwzup  = systbkgsup.getAddedHist(empty14,"WZTo2L2Q",reg,hname)
+    hwzdwn = systbkgsdwn.getAddedHist(empty15,"WZTo2L2Q",reg,hname)
+    hvvup  = hzzup.Clone()
+    hvvdwn = hzzdwn.Clone()
+    hvvup.Add(hwzup)
+    hvvdwn.Add(hwzdwn)
+    hdy    = bkgs.getAddedHist(empty21,"DYJetsToLL",reg,hname)#.Scale(dynormnom)
+    #hdy.Scale(dynormnom)
+    htt    = bkgs.getAddedHist(empty16,"TT",reg,hname)
+    hzz    = bkgs.getAddedHist(empty17,"ZZTo2L2Q",reg,hname)
+    hwz    = bkgs.getAddedHist(empty18,"WZTo2L2Q",reg,hname)
+    hvv    = hzz.Clone()
+    hvv.Add(hwz)
 
-    for syst in processes["syst"].keys():
-        #vals = [x*processes["syst"][syst]["unc"] for x in processes["syst"][syst]["proc"]]
-        vals = processes["syst"][syst]["proc"]
-        sval = [x if x != 0 else "-" for x in vals]
-        cardstr = "{0} {1} {2} {3} {4} {5}\n".format(str(syst),processes["syst"][syst]["type"],sval[0],sval[1],sval[2],sval[3])
-        card.write(cardstr)
-    #After here, put some sort of interation through a list of systematics
-    card.close()
+    histsup = [hdyup,httup,hvvup]
+    histdwn = [hdydwn,httdwn,hvvdwn]
+    histnom = [hdy,htt,hvv]
 
-#def gatherSystematics(confsecsyst):
-    
-    
+    return(histsup,histdwn,histnom)
+
+
+
+def newNameAndStructure(hist,name,rebindiv,limrangelow,limrangehigh):
+    hist.Rebin(rebindiv)
+    nbins = hist.GetNbinsX()
+    binw  = hist.GetBinWidth(1)
+    newbins = [limrangelow+x*binw for x in range(int((limrangehigh-limrangelow)/binw))]
+    nh = ROOT.TH1F(name,name,len(newbins),limrangelow,limrangehigh)
+    for b,le in enumerate(newbins):
+        bnum = hist.FindBin(le)
+        bincontent = hist.GetBinContent(bnum)
+        binerror   = hist.GetBinError(bnum)
+        nh.SetBinContent(b+1,bincontent)
+        nh.SetBinError(b+1,binerror)
+    return nh
+
+def getGoodPlotRange(listofhists):
+    maxlists = [x.GetMaximum() for x in listofhists]
+    maxofh = max(maxlists)
+    plotmax = maxofh*1.3
+    return plotmax
+
+def getRelativeDifference(hist,histnom):
+    interest = hist.Integral()
+    intnom = histnom.Integral()
+    reldif = (interest-intnom)/intnom
+    return reldif
+
+def getDeviatedOverNominal(hist,histnom):
+    interest = hist.Integral()
+    intnom = histnom.Integral()
+    devonom = interest/intnom
+    return devonom
+
+def getUncertaintyCombination(up,dwn):
+    quad = (up*up+dwn*dwn)**(1/2)/2
+    mid  = (abs(up)+abs(dwn))/2
+    return round(quad,3),round(mid,3)
+
+def getDifferenceSummaryNumberOnly(histup,hist,histdwn,name):
+    up = getRelativeDifference(histup,hist)
+    dwn = getRelativeDifference(histdwn,hist)
+    return up,dwn
+
+
+def getDifferenceSummary(histup,hist,histdwn,name):
+    upnum,dwnnum = getDifferenceSummaryNumberOnly(histup,hist,histdwn,name)
+    up = "relative  difference for "+name+" up variation: "+str(round(upnum,3))
+    dwn = "relative difference for "+name+" dwn variation: "+str(round(dwnnum,3))
+    return up,dwn
+
+def getDeviatedOverNominalSummary(histup,hist,histdwn,name):
+    upnum  = getDeviatedOverNominal(histup,hist)
+    dwnnum = getDeviatedOverNominal(histdwn,hist)
+    up = "Deviated over nominal  for "+name+" up variation: "+str(round(upnum,3))
+    dwn = "Devoated over nominal for "+name+" dwn variation: "+str(round(dwnnum,3))
+    return up,dwn
+
+def makeDifferenceTPave(histup,hist,histdwn,name):
+    #upnum,dwnnum = getDifferenceSummaryNumberOnly(histup,hist,histdwn,name)
+    updiv  = getDeviatedOverNominal(histup,hist)
+    dwndiv = getDeviatedOverNominal(histdwn,hist)
+    #up = "deviated over nom, "+name+" up: "+str(round(upnum,3))
+    #dwn = "deviated over nom, "+name+" dwn: "+str(round(dwnnum,3))
+    updiv = "up deviated over nominal: "+str(round(updiv,3))
+    dwndiv = "dwn deviated over nominal: "+str(round(dwndiv,3))
+    lab = ROOT.TPaveText(.2,.73,.9,.85,"NBNDC")
+    #lab.AddText(up)
+    #lab.AddText(dwn)
+    lab.AddText(updiv)
+    lab.AddText(dwndiv)
+    lab.SetFillColor(0)
+    return lab
+
+def makeRateUncertaintyTPave(quadunc,midunc):
+    lab = ROOT.TPaveText(.5,.5,.85,.60,"NBNDC")
+    #lab.AddText("rate unc = reldiff added in quadrature")
+    lab.AddText("rel diff add in quad, div by 2 = "+str(quadunc))
+    lab.AddText("haldway between rel diff = "+str(midunc))
+    lab.SetFillColor(0)
+    return lab
+
 
 if __name__=='__main__':
 
@@ -57,6 +146,10 @@ if __name__=='__main__':
     chan    = 'mumu'
     sigxs   = 1.0
     rebindiv = 2
+
+    limrangelow = 1400
+    limrangehigh = 3000
+
 
     config = configparser.RawConfigParser()
     config.optionxform = str
@@ -98,33 +191,10 @@ if __name__=='__main__':
     hwzchecksb  = bkgs.getAddedHist(empty44,"WZTo2L2Q","sb","h_zp_jigm")
     hdytrchecksb= bkgs.getAddedHist(empty45,"DYJetsToLL","sb","h_zp_jigm")
 
-    #print(bkgs.bkgs["DYJetsToLL"][17]["sb"][0])
-    #print(len(bkgs.bkgs["DYJetsToLL"][17]["sb"][0]))
-
-    print("The SR yields, no cut on M_Zp")
-    #print("   dyest: ",hdy.Integral())
-    print("  dyhist: ",hdytr.Integral())
-    print("   ttbar: ",htt.Integral())
-    print("      zz: ",hzz.Integral())
-    print("      wz: ",hwz.Integral())
-
-    print("The SB yields, no cut on M_Zp")
-    print("      dy: ",hdytrchecksb.Integral())
-    print("   ttbar: ",httchecksb.Integral())
-    print("      zz: ",hzzchecksb.Integral())
-    print("      wz: ",hwzchecksb.Integral())
-
     ####Rename and restucture
-    htt.SetName("TT")
-    hvv.SetName("VV")
-    hdy.SetName("DY")
-    hdat.SetName("data_obs")
-    htt.Rebin(rebindiv)
-    hvv.Rebin(rebindiv)
-    hdat.GetXaxis().SetRangeUser(1500,5000)
-    htt.GetXaxis().SetRangeUser(1500,5000)
-    hvv.GetXaxis().SetRangeUser(1500,5000)
-    hdy.GetXaxis().SetRangeUser(1500,5000)
+    htt = newNameAndStructure(htt,"TT",rebindiv,limrangelow,limrangehigh)
+    hdy = newNameAndStructure(hdy,"DY",1,limrangelow,limrangehigh)
+    hvv = newNameAndStructure(hvv,"VV",rebindiv,limrangelow,limrangehigh)
 
     for syst in systs:
         if "nominal" == syst:
@@ -162,33 +232,12 @@ if __name__=='__main__':
         hdydwn = dyEstdwn.Get("extrphist").Clone()
         
         #Rename and Restructure
-        httup.SetName("TT_"+syst+"Up")
-        httdwn.SetName("TT_"+syst+"Down")
-        hvvup.SetName("VV_"+syst+"Up")
-        hvvdwn.SetName("VV_"+syst+"Down")
-        hdyup.SetName("DY_"+syst+"Up")
-        hdydwn.SetName("DY_"+syst+"Down")
-        httup.Rebin(rebindiv)
-        httdwn.Rebin(rebindiv)
-        hvvup.Rebin(rebindiv)
-        hvvdwn.Rebin(rebindiv)
-        httup.GetXaxis().SetRangeUser(1500,5000)
-        httdwn.GetXaxis().SetRangeUser(1500,5000)
-        hvvup.GetXaxis().SetRangeUser(1500,5000)
-        hvvdwn.GetXaxis().SetRangeUser(1500,5000)
-        hdyup.GetXaxis().SetRangeUser(1500,5000)
-        hdydwn.GetXaxis().SetRangeUser(1500,5000)
-        
-        
-        #This is need to get the errors on the bins correct
-        #built for nominal case
-        #but not needed for Combine
-        #for ibin in range(hsig.GetNbinsX()+1):
-        # oribin = hsigori.GetBinContent(ibin)
-        # orierr = hsigori.GetBinError(ibin)
-        # newbinval = oribin*sig["scale"]
-        # hsig.SetBinContent(ibin,newbinval)
-        # hsig.SetBinError(ibin,newbinval**(1/2))
+        httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+        httdwn = newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+        hvvup = newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+        hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+        hdyup = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
+        hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
         
         #Debug for background
         #Extra plots
@@ -196,9 +245,6 @@ if __name__=='__main__':
         dynormnom = np.load(config.get(syst,'pathnom')+'/Run2_161718_dynormalization_'+config.get(syst,'strnom')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
         dynormdwn = np.load(config.get(syst,'pathdwn')+'/Run2_161718_dynormalization_'+config.get(syst,'strdwn')+'_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
 
-        print("DY norm up:  ",dynormup)
-        print("DY norm nom: ",dynormnom)
-        print("DY norm dwn: ",dynormdwn)
         emptypt = tf1.Get('h_h_pt')
         emptypt.Reset("ICESM")
         empty10 = emptypt.Clone()
@@ -213,11 +259,15 @@ if __name__=='__main__':
         empty19 = emptypt.Clone()
         empty20 = emptypt.Clone()
         empty21 = emptypt.Clone()
+
+        print(dynormup)
+        print(dynormdwn)
+        print(dynormnom)
         
         hdyuppt  = systbkgsup.getAddedHist(empty19,"DYJetsToLL","sr","h_h_pt")#.Scale(dynormup)
-        hdyuppt.Scale(dynormup)
+        #hdyuppt.Scale(dynormup)
         hdydwnpt = systbkgsdwn.getAddedHist(empty20,"DYJetsToLL","sr","h_h_pt")#.Scale(dynormdwn)
-        hdydwnpt.Scale(dynormdwn)
+        #hdydwnpt.Scale(dynormdwn)
         httuppt  = systbkgsup.getAddedHist(empty10,"TT","sr","h_h_pt")
         httdwnpt = systbkgsdwn.getAddedHist(empty11,"TT","sr","h_h_pt")
         hzzuppt  = systbkgsup.getAddedHist(empty12,"ZZTo2L2Q","sr","h_h_pt")
@@ -229,14 +279,16 @@ if __name__=='__main__':
         hvvuppt.Add(hwzuppt)
         hvvdwnpt.Add(hwzdwnpt)
         hdypt    = bkgs.getAddedHist(empty21,"DYJetsToLL","sr","h_h_pt")#.Scale(dynormnom)
-        hdypt.Scale(dynormnom)
+        #hdypt.Scale(dynormnom)
         httpt    = bkgs.getAddedHist(empty16,"TT","sr","h_h_pt")
         hzzpt    = bkgs.getAddedHist(empty17,"ZZTo2L2Q","sr","h_h_pt")
         hwzpt    = bkgs.getAddedHist(empty18,"WZTo2L2Q","sr","h_h_pt")
         hvvpt    = hzzpt.Clone()
         hvvpt.Add(hwzpt)
 
-    
+        #for met plots
+        hmetsup,hmetsdwn,hmets = gatherUpDownHists(tf1,"h_met","sr",dynormup,dynormnom,dynormdwn)
+        
         #Plotting parameters
         htt.SetLineColor(ROOT.kBlack)
         hvv.SetLineColor(ROOT.kBlack)
@@ -256,29 +308,67 @@ if __name__=='__main__':
         httdwnpt.SetLineColor(ROOT.kBlue)
         hvvdwnpt.SetLineColor(ROOT.kBlue)
         hdydwnpt.SetLineColor(ROOT.kBlue)
-        #httuppt.SetMaximum(10)
-        
-        dyupx = hdyup.GetXaxis()
+        htt.GetYaxis().SetRangeUser(0,getGoodPlotRange([httup,htt,httdwn]))
+        hdy.GetYaxis().SetRangeUser(0,getGoodPlotRange([hdyup,hdy,hdydwn]))
+        hvv.GetYaxis().SetRangeUser(0,getGoodPlotRange([hvvup,hvv,hvvdwn]))
+        hdyuppt.GetYaxis().SetRangeUser(0,getGoodPlotRange([hdyuppt,hdypt,hdydwnpt]))
+        httuppt.GetYaxis().SetRangeUser(0,getGoodPlotRange([httuppt,httpt,httdwnpt]))
+        hvvuppt.GetYaxis().SetRangeUser(0,getGoodPlotRange([hvvuppt,hvvpt,hvvdwnpt]))
+            
+        dyupx = hdy.GetXaxis()
         dyupx.SetTitle("Z' Jigsaw Mass Estimator")
         dyuptx = hdyuppt.GetXaxis()
         dyuptx.SetTitle("Higgs Candidate pT")
-        ttupx = httup.GetXaxis()
+        ttupx = htt.GetXaxis()
         ttupx.SetTitle("Z' Jigsaw Mass Estimator")
         ttuptx = httuppt.GetXaxis()
         ttuptx.SetTitle("Higgs Candidate pT")
-        vvupx = hvvup.GetXaxis()
+        vvupx = hvv.GetXaxis()
         vvupx.SetTitle("Z' Jigsaw Mass Estimator")
         vvuptx = hvvuppt.GetXaxis()
         vvuptx.SetTitle("Higgs Candidate pT")
         
-        hdyup.SetStats(0)
-        httup.SetStats(0)
-        hvvup.SetStats(0)
+        hdy.SetStats(0)
+        htt.SetStats(0)
+        hvv.SetStats(0)
         hdyuppt.SetStats(0)
         httuppt.SetStats(0)
         hvvuppt.SetStats(0)
         
         #Relevant Info
+        dyyieldup,dyyielddwn = getDifferenceSummary(hdyup,hdy,hdydwn,"DY")
+        ttyieldup,ttyielddwn = getDifferenceSummary(httup,htt,httdwn,"TT")
+        vvyieldup,vvyielddwn = getDifferenceSummary(hvvup,hvv,hvvdwn,"VV")
+
+        dyup,dydwn = getDifferenceSummaryNumberOnly(hdyup,hdy,hdydwn,"DY")
+        ttup,ttdwn = getDifferenceSummaryNumberOnly(httup,htt,httdwn,"TT")
+        vvup,vvdwn = getDifferenceSummaryNumberOnly(hvvup,hvv,hvvdwn,"VV")
+
+        dyupdiv,dydwndiv =getDeviatedOverNominalSummary(hdyup,hdy,hdydwn,"DY")
+        ttupdiv,ttdwndiv =getDeviatedOverNominalSummary(httup,htt,httdwn,"TT")
+        vvupdiv,vvdwndiv =getDeviatedOverNominalSummary(hvvup,hvv,hvvdwn,"VV")
+
+        dyquad,dymid = getUncertaintyCombination(dyup,dydwn)
+        ttquad,ttmid = getUncertaintyCombination(ttup,ttdwn)
+        vvquad,vvmid = getUncertaintyCombination(vvup,vvdwn)
+
+        print(dyyieldup)
+        print(dyupdiv)
+        print(dyyielddwn)
+        print(dydwndiv)
+        print("  when added in quadrature the uncertainty is {0}.\n   When taking the mid point, the uncertainty is {1}.".format(dyquad,dymid))
+        print(ttyieldup)
+        print(ttupdiv)
+        print(ttyielddwn)
+        print(ttdwndiv)
+        print("  when added in quadrature the uncertainty is {0}.\n   When taking the mid point, the uncertainty is {1}.".format(ttquad,ttmid))
+        print(vvyieldup)
+        print(vvupdiv)
+        print(vvyielddwn)
+        print(vvdwndiv)
+        print("  when added in quadrature the uncertainty is {0}.\n    When taking the mid point, the uncertainty is {1}.".format(vvquad,vvmid))
+        
+        #Strings to print
         dystrup  = "dy up, integral: "+str(round(hdyup.Integral(),3))
         dystrnom = "dy nom, integral: "+str(round(hdy.Integral(),3))
         dystrdwn = "dy dwn, integral: "+str(round(hdydwn.Integral(),3))
@@ -300,7 +390,19 @@ if __name__=='__main__':
         vvstrdwnpt = "vv dwn, integral: "+str(round(hvvdwnpt.Integral(),3))
         
         #Labels
-        dyjiglab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+        dydifflab = makeDifferenceTPave(hdyup,hdy,hdydwn,"DY")
+        ttdifflab = makeDifferenceTPave(httup,htt,httdwn,"TT")
+        vvdifflab = makeDifferenceTPave(hvvup,hvv,hvvdwn,"VV")
+
+        dyptdifflab = makeDifferenceTPave(hdyuppt,hdypt,hdydwnpt,"DY")
+        ttptdifflab = makeDifferenceTPave(httuppt,httpt,httdwnpt,"TT")
+        vvptdifflab = makeDifferenceTPave(hvvuppt,hvvpt,hvvdwnpt,"VV")
+
+        dyunclab = makeRateUncertaintyTPave(dyquad,dymid)
+        ttunclab = makeRateUncertaintyTPave(ttquad,ttmid)
+        vvunclab = makeRateUncertaintyTPave(vvquad,vvmid)
+        
+        dyjiglab = ROOT.TPaveText(.6,.3,.9,.4,"NBNDC")
         dyjiglab.AddText(dystrup)
         dyjiglab.AddText(dystrnom)
         dyjiglab.AddText(dystrdwn)
@@ -309,7 +411,7 @@ if __name__=='__main__':
         dyjiglab.GetLine(1).SetTextColor(ROOT.kBlack)
         dyjiglab.GetLine(2).SetTextColor(ROOT.kBlue)
         
-        dyptlab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+        dyptlab = ROOT.TPaveText(.6,.3,.9,.4,"NBNDC")
         dyptlab.AddText(dystruppt)
         dyptlab.AddText(dystrnompt)
         dyptlab.AddText(dystrdwnpt)
@@ -318,7 +420,7 @@ if __name__=='__main__':
         dyptlab.GetLine(1).SetTextColor(ROOT.kBlack)
         dyptlab.GetLine(2).SetTextColor(ROOT.kBlue)
         
-        ttjiglab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+        ttjiglab = ROOT.TPaveText(.6,.3,.9,.4,"NBNDC")
         ttjiglab.AddText(ttstrup)
         ttjiglab.AddText(ttstrnom)
         ttjiglab.AddText(ttstrdwn)
@@ -327,7 +429,7 @@ if __name__=='__main__':
         ttjiglab.GetLine(1).SetTextColor(ROOT.kBlack)
         ttjiglab.GetLine(2).SetTextColor(ROOT.kBlue)
         
-        ttptlab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+        ttptlab = ROOT.TPaveText(.6,.3,.9,.4,"NBNDC")
         ttptlab.AddText(ttstruppt)
         ttptlab.AddText(ttstrnompt)
         ttptlab.AddText(ttstrdwnpt)
@@ -336,7 +438,7 @@ if __name__=='__main__':
         ttptlab.GetLine(1).SetTextColor(ROOT.kBlack)
         ttptlab.GetLine(2).SetTextColor(ROOT.kBlue)
         
-        vvjiglab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+        vvjiglab = ROOT.TPaveText(.6,.3,.9,.4,"NBNDC")
         vvjiglab.AddText(vvstrup)
         vvjiglab.AddText(vvstrnom)
         vvjiglab.AddText(vvstrdwn)
@@ -344,8 +446,8 @@ if __name__=='__main__':
         vvjiglab.GetLine(0).SetTextColor(ROOT.kRed)
         vvjiglab.GetLine(1).SetTextColor(ROOT.kBlack)
         vvjiglab.GetLine(2).SetTextColor(ROOT.kBlue)
-        
-        vvptlab = ROOT.TPaveText(.5,.4,.8,.6,"NBNDC")
+
+        vvptlab = ROOT.TPaveText(.6,.3,.9,.4,"NBNDC")
         vvptlab.AddText(vvstruppt)
         vvptlab.AddText(vvstrnompt)
         vvptlab.AddText(vvstrdwnpt)
@@ -366,26 +468,32 @@ if __name__=='__main__':
         tcbkg.cd()
         pdy.Draw()
         pdy.cd()
-        hdyup.Draw('hist')
-        hdy.Draw('histsame')
+        hdy.Draw('hist')
+        hdyup.Draw('histsame')
         hdydwn.Draw('histsame')
         dyjiglab.Draw()
+        dydifflab.Draw()
+        dyunclab.Draw()
         pdy.Update()
         tcbkg.cd()
         ptt.Draw()
         ptt.cd()
-        httup.Draw('hist')
-        htt.Draw('histsame')
+        htt.Draw('hist')
+        httup.Draw('histsame')
         httdwn.Draw('histsame')
         ttjiglab.Draw()
+        ttdifflab.Draw()
+        ttunclab.Draw()
         ptt.Update()
         tcbkg.cd()
         pvv.Draw()
         pvv.cd()
-        hvvup.Draw('hist')
-        hvv.Draw('histsame')
+        hvv.Draw('hist')
+        hvvup.Draw('histsame')
         hvvdwn.Draw('histsame')
         vvjiglab.Draw()
+        vvdifflab.Draw()
+        vvunclab.Draw()
         pvv.Update()
         tcbkg.cd()
         ptdy.Draw()
@@ -394,6 +502,7 @@ if __name__=='__main__':
         hdypt.Draw('histsame')
         hdydwnpt.Draw('histsame')
         dyptlab.Draw()
+        dyptdifflab.Draw()
         ptdy.Update()
         tcbkg.cd()
         pttt.Draw()
@@ -402,6 +511,7 @@ if __name__=='__main__':
         httpt.Draw('histsame')
         httdwnpt.Draw('histsame')
         ttptlab.Draw()
+        ttptdifflab.Draw()
         pttt.Update()
         tcbkg.cd()
         ptvv.Draw()
@@ -410,11 +520,46 @@ if __name__=='__main__':
         hvvpt.Draw('histsame')
         hvvdwnpt.Draw('histsame')
         vvptlab.Draw()
+        vvptdifflab.Draw()
         ptvv.Update()
         tcbkg.cd()
         tcbkg.Update()
         
-        bkgcomp = go.makeOutFile('Run2_2017_2018_ZllHbbMET',chan+'_bkg_'+syst,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        bkgcomp = go.makeOutFile('Run2_161718_ZllHbbMET',chan+'_bkg_'+syst,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         tcbkg.SaveAs(bkgcomp)
     
-        
+        #met debug plot
+        metup = hmetsup[0].Clone()
+        metup.Add(hmetsup[1])
+        metup.Add(hmetsup[2])
+        metdwn = hmetsdwn[0].Clone()
+        metdwn.Add(hmetsdwn[1])
+        metdwn.Add(hmetsdwn[2])
+        meth = hmets[0].Clone()
+        meth.Add(hmets[1])
+        meth.Add(hmets[2])
+
+        metup.SetLineColor(ROOT.kRed)
+        metdwn.SetLineColor(ROOT.kBlue)
+        meth.SetLineColor(ROOT.kBlack)
+        metup.GetYaxis().SetRangeUser(0,getGoodPlotRange([metup,meth,metdwn]))
+        meth.GetYaxis().SetRangeUser(0,getGoodPlotRange([metup,meth,metdwn]))
+        metdwn.GetYaxis().SetRangeUser(0,getGoodPlotRange([metup,meth,metdwn]))
+        metup.GetXaxis().SetTitle("MET")
+        metdwn.GetXaxis().SetTitle("MET")
+        meth.GetXaxis().SetTitle("MET")
+        meth.SetStats(0)
+        metup.SetStats(0)
+        metdwn.SetStats(0)
+
+        print("nominal met: ",meth.Integral())
+        print("met up: : ",metup.Integral())
+        print("met dwn: ",metdwn.Integral())
+    
+        tcmet  = ROOT.TCanvas("tcmet","metcheck",600,400)
+        metup.Draw("hist")
+        meth.Draw("histsame")
+        metdwn.Draw("histsame")
+
+        metcomp = go.makeOutFile('Run2_161718_ZllHbbMET',chan+'_met_'+syst,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        tcmet.SaveAs(metcomp)

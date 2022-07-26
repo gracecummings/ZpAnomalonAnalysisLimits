@@ -9,18 +9,21 @@ import numpy as np
 import pandas as pd
 import configparser
 
-def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr):
+def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr,uprange,isLog=False):
     #define the basic plotting styles
     srdyhist.SetFillColor(dycolor)
     srdyhist.SetLineColor(dycolor)
     srdyhist.GetYaxis().SetRangeUser(0,7)
-    srdyhist.GetXaxis().SetRangeUser(1500,3000)
+    srdyhist.GetXaxis().SetRangeUser(1500,uprange)
     nomextrap.SetLineColor(ROOT.kBlack)#nominal subtractions
     tcsub = ROOT.TCanvas("tcsub","tcsub",800,800)
     leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
     leg.SetBorderSize(0)
     tcsub.Draw()
     tcsub.cd()
+    if isLog:
+        tcsub.SetLogy()
+        srdyhist.GetYaxis().SetRangeUser(0.0001,100)
     srdyhist.Draw("hist")
     nomextrap.Draw("same")
     leg.AddEntry(srdyhist,"SR DY","f")
@@ -35,7 +38,7 @@ def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr):
     nomextrap.Draw("same")
     tcsub.Update()
     #outfile = go.makeOutFile('Run2_'+yearstr,"datasidebandsubtractionmethodcomp",'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-    outfile = go.makeOutFile('Run2_'+yearstr,addname+'_shifted_shapes_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    outfile = go.makeOutFile('Run2_'+yearstr,addname+'_shifted_shapes_uprange'+str(uprange)+'_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tcsub.SaveAs(outfile)
 
 
@@ -396,23 +399,29 @@ if __name__=='__main__':
             #dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
             #print("WARNING: Hard coded in the normalization")
             dynormname = ''
-            dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_alphatest_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+            #dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_alphatest_systnominal_kfnom_btagnom_muiddwn_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+            dynorm = np.load('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/Run2_161718_dynormalization_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
+            #dynorm = np.load('analysis_output_ZpAnomalon/2022-06-24/Run2_161718_dynormalization_systjecdwn_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
             #dynorm = np.load('analysis_output_ZpAnomalon/Run2_161718_dynormalization_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
             #dynorm = np.load
         elif args.normsyst:
             dynormname = args.normsyst
             dynorm = args.normval
-        bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
-        #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_elidnom_elreconom","").replace("_kfnom",""))
+        #bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))#Nom?
+        #bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_kfnom_btagnom_muiddwn_elidnom_elreconom")
+
+        bkgs = go.backgrounds('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/holderofbasefiles',zptcut,hptcut,metcut,btagwp,'systnominal_kfnom_btagnom_muidnom_elidnom_elreconom')
+        #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_mutrignom_elidnom_elreconom","").replace("_kfnom",""))
         #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
-        print("WARNING: Hardcdoed data gathering - make sure it if the correct path")
-        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_btagnom_muidnom")
-        #data = go.run2("analysis_output_ZpAnomalon/2022-05-17/",zptcut,hptcut,metcut,btagwp,"systnominal_btagnom_muidnom")
+        #print("WARNING: Hardcdoed data gathering - make sure it if the correct path")
+        #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphatest_systuncldwn_btagnom_muidnom')
+        data = go.run2('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/holderofbasefiles',zptcut,hptcut,metcut,btagwp,"systnominal_btagnom_muidnom")
+        #data = go.run2("analysis_output_ZpAnomalon/2022-05-17/",zptcut,hptcut,metcut,btagwp,"systnominal_btagnom_muidnom")###Nominal??
         sbstring = "30 < m_{hcand,SD} < 70"
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
 
-    #print(bkgs.bkgs["DYJetsToLL"][18]["sb"][1])
+    print(bkgs.bkgs["DYJetsToLL"][17]["sb"][1])
     #print(bkgs.bkgs["DYJetsToLL"][18]["sr"][1])
     #print(data.data[18]["sb"][1])
     #print(data.data[18]["vr"][1])
@@ -1145,10 +1154,27 @@ if __name__=='__main__':
     plotShiftedAlphas(alpha,alphadns,config.get(systname,syststr),"alphadwns")
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsup,bkgcols[0],"subtractedDataDistsUp",config.get(systname,syststr))
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsdn,bkgcols[0],"subtractedDataDistsDwn",config.get(systname,syststr))
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp",config.get(systname,syststr))
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr))
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp",config.get(systname,syststr),3000)
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr),3000)
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr),10000,isLog=True)
     #plotSubtractedDistributionCompMeth(hsbdy,subdatafit,sbdatuncsub,bkgcols[0],"method comparison",config.get(systname,syststr))
     #plotAlphaExtrapCompMeth(extrap,alpharver,"methodcomp",config.get(systname,syststr))
+
+    shiftedupflip = []
+    for i,hist in enumerate(sextrpuphists):
+        histflip = hist.Clone()
+        histdiv  = hist.Clone()
+        for b in range(17,51):#min 3200 bin edge, last bin for VV fit
+            diffup = hist.GetBinContent(b)-extrphist.GetBinContent(b)
+            diffdn = sextrpdnhists[i].GetBinContent(b)-extrphist.GetBinContent(b)
+            upsign = diffup/abs(diffup)
+            dnsign = diffdn/abs(diffdn)
+            if upsign == dnsign:
+                flipval = extrphist.GetBinContent(b)-diffup
+                histflip.SetBinContent(b,flipval)
+        histdiv.Divide(hist,histflip)
+        shiftedupflip.append(histflip)
+
 
     rootOutName = go.makeOutFile('Run2_'+yearstr,'dy_extraploation'+config.get(systname,syststr)+'_'+dynormname,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootFile = ROOT.TFile(rootOutName,"recreate")
@@ -1159,7 +1185,10 @@ if __name__=='__main__':
     for h,hist in enumerate(savehists):
         hist.SetName("h_zp_mjig_"+savehistnames[h])
         hist.Write()
-    for h,hist in enumerate(sextrpuphists):
+
+    print("Saving the flipped versions of up extrapolations")
+    #for h,hist in enumerate(sextrpuphists):
+    for h,hist in enumerate(shiftedupflip):
         hist.Write()
         sextrpdnhists[h].Write()
     sbfit.Write()
@@ -1170,3 +1199,67 @@ if __name__=='__main__':
     sbdatuncsub.Write()
     alpha.Write()
     rootFile.Close()
+
+
+    #shiftedupflip = []
+    #for i,hist in enumerate(sextrpuphists):
+    #    print("Checking intersection for ",hist.GetName())
+    #    histflip = hist.Clone()
+    #    histdiv  = hist.Clone()
+    #    for b in range(17,51):#min 3200 bin edge, last bin for VV fit
+    #        diffup = hist.GetBinContent(b)-extrphist.GetBinContent(b)
+    #        diffdn = sextrpdnhists[i].GetBinContent(b)-extrphist.GetBinContent(b)
+    #        upsign = diffup/abs(diffup)
+    #        dnsign = diffdn/abs(diffdn)
+    #        if upsign == dnsign:
+    #            flipval = extrphist.GetBinContent(b)-diffup
+    #            histflip.SetBinContent(b,flipval)
+    #            print("   Checking bin wiht Low Edge ",extrphist.GetBinLowEdge(b))
+    #    histdiv.Divide(hist,histflip)
+    #    shiftedupflip.append(histflip)#
+
+    #    extrphist.SetLineColor(ROOT.kBlack)
+    #    hist.SetLineColor(ROOT.kOrange)
+    #    hist.GetXaxis().SetTitle("RJR Z Prime Mass Estimator")
+    #    hist.GetYaxis().SetTitle("Events / 200")
+    #    histflip.SetLineColor(ROOT.kRed)
+    #    histdiv.GetYaxis().SetRangeUser(-1,2)
+    #    histdiv.GetYaxis().SetTitle("unflipped/flipped")
+    #    histdiv.SetMarkerStyle(8)
+    #    histdiv.GetXaxis().SetTitle("bin center")
+    #    histdiv.GetXaxis().SetTitleSize(0.11)
+    #    histdiv.GetXaxis().SetTitleOffset(0.65)
+    #    histdiv.GetXaxis().SetLabelSize(0.075)
+    #    histdiv.GetYaxis().SetTitleSize(0.11)
+    #    histdiv.GetYaxis().SetTitleOffset(.45)
+    #    histdiv.GetYaxis().SetLabelSize(0.08)
+    #    histdiv.GetYaxis().SetLabelOffset(0.02)
+    #    histdiv.GetYaxis().SetNdivisions(503)
+
+
+     #   tcsub = ROOT.TCanvas("tcsub","tcsub",560,800)
+     #   p1    = ROOT.TPad("p1","extp comp pad",0,0.3,1,1)
+     #   p2    = ROOT.TPad("p2","rat pad",0,0.0,1,0.3)
+     #   leg = ROOT.TLegend(0.35,0.7,0.9,0.90)
+     #   leg.SetBorderSize(0)
+     #   leg.AddEntry(hist,hist.GetName()+" straight Up","l")
+     #   leg.AddEntry(histflip,hist.GetName()+" flipped","l")
+     #   leg.AddEntry(extrphist,"Nominal Extrapolation","l")
+
+     #   tcsub.Draw()
+     #   tcsub.cd()
+     #   p1.Draw()
+     #   p1.cd()
+     #   p1.SetLogy()
+     #   hist.Draw("hist")
+     #   histflip.Draw("histsame")
+     #   extrphist.Draw("histsame")
+     #   leg.Draw()
+     #   tcsub.cd()
+     #   p2.Draw()
+     #   p2.cd()
+     #   histdiv.Draw("p")#
+
+       # testoutflip = go.makeOutFile('Run2_'+yearstr,'dy_extrap_fliptest_'+hist.GetName()+'_'+dynormname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+       # tcsub.SaveAs(testoutflip)
+        

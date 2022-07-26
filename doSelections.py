@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser()
 def makeEventWeightSeries(df,syststr):
     colnames = list(df.columns)
     wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
-    sfnames = [x.split("event_weight_")[1]+"nom" for x in wnames]
+    sfnames = [x.split("event_weight_")[1] for x in wnames]
 
     sfname = "_".join(sfnames)
     
@@ -25,7 +25,7 @@ def makeEventWeightSeriesWithUncertainties(df,syststr):
     colnames = list(df.columns)
     wnames = [x for x in colnames if ("event_weight" in x) and ("unc" not in x)]
         
-    sfnames = [x.split("event_weight_")[1]+"nom" for x in wnames]
+    sfnames = [x.split("event_weight_")[1] for x in wnames]
     sfname = "_".join(sfnames)
 
     #print(sfnames)
@@ -39,7 +39,7 @@ def makeEventWeightSeriesWithUncertainties(df,syststr):
         unctag = syststr.split("dwn")[0]+"uncdwn"
         uncsign = -1.0
 
-    sfname = sfname.replace(uncname+"nom",syststr)
+    sfname = sfname.replace(uncname,syststr)
 
     wcolname = "event_weight_"+uncname
     if wcolname not in colnames:
@@ -118,6 +118,8 @@ if __name__=='__main__':
     parser.add_argument("-tot","--comboregion",type=bool,help = "do you want combined SR and SB?")
     parser.add_argument("-v","--validation",type=bool,help = "validation region bounds?")
     parser.add_argument("-syst","--systematics",type=str)
+    parser.add_argument("-prefireup","--prefireup",type=bool,help = "up prefire uncs?")
+    parser.add_argument("-prefiredwn","--prefiredwn",type=bool,help = "down prefire uncs?")
     parser.add_argument("-a","--alphar",type=bool,help = "alpha ratio regions?")
     parser.add_argument("-c","--chan",type=str)
     args = parser.parse_args()
@@ -154,9 +156,9 @@ if __name__=='__main__':
         if valid:
             print("    Doing validation of alpha method cuts")
             if sr:
-                print("    'signalr' labeled events are in soft drop mass bands (55,70]")
+                print("    'signalr' labeled events are the stanard signalr in jet mass, but with an inverted met cut")
             else:
-                print("    'sideband' labeled events are in soft drop mass bands [30,55],[150,5000]")
+                print("    'sideband' labeled events are in soft drop mass bands [30,70],[150,5000], with inverted met cut")
 
         metstr = ''
         branches = [b'ZCandidate_*',
@@ -170,6 +172,8 @@ if __name__=='__main__':
                     b'ND_mass_est',
                     b'NS_mass_est',
                     b'event_weight*',
+                    b'metxycorr',
+                    b'metxyphicorr',
         ]
 
         if (stype > 0):
@@ -187,6 +191,10 @@ if __name__=='__main__':
         if (channel == "mumu"):
             mcbranches = [b'LMuCandidate_*',
                           b'sLMuCandidate_*',]
+            branches.extend(mcbranches)
+
+        if (stype > 0) and ((year == 16) or (year == 17)):
+            mcbranches = [b'NonPrefir*']
             branches.extend(mcbranches)
 
 
@@ -250,7 +258,8 @@ if __name__=='__main__':
             metcut = 0.0
             
         zptdf  = events[events['ZCandidate_pt'] > zptcut]
-        metdf   = zptdf[zptdf['metsuable'] > metcut]
+        #metdf   = zptdf[zptdf['metsuable'] > metcut]
+        metdf   = zptdf[zptdf['metxycorr'] > metcut]
         hptdf  = metdf[metdf['hCandidate_pt'] > hptcut]
         btdf   = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
 
@@ -267,34 +276,21 @@ if __name__=='__main__':
             totdf = pd.concat([bldf,lowsb,highsb])
             
         #Validation region for alpha method for DY
-        if valid:
-            srup   = btdf[btdf['hCandidate_sd'] > 55.]
+        if valid and alphatest:
+            #validdf = btdf[btdf['metsuable'] <= args.metPtCut]#metcut is set to zero before here
+            validdf = btdf[btdf['metxycorr'] <= args.metPtCut]#metcut is set to zero before here
+            srup   = validdf[validdf['hCandidate_sd'] > 70.]
             bldf   = srup[srup['hCandidate_sd'] < 150.]#full blinded region
-            srdf   = bldf[bldf['hCandidate_sd'] <= 70.]#Validation region
-            #lowsb  = btdf[btdf['hCandidate_sd'] <= 55.]
-            lowsbh = btdf[btdf['hCandidate_sd'] <= 55.]
+            srdf   = bldf[bldf['hCandidate_sd'] > 110.]#Higgs Peak
+            lowsbh = validdf[validdf['hCandidate_sd'] <= 70.]
             lowsb  = lowsbh[lowsbh['hCandidate_sd'] > 30.]
-            highsb = btdf[btdf['hCandidate_sd'] >= 150.]
+            highsb = validdf[validdf['hCandidate_sd'] >= 150.]
             sbdf   = pd.concat([lowsb,highsb])
-            totdf = pd.concat([sbdf,srdf])
+            totdf = pd.concat([bldf,lowsb,highsb])
         
-        if alphatest:
+        if alphatest and not valid:
             normdf = totdf
-            #This is to generate the alpha ratio normalization regions
-            #alphahptdf = zptdf[zptdf['hCandidate_pt'] > hptcut]
-            #alphabtdf  = alphahptdf[alphahptdf['hCandidate_'+btaggr] > float(btagwp)]
-            
-            #normdf1 = alphahptdf
-            #lowsbh  = normdf1[normdf1['hCandidate_sd'] <= 70.]
-            #lowsb  = lowsbh[lowsbh['hCandidate_sd'] > 30.]
-            #highsb = normdf1[normdf1['hCandidate_sd'] >= 150.]
-            #sbdf   = pd.concat([lowsb,highsb])
-            #srbtdf = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
-            #srdflow = srbtdf[srbtdf['hCandidate_sd'] < 150.]
-            #srdf = srdflow[srdflow['hCandidate_sd'] > 110]
-            #bldf   = srup[srup['hCandidate_sd'] < 150.]#full blinded region
-            #totdf = pd.concat([bldf,lowsb,highsb])
-
+            metcut = args.metPtCut#to return it for the signal region cut
 
         region = "sideband"
         if not (valid or alphatest):
@@ -332,18 +328,19 @@ if __name__=='__main__':
             else:
                 fdf = sbdf
                 region = "validationsideband"
-        if alphatest:
+        if alphatest and not valid:
             if (sr and stype > 0):
-                fdf = srdf[srdf['metsuable'] > metcut]#added back in the met cut for the sr
-                region = "signalr_alphatest"
+                #fdf = srdf[srdf['metsuable'] > metcut]#added back in the met cut for the sr
+                fdf = srdf[srdf['metxycorr'] > metcut]#added back in the met cut for the sr
+                region = "signalr_alphat"
                 print("    using signal region selections")
             elif (comb and stype > 0):
                 fdf = normdf
-                region = "totalr_alphatest"
+                region = "totalr_alphat"
                 print("    Using a total soft drop mass region without met cut")
             else:
                 fdf = sbdf
-                region = "sideband_alphatest"
+                region = "sideband_alphat"
                 print("    using a softdrop mass sideband without met cut")
 
 
@@ -351,8 +348,10 @@ if __name__=='__main__':
         
         #calculated quantities
         deltaphizhdf   = deltaPhi(fdf['ZCandidate_phi'],fdf['hCandidate_phi'])
-        deltaphizmetdf = deltaPhi(fdf['ZCandidate_phi'],fdf['metphiusable'])
-        deltaphihmetdf = deltaPhi(fdf['hCandidate_phi'],fdf['metphiusable'])
+        #deltaphizmetdf = deltaPhi(fdf['ZCandidate_phi'],fdf['metphiusable'])
+        #deltaphihmetdf = deltaPhi(fdf['hCandidate_phi'],fdf['metphiusable'])
+        deltaphizmetdf = deltaPhi(fdf['ZCandidate_phi'],fdf['metxyphicorr'])
+        deltaphihmetdf = deltaPhi(fdf['hCandidate_phi'],fdf['metxyphicorr'])
         deltaRzhdf     = deltaR(fdf['ZCandidate_phi'],fdf['hCandidate_phi'],fdf['ZCandidate_eta'],fdf['hCandidate_eta'])
 
         #the leading and subleading lepton stuff
@@ -413,7 +412,7 @@ if __name__=='__main__':
                 lmuweights,notused2   = makeEventWeightSeries(leadmuc,systl)
                 lelweights,notused3   = makeEventWeightSeries(leadelc,systl)
             if systl:
-                lepdrweights,notused = makeEventWeightSeriesWithUncertainties(lead,systl)
+                lepdrweights,notused = makeEventWeightSeriesWithUncertainties(leadordered,systl)
                 lmuweights,notused2   = makeEventWeightSeriesWithUncertainties(leadmuc,systl)
                 lelweights,notused3   = makeEventWeightSeriesWithUncertainties(leadelc,systl)
 
@@ -440,59 +439,34 @@ if __name__=='__main__':
         
 
         #calculate the event weight
-        #print(fdf['event_weight_btag'])
+        #initialize it. These are all ones if not DY
         eventweights = fdf['event_weight_kf']
-        #lepdrweights = leadordered['event_weight_kf']
-        #lmuweights   = leadmuc['event_weight_kf']
-        #lelweights   = leadelc['event_weight_kf']
-        
-        #print("btagging systematics debug")
-        #print(" systl: ",systl)
-        #print(" stype: ",stype)
         systname = 'btagsystdefaultname'
-        
         if not systl and stype > 0:
             print("    Applying nominal sf")
             eventweights,systname = makeEventWeightSeries(fdf,systl)
         elif not systl and stype <= 0:
-            #print("if testing is working")
             print("    No systematic request and data, so no sf")
             systname = 'btagnom_muidnom'
-            #print(eventweights)
         elif systl and stype <= 0:
-            #print("if testing is working")
             print("    Attempt at a systematic, but dat, so no sf")
             systname = 'btagnom_muidnom'
-
         else:
             print("Doing scale factor variations of type: ",systl)
             eventweights,systname = makeEventWeightSeriesWithUncertainties(fdf,systl)
-            #lepdrweights,notused = makeEventWeightSeriesWithUncertainties(lead,systl)
-            #lmuweights,notused2   = makeEventWeightSeriesWithUncertainties(leadmuc,systl)
-            #lelweights,notused3   = makeEventWeightSeriesWithUncertainties(leadelc,systl)
-#            if "btagup" == systl:
-#                print("    Applying uncUp btagging SF")
-#                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']+fdf['event_weight_btaguncup'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
-#                #print(eventweights)
-#                systname = systl+'_muidnom'
-#            elif "btagdwn" == systl:
-#                print("    Applying uncDwn btagging SF")
-#                eventweights = fdf['event_weight_kf']*(fdf['event_weight_btag']-fdf['event_weight_btaguncdwn'])*fdf['event_weight_muid']*fdf['event_weight_elid']*fdf['event_weight_elreco']
-#                print(eventweights)
-#                systname = systl+'_muidnom'
-#            elif "muidup" == systl:
-#                print("    Applying uncUp MuonID SF")
-#                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*(fdf['event_weight_muid']+fdf['event_weight_muiduncup'])
-#                systname = 'btagnom_'+systl
-#            elif "muiddwn" == systl:
-#                print("    Applying uncDwn MuonID SF")
-#                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*(fdf['event_weight_muid']-fdf['event_weight_muiduncdwn'])
-#                systname = 'btagnom_'+systl
-#            else:
-#                print("    SF unc not recognized, using the nominal values")
-#                systname = systl
-#                eventweights = fdf['event_weight_kf']*fdf['event_weight_btag']*fdf['event_weight_muid']
-#
+
+        if ((year == 16) or (year == 17)) and stype > 0:
+            print("    Applying prefiring weights!")
+            eventweights = eventweights*fdf["NonPrefiringProb"]
+        if ((year == 16) or (year == 17)) and stype > 0 and args.prefireup:
+            print("    Applying up prefiring weights!")
+            eventweights = eventweights*fdf["NonPrefiringProbUp"]
+            systname = systname+"_prfup"
+        if ((year == 16) or (year == 17)) and stype > 0 and args.prefiredwn:
+            print("    Applying dwn prefiring weights!")
+            eventweights = eventweights*fdf["NonPrefiringProbDown"]
+            systname = systname+"_prfdwn"
+
                 
         print("The event weights are wrong for general leading lepton dR plots")
         print("    number of passing events straight ",len(fdf))
@@ -519,6 +493,9 @@ if __name__=='__main__':
         rootOutFile["h_h_eta"]      = np.histogram(fdf['hCandidate_eta'],bins=30,range=(-5,5),weights=eventweights)
         rootOutFile["h_h_m"]        = np.histogram(fdf['hCandidate_m'],bins=80,range=(0,400),weights=eventweights)
         rootOutFile["h_h_sd"]       = np.histogram(fdf['hCandidate_sd'],bins=80,range=(0,400),weights=eventweights)
+        rootOutFile["h_metxy"]        = np.histogram(fdf['metxycorr'],bins=80,range=(0,2000),weights=eventweights)
+        rootOutFile["h_metxy_phi"]    = np.histogram(fdf['metxyphicorr'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
+        rootOutFile["h_metxy_phiw"]   = np.histogram(fdf['metxyphicorr'].map(wrapPhi),bins=30,range=(0,3.14159),weights=eventweights)#wrapped version of phi
         rootOutFile["h_met"]        = np.histogram(fdf['metsuable'],bins=80,range=(0,2000),weights=eventweights)
         rootOutFile["h_met_phi"]    = np.histogram(fdf['metphiusable'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
         rootOutFile["h_met_phiw"]   = np.histogram(fdf['metphiusable'].map(wrapPhi),bins=30,range=(0,3.14159),weights=eventweights)#wrapped version of phi
@@ -547,6 +524,9 @@ if __name__=='__main__':
         meterrs      = boostUnc(fdf['metsuable'],eventweights,80,0,2000)
         metphierrs   = boostUnc(fdf['metphiusable'],eventweights,30,-3.14159,3.14159)
         metphiwerrs  = boostUnc(fdf['metphiusable'].map(wrapPhi),eventweights,30,0,3.14159)
+        meterrsxy      = boostUnc(fdf['metxycorr'],eventweights,80,0,2000)
+        metphierrsxy   = boostUnc(fdf['metxyphicorr'],eventweights,30,-3.14159,3.14159)
+        metphiwerrsxy  = boostUnc(fdf['metxyphicorr'].map(wrapPhi),eventweights,30,0,3.14159)
         zpjigerrs    = boostUnc(fdf['ZPrime_mass_est'],eventweights,130,0,13000)
         ndjigerrs    = boostUnc(fdf['ND_mass_est'],eventweights,35,100,800)
         nsjigerrs    = boostUnc(fdf['NS_mass_est'],eventweights,25,0,500)
@@ -579,6 +559,9 @@ if __name__=='__main__':
                       meterrs,
                       metphierrs,
                       metphiwerrs,
+                      meterrsxy,
+                      metphierrsxy,
+                      metphiwerrsxy,
                       zpjigerrs,
                       ndjigerrs,
                       nsjigerrs,
@@ -603,6 +586,9 @@ if __name__=='__main__':
                      'h_met',
                      'h_met_phi',
                      'h_met_phiw',
+                     'h_metxy',
+                     'h_metxy_phi',
+                     'h_metxy_phiw',
                      'h_zp_jigm',
                      'h_nd_jigm',
                      'h_ns_jigm',
