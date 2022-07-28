@@ -397,11 +397,12 @@ if __name__=='__main__':
     ####load in the files with the nominal distributions
     bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
     sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
-    #dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploation'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationalphat_'+config.get('nominal','strnom')+'__Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
-    print("hardcoded the DY files!!!!!!")
-    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom__Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.root')
+    #print("hardcoded the DY files!!!!!!")
+    #dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom__Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.root')
     #dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/backup_before_flip_Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    
     ttEst = ROOT.TFile(config.get('nominal','pathemu')+'/Run2_161718_emu_extrapolation_'+config.get('nominal','stremu')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
     ttStats = ROOT.TFile(config.get('nominal','pathemu')+'/Run2_161718_emu_extrapStats_'+config.get('nominal','stremu')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
@@ -515,7 +516,7 @@ if __name__=='__main__':
             hsigstatsunc[h].Write()
             
         #####Gather Systematics
-        systdictrate = {"lumi_13TeV":{"type":"lnN","unc":1.018,"proc":["1.018","1.018","1.018","1.018"]}
+        systdictrate = {"lumi_13TeV":{"type":"lnN","unc":1.016,"proc":["1.016","1.016","1.016","1.016"]}
                     }
         systdictshape = {}
 
@@ -551,8 +552,8 @@ if __name__=='__main__':
             systsigup   = go.signal(config.get(syst,'pathsigup'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strup'))
             systsigdwn  = go.signal(config.get(syst,'pathsigdwn'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strdwn'))
 
-            if len(systbkgsup.bkgs["DYJetsToLL"][18]["sb"][0]) < 1:
-                print("        There are no DYJets entires for this systematic.")
+            if len(systbkgsup.bkgs["WZTo2L2Q"][18]["sr"][0]) < 1:
+                print("        There are no WZ entires for this systematic.")
                 print("        moving on. This systematic will not included.")
                 continue
             
@@ -567,8 +568,8 @@ if __name__=='__main__':
                 systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
             
             if rebindiv == 2:
-                dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_161718_dy_extraploation'+config.get(syst,'strup')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-                dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_161718_dy_extraploation'+config.get(syst,'strdwn')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+                dyEstup     = ROOT.TFile(config.get(syst,'pathup')+'/Run2_161718_dy_extraploationalphat_'+config.get(syst,'strup')+'__Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+                dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_161718_dy_extraploationalphat_'+config.get(syst,'strdwn')+'__Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
             ####Make it useful
             #sigup  = systsigup.getPreppedSig('sr',sigxs)#systsigup.prepsigsr
@@ -607,8 +608,8 @@ if __name__=='__main__':
                 #Get the proper signal rate systematics
                 siguprate = getDeviatedOverNominal(hsigup,hsig)
                 sigdwnrate = getDeviatedOverNominal(hsigdwn,hsig)
-                sigratestr = str(round(sigdwnrate,3))+"/"+str(round(siguprate,3))
-                if (round(sigdwnrate,3) == 1.0) or( round(siguprate,3) == 1.0):
+                sigratestr = str(round(sigdwnrate,4))+"/"+str(round(siguprate,4))
+                if (round(sigdwnrate,4) == 1.0) or( round(siguprate,4) == 1.0):
                     sigratestr = "-"
                 ratelist[0] = sigratestr
 
