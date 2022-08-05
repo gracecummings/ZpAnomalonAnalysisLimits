@@ -19,6 +19,45 @@ using std::string;
 RestFrames::RFKey ensure_autoload(1);
 using namespace RestFrames;
 
+float getPDFUncertainty(vector<float>* LHEPdfWeight){
+  // http://nnpdf.mi.infn.it/wp-content/uploads/2019/03/NNPDFfits_Positivity_PhysicalCrossSections_v2.pdf
+  std::sort(LHEPdfWeight->begin(), LHEPdfWeight->begin()+100);
+  float err = (LHEPdfWeight->at(83) - LHEPdfWeight->at(16))/2;
+  return err;
+}
+
+std::pair<float,float> getQCDScaleUpDwn(vector<float>* scales){
+  // [mur=1, muf=1], [mur=1, muf=2], [mur=1, muf=0.5], [mur=2, muf=1], [mur=2, muf=2], [mur=2, muf=0.5], [mur=0.5, muf=1], [mur=0.5, muf=2], [mur=0.5, muf=0.5]
+  //Remove the 0.5 and 2 pairs
+  //Take the highest and lowest as the up and down scale
+  vector<float>* redscale = scales;
+  redscale->erase(std::next(redscale->begin(),5));
+  redscale->erase(std::next(redscale->begin(),6));
+  redscale->erase(redscale->begin());
+
+  //std::cout<<"The new scales"<<std::endl;
+  float max = -99999;
+  float min = 999999;
+  for (std::size_t i = 0; i < redscale->size();++i){
+    //std::cout<<i<<" "<<redscale->at(i)<<std::endl;
+    if (redscale->at(i) > max){
+      max = redscale->at(i);
+    }
+    if (redscale->at(i) < min){
+      min = redscale->at(i);
+    }
+  }
+  
+  std::pair<float,float> updwn(min,max);
+  //std::cout<<"The up/dwn weights"<<std::endl;
+  //std::cout<<updwn.first<<std::endl;
+  //std::cout<<updwn.second<<std::endl;
+  return updwn;
+
+}
+
+			      
+
 TLorentzVector doHEMshiftJet(TLorentzVector jet,bool fid){
   if ((jet.Eta() < -1.3) && (jet.Eta() > -2.5) && (jet.Phi() > -1.57) && (jet.Phi() < -0.87) && fid) {
     jet = jet*0.80;//scale down the energy by 20%
@@ -224,6 +263,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
    if (sampleType > 0){
      fChain->SetBranchStatus("GenParticles*",1);
+     fChain->SetBranchStatus("ScaleWeights",1);
+     fChain->SetBranchStatus("PDFweights",1);
+     
    }
 
    if (year == 16 or year == 17 && sampleType > 0){
@@ -315,6 +357,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double metphiusable;
    TLorentzVector eventleade;
    TLorentzVector eventleadmu;
+   float pdfweightup;
+   float pdfweightdn;
+   float qcdweightup;
+   float qcdweightdn;
 
    
    //Define the skimmed skim  output file and tree
@@ -381,6 +427,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *evntweightelreco = trimTree->Branch("event_weight_elreco",&evntwelrecosf,"evntwelrecosf/D");
    TBranch *evntelrecouncup = trimTree->Branch("event_weight_elrecouncup",&elrecouncup,"elrecouncup/D");
    TBranch *evntelrecouncdwn = trimTree->Branch("event_weight_elrecouncdwn",&elrecouncdwn,"elrecouncdwn/D");
+   TBranch *qcdweightsdwn = trimTree->Branch("qcdweight_dwn",&qcdweightdn,"qcdweightdn/F");
+   TBranch *qcdweightsup = trimTree->Branch("qcdweight_up",&qcdweightup,"qcdweightup/F");
+   TBranch *pdfweightsdwn = trimTree->Branch("pdfweight_dwn",&pdfweightdn,"pdfweightdn/F");
+   TBranch *pdfweightsup = trimTree->Branch("pdfweight_up",&pdfweightup,"pdfweightup/F");
    TBranch *channelf   = trimTree->Branch("channel_flag",&channelflag,"channelflag/D");
    TBranch *LMuCand     = trimTree->Branch("LMuCandidate","TLorentzVector",&LMuCandidate);
    TBranch *LMuCand_pt  = trimTree->Branch("LMuCandidate_pt",&LMuCandidate_pt,"LMuCandidate_pt/D");
@@ -812,10 +862,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       //debug
       //std::cout<<"    analyzing event "<<jentry<<std::endl;
-      //if (jentry%20 == 0) {
-      //	      	std::cout<<"    analyzing event "<<jentry<<std::endl;
+      //for (std::size_t i = 0; i < PDFweights->size();++i) {
+      //	std::cout<<PDFweights->at(i)<<std::endl;
       //}
-      //if (jentry == 200) {
+      //if (jentry%20 == 0) {
+      //std::cout<<"    analyzing event "<<jentry<<std::endl;
+      //}
+      //if (jentry == 20) {
       //break;
       //}
      
@@ -864,6 +917,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       float evntwkf_hold = 1.;
       TLorentzVector theGenZ;
       TLorentzVector theGenH;
+      std::pair<float,float> qcdupdwn(1.0,1.0);
+      float pdfwup = 1.0;
+      float pdfwdn = 1.0;
       if (sampleType > 0) {//Not Data
 	int gpid;
 	unsigned long ngen = GenParticles->size();
@@ -898,7 +954,16 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  }
 	  evntwkf_hold = ewknlosf*qcdnnlosf*qcdnlosf;
 	}
+	//Do PDF uncertainty
+	pdfwup = 1.0 + getPDFUncertainty(PDFweights);
+	pdfwdn = 1.0 - getPDFUncertainty(PDFweights);
+	
+	//std::cout<<"PDF Up "<<pdfwup<<std::endl;
+	//std::cout<<"PDF Dn "<<pdfwdn<<std::endl;
+	
+	qcdupdwn = getQCDScaleUpDwn(ScaleWeights);
       }
+
 
       //Only deal with exact events
       unsigned int nmutest = Muons->size();
@@ -1109,7 +1174,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
       //Z Candidate Build
       //For old ntuples
-      //  /*
+      // /*
       if (nselmu > 0 && nselel == 0 && anchan == 4) {
       	mumuchan = true;
 	channel = 4;
@@ -1331,6 +1396,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
       double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue(0);
 
+      //std::cout<<"Original MET "<<ptmiss<<std::endl;
+
       if (systidx > -1 && sampleType > 0){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
 	if (metsys[systidx] > 0) {//Checks up or down
 	  ptmiss = METUp->at(systidx);//The index of the corresponding met in the ntuple is the same
@@ -1345,6 +1412,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	}
       }
 
+      //std::cout<<"MET after systematics "<<ptmiss<<std::endl;
+      
       //HEM15/16 test
       if (hemshift) {
 	double ptmiss_pxbeta  = ptmiss*std::cos(ptmiss_phi);
@@ -1362,6 +1431,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
 	ptmiss = shiftedmetv.Mod();
 	ptmiss_phi = metshiftphi;
+
+	
 	/*
 	std::cout<<"                   Original MET:     "<<ptmiss<<std::endl;
 	std::cout<<"                   Ori_phi  MET:     "<<ptmiss_phi<<std::endl;
@@ -1387,6 +1458,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
       
       std::pair<double,double> metxycorrpair = METXYCorr_Met_MetPhi(ptmiss,ptmiss_phi,fChain->GetLeaf("RunNum")->GetValue(0),yearstr,isMC,fChain->GetLeaf("NVtx")->GetValue(0));
+
+      //std::cout<<"MET after xy shift "<<ptmiss<<std::endl;
+      
       /*
       std::cout<<"Original MET:     "<<ptmiss<<std::endl;
       std::cout<<"correct  MET:     "<<metxycorrpair.first<<std::endl;
@@ -1475,6 +1549,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	eliduncdwn = elidsfvec[2];
 	elrecouncup = elrecosfvec[1];
 	elrecouncdwn = elrecosfvec[2];
+	//Theory Uncs
+	pdfweightup = pdfwup;
+	pdfweightdn = pdfwdn;
+	qcdweightup = qcdupdwn.second;
+	qcdweightdn = qcdupdwn.first;
 	LMuCandidate = leadmu;
 	LMuCandidate_pt  = leadmu.Pt();
 	LMuCandidate_phi = leadmu.Phi();
