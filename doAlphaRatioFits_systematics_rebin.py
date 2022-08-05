@@ -9,21 +9,47 @@ import numpy as np
 import pandas as pd
 import configparser
 
-def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr,uprange,isLog=False):
+def getDifferentBins(hist,mininbin):
+    tb = hist.FindLastBinAbove(mininbin)
+    te = hist.GetBinContent(tb)
+    tl = hist.GetBinLowEdge(tb)
+
+    nlw = hist.GetBinLowEdge(tb+1)
+    newledges = []
+    evnts = 0
+    oldedges = []
+    for i in range(hist.GetNbinsX()+1):
+        oldedges.append(hist.GetBinLowEdge(i))
+        #if i == 0:
+        #    continue
+        if i <= tb+1:
+            newledges.append(hist.GetBinLowEdge(i))
+        else:
+            evnts += hist.GetBinContent(i)
+            if (evnts <= te) and i > tb:
+                nlw = hist.GetBinLowEdge(i)+hist.GetBinWidth(i)
+            elif i > tb:
+                evnts = 0
+                newledges.append(nlw)
+
+    newledges.append(hist.GetBinLowEdge(hist.GetNbinsX())+hist.GetBinWidth(hist.GetNbinsX()))
+    return oldedges,newledges
+
+def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr):
     #define the basic plotting styles
     srdyhist.SetFillColor(dycolor)
     srdyhist.SetLineColor(dycolor)
-    srdyhist.GetYaxis().SetRangeUser(0,7)
-    srdyhist.GetXaxis().SetRangeUser(1500,uprange)
+    #srdyhist.GetYaxis().SetRangeUser(0,7)
+    srdyhist.GetYaxis().SetRangeUser(0.000001,100)
+    #srdyhist.GetXaxis().SetRangeUser(1500,3000)
+    srdyhist.GetXaxis().SetRangeUser(1500,13000)
     nomextrap.SetLineColor(ROOT.kBlack)#nominal subtractions
     tcsub = ROOT.TCanvas("tcsub","tcsub",800,800)
     leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
     leg.SetBorderSize(0)
     tcsub.Draw()
     tcsub.cd()
-    if isLog:
-        tcsub.SetLogy()
-        srdyhist.GetYaxis().SetRangeUser(0.0001,100)
+    tcsub.SetLogy()
     srdyhist.Draw("hist")
     nomextrap.Draw("same")
     leg.AddEntry(srdyhist,"SR DY","f")
@@ -38,7 +64,7 @@ def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr,upra
     nomextrap.Draw("same")
     tcsub.Update()
     #outfile = go.makeOutFile('Run2_'+yearstr,"datasidebandsubtractionmethodcomp",'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-    outfile = go.makeOutFile('Run2_'+yearstr,addname+'_shifted_shapes_uprange'+str(uprange)+'_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    outfile = go.makeOutFile('Run2_'+yearstr,addname+'_shifted_shapes_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tcsub.SaveAs(outfile)
 
 
@@ -78,7 +104,7 @@ def plotSubtractedDistributionCompMeth(sbdyhist,sbdatfitfit,originalfromhist,dyc
     sbdyhist.SetFillColor(dycolor)
     sbdyhist.SetLineColor(dycolor)
     sbdyhist.GetYaxis().SetRangeUser(0,100)
-    sbdyhist.GetXaxis().SetRangeUser(1500,3000)
+    sbdyhist.GetXaxis().SetRangeUser(1500,13000)
     sbdatfitfit.SetLineColor(ROOT.kRed)#nominal subtractions
     tcsub = ROOT.TCanvas("tcsub","tcsub",800,800)
     leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
@@ -102,7 +128,7 @@ def plotSubtractedDistributions(sbdyhist,sbdatfitfit,shiftedfits,dycolor,addname
     sbdyhist.SetFillColor(dycolor)
     sbdyhist.SetLineColor(dycolor)
     sbdyhist.GetYaxis().SetRangeUser(0,100)
-    sbdyhist.GetXaxis().SetRangeUser(1500,3000)
+    sbdyhist.GetXaxis().SetRangeUser(1500,13000)
     sbdatfitfit.SetLineColor(ROOT.kBlack)#nominal subtractions
     tcsub = ROOT.TCanvas("tcsub","tcsub",800,800)
     leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
@@ -147,7 +173,7 @@ def plotShiftedAlphas(nomalpha,salphas,systr,addname=''):
     tcshift.SaveAs(shiftfitsfile)
     
     
-def plotShiftedFits(nomfit,hist,shiftedfits,name,direc,plotmax,systr,tpad,errhist=None,addname="",isLog = False):
+def plotShiftedFits(nomfit,hist,shiftedfits,name,direc,plotmax,systr,errhist=None,addname=""):
     tcshift = ROOT.TCanvas("tcshift","tcshift",800,800)
     hist.SetLineColor(ROOT.kBlack)
     hist.SetLineWidth(1)
@@ -155,12 +181,9 @@ def plotShiftedFits(nomfit,hist,shiftedfits,name,direc,plotmax,systr,tpad,errhis
     #leg = ROOT.TLegend(0.2,0.2,0.5,0.6)
     leg.SetBorderSize(0)
     tcshift.cd()
-    if isLog:
-        tcshift.SetLogy()
-        hist.GetYaxis().SetRangeUser(0.0001,1000)
-    hist.Draw()
-    #nomfit.Draw()
-    #nomfit.GetYaxis().SetRangeUser(0,plotmax)
+    #tcshift.SetLogy()
+    nomfit.Draw()
+    nomfit.GetYaxis().SetRangeUser(0,plotmax)
     if errhist:
         errhist.SetFillColor(ROOT.kGreen-6)
         errhist.SetMarkerSize(0)
@@ -179,7 +202,6 @@ def plotShiftedFits(nomfit,hist,shiftedfits,name,direc,plotmax,systr,tpad,errhis
     hist.Draw("sameE1")
     leg.AddEntry(hist,"fitted hist","pe")
     leg.Draw()
-    tpad.Draw()
     tcshift.Update()
     shiftfitsfile = go.makeOutFile('Run2_'+yearstr,name+'_'+addname+'_shifted_shapes'+direc+'_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tcshift.SaveAs(shiftfitsfile)
@@ -223,7 +245,7 @@ def doExpFitShifts(nomfit,parnum,name,lowr,highr,shiftedparamsin = ROOT.TVector(
         parvecedit = ROOT.TVector(parnum)
         for j in range(parnum):
             parvecedit[j] = shiftedparamsin[i][j]
-        fit = ROOT.expFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,highr)
+        fit = ROOT.expFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,13000)
         shiftedfits.append(fit)
     #parvecedit = ROOT.TVector(parnum)
     #parsysdict = {"2":"up","0":"down"}
@@ -379,14 +401,12 @@ if __name__=='__main__':
     #Get the samples
     if not args.directory:
         pathbkg    = config.get(systname,systclass)
-        #pathdata   = config.get(systname,systclass)
-        pathdata   = 'mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref_alphatest'
+        pathdata   = config.get(systname,systclass)
     #datastr = 'systnominal_btagnom'
 
     else:
         pathbkg = args.directory
-        print("hardcoded in the data directory since it is nominal")
-        pathdata = 'mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref_alphatest'
+        pathdata = args.directory
     
     if validation:
         print("You are trying to do a validation of the alpha method run")
@@ -402,32 +422,32 @@ if __name__=='__main__':
         if len(years) == 2:
             dynorm = np.load(pathbkg+'/Run2_2017_2018_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
         elif len(years) == 3 and not args.normsyst:
-            dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_alphat_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
+            dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_'+config.get(systname,syststr)+'_signalblind_Zptcut'+zptcut+'_Hptcut'+hptcut+'_metcut'+metcut+'_btagwp'+btagwp+'.npy')[0]
             #print("WARNING: Hard coded in the normalization")
             dynormname = ''
             #dynorm = np.load(pathbkg+'/Run2_161718_dynormalization_alphatest_systnominal_kfnom_btagnom_muiddwn_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
             #dynorm = np.load('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/Run2_161718_dynormalization_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
-            #dynorm = np.load('mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref/Run2_161718_dynormalization_alphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_signalblind_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
-
+            #dynorm = np.load('analysis_output_ZpAnomalon/2022-06-24/Run2_161718_dynormalization_systjecdwn_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
+            #dynorm = np.load('analysis_output_ZpAnomalon/Run2_161718_dynormalization_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
             #dynorm = np.load
         elif args.normsyst:
             dynormname = args.normsyst
             dynorm = args.normval
-        bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphat_"+config.get(systname,syststr))#Nom?
+        bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))#Nom?
         #bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_kfnom_btagnom_muiddwn_elidnom_elreconom")
 
-        #bkgs = go.backgrounds('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/holderofbasefiles',zptcut,hptcut,metcut,btagwp,'systnominal_kfnom_btagnom_muidnom_elidnom_elreconom')
-        #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_mutrignom_elidnom_elreconom","").replace("_kfnom",""))
+        #bkgs = go.backgrounds('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/holderofbasefiles',zptcut,hptcut,metcut,btagwp,'systjecdwn_kfnom_btagnom_muidnom_elidnom_elreconom')
+        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_mutrignom_elidnom_elreconom","").replace("_kfnom",""))
         #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
         #print("WARNING: Hardcdoed data gathering - make sure it if the correct path")
-        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphat_systnominal_btagnom_muidnom')
+        #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphatest_systuncldwn_btagnom_muidnom')
         #data = go.run2('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/holderofbasefiles',zptcut,hptcut,metcut,btagwp,"systnominal_btagnom_muidnom")
         #data = go.run2("analysis_output_ZpAnomalon/2022-05-17/",zptcut,hptcut,metcut,btagwp,"systnominal_btagnom_muidnom")###Nominal??
         sbstring = "30 < m_{hcand,SD} < 70"
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
 
-    #print(bkgs.bkgs["TT"])
+    #print(bkgs.bkgs["DYJetsToLL"][18]["sb"][1])
     #print(bkgs.bkgs["DYJetsToLL"][18]["sr"][1])
     #print(data.data[18]["sb"][1])
     #print(data.data[18]["vr"][1])
@@ -460,16 +480,16 @@ if __name__=='__main__':
     hdatsbsub = hdatsb.Clone()    
     hsbdy = bkgs.getAddedHist(empty,"DYJetsToLL","sb","h_zp_jigm")
     hsrdy = bkgs.getAddedHist(empty2,"DYJetsToLL","sr","h_zp_jigm")
-    #hsrtt = bkgs.getAddedHist(empty22,"TT","sr","h_zp_jigm")
+    hsrtt = bkgs.getAddedHist(empty22,"TT","sr","h_zp_jigm")
     hsbtt = bkgs.getAddedHist(empty3,"TT","sb","h_zp_jigm")
     hsbzz = bkgs.getAddedHist(empty4,"ZZTo2L2Q","sb","h_zp_jigm")
     hsbwz = bkgs.getAddedHist(empty5,"WZTo2L2Q","sb","h_zp_jigm")
-    #hsrzz = bkgs.getAddedHist(empty44,"ZZTo2L2Q","sr","h_zp_jigm")
-    #hsrwz = bkgs.getAddedHist(empty55,"WZTo2L2Q","sr","h_zp_jigm")
+    hsrzz = bkgs.getAddedHist(empty44,"ZZTo2L2Q","sr","h_zp_jigm")
+    hsrwz = bkgs.getAddedHist(empty55,"WZTo2L2Q","sr","h_zp_jigm")
     hsbvv = hsbzz.Clone()
     hsbvv.Add(hsbwz)
-    #hsrvv = hsrzz.Clone()
-    #hsrvv.Add(hsrwz)
+    hsrvv = hsrzz.Clone()
+    hsrvv.Add(hsrwz)
     
 
     #rebin
@@ -479,8 +499,24 @@ if __name__=='__main__':
     hsbvv.Rebin(rebindiv)
     hdatsbsub.Rebin(rebindiv)
     hdatsb.Rebin(rebindiv)
-    #hsrtt.Rebin(rebindiv)
-    #hsrvv.Rebin(rebindiv)
+    hsrtt.Rebin(rebindiv)
+    hsrvv.Rebin(rebindiv)
+    #varied rebin
+    #oldedg,newedg = getDifferentBins(hsbdy,1)#at least one event in bin
+    #newedg = newedg[1:]#ignores underflow bin
+    #newedg = np.array(newedg)
+    #hsbdy = hsbdy.Rebin(len(newedg)-1,hsbdy.GetName(),newedg)
+    #hsrdy = hsrdy.Rebin(len(newedg)-1,hsbdy.GetName(),newedg)
+    #hsbtt = hsbtt.Rebin(len(newedg)-1,hsbdy.GetName(),newedg)
+    #hsbvv = hsbvv.Rebin(len(newedg)-1,hsbdy.GetName(),newedg)
+    #hdatsb = hdatsb.Rebin(len(newedg)-1,hsbdy.GetName(),newedg)
+    #empty = empty.Rebin(len(newedg)-1,"empty",newedg)
+    hsbdyreb = hsbdy.Clone()
+    hsrdyreb = hsrdy.Clone()
+    hsbttreb = hsbtt.Clone()
+    hsbvvreb = hsbvv.Clone()
+    hdatsbreb = hdatsb.Clone()
+
 
     #Apply the normalization
     hsbdy.Scale(dynorm)
@@ -512,12 +548,14 @@ if __name__=='__main__':
     #Do bkg shape fits
     print("================= doing dy sb fit =================")
     sbfit = ROOT.expFit(hsbdy,"dysbl","QRE0+",dysbxmax,dysbxmin)#5000)
+    #uncbands = ROOT.expFitErrBandsVariableBins(hsbdy,"Qsbl",newedg,"QER0+",sigmabars,dysbxmax,dysbxmin)#5000)
     uncbands = ROOT.expFitErrBands(hsbdy,"Qsbl","QER0+",sigmabars,dysbxmax,dysbxmin)#5000)
     dysbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hsbdy.Clone(),"dysbshiftfinder","ER0+",dysbxmax,dysbxmin)
     dysbparsdecoup,dysbfiterrdecoup,dysbfitsdecoup = doExpFitShifts(sbfit,2,"dysbup",dysbxmax,dysbxmin,dysbfitdecorrparamsup)
     dysbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hsbdy.Clone(),"dysbshiftfinder","ER0+",dysbxmax,dysbxmin)
     dysbparsdecodn,dysbfiterrdecodn,dysbfitsdecodn = doExpFitShifts(sbfit,2,"dysbdwn",dysbxmax,dysbxmin,dysbfitdecorrparamsdn)
     print("================= doing dy sr fit ==================")
+    #srdyunc = ROOT.expFitErrBandsVariableBins(hsrdy,"sbl",newedg,"QER0+",sigmabars,dysrxmax,dysrxmin)#4000)
     srdyunc = ROOT.expFitErrBands(hsrdy,"sbl","QER0+",sigmabars,dysrxmax,dysrxmin)#4000)
     srfit = ROOT.expFit(hsrdy,"dysrl","EQR0+",dysrxmax,dysrxmin)#4000)
     dysrfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hsrdy.Clone(),"dysrshiftfinder","ER0+",dysrxmax,dysrxmin)
@@ -526,6 +564,7 @@ if __name__=='__main__':
     dysrparsdecodn,dysrfiterrdecodn,dysrfitsdecodn = doExpFitShifts(srfit,2,"dysrdwn",dysrxmax,dysrxmin,dysrfitdecorrparamsdn)
     print("================== doing tt sb fit ==================")
     sbttfit = ROOT.expFit(hsbtt,"ttsbl","ER0+",ttsbxmax,ttsbxmin)#3000)
+    #sbttunc = ROOT.expFitErrBandsVariableBins(hsbtt,"sbl",newedg,"QR0+",sigmabars,ttsbxmax,ttsbxmin)#3000)
     sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","QR0+",sigmabars,ttsbxmax,ttsbxmin)#3000)
     ttsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hsbtt.Clone(),"ttsbshiftfinder","ER0+",ttsbxmax,ttsbxmin)
     ttsbparsdecoup,ttsbfiterrdecoup,ttsbfitsdecoup = doExpFitShifts(sbttfit,2,"ttsbup",ttsbxmax,ttsbxmin,ttsbfitdecorrparamsup)
@@ -533,18 +572,22 @@ if __name__=='__main__':
     ttsbparsdecodn,ttsbfiterrdecodn,ttsbfitsdecodn = doExpFitShifts(sbttfit,2,"ttsbdwn",ttsbxmax,ttsbxmin,ttsbfitdecorrparamsdn)
     print("================== doing VV sb fit ==================")
     sbvvfit = ROOT.expFit(hsbvv,"vvsbl","QER0+",vvsbxmax,vvsbxmin)#3000)
+    #sbvvunc = ROOT.expFitErrBandsVariableBins(hsbvv,"sbl",newedg,"QER0+",sigmabars,vvsbxmax,vvsbxmin)#3000)
     sbvvunc = ROOT.expFitErrBands(hsbvv,"sbl","QER0+",sigmabars,vvsbxmax,vvsbxmin)#3000)
     vvsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hsbvv.Clone(),"vvsbshiftfinder","ER0+",vvsbxmax,vvsbxmin)
     vvsbparsdecoup,vvsbfiterrdecoup,vvsbfitsdecoup = doExpFitShifts(sbvvfit,2,"vvsbup",vvsbxmax,vvsbxmin,vvsbfitdecorrparamsup)
     vvsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hsbvv.Clone(),"vvsbshiftfinder","ER0+",vvsbxmax,vvsbxmin)
     vvsbparsdecodn,vvsbfiterrdecodn,vvsbfitsdecodn = doExpFitShifts(sbvvfit,2,"vvsbdwn",vvsbxmax,vvsbxmin,vvsbfitdecorrparamsdn)
     print("================= doing data sb fit =================")
-    sbdatfit = ROOT.expFit(hdatsb,"datsbl","ER0+",datsbxmax,3800)#datsbxmin)#5000)
-    sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","ER0+",sigmabars,datsbxmax,3800)#datsbxmin)#5000)
-    datsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,3800)#datsbxmin)
-    datsbparsdecoup,datsbfiterrdecoup,datsbfitsdecoup = doExpFitShifts(sbdatfit,2,"datsbup",datsbxmax,10000,datsbfitdecorrparamsup)
-    datsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,3800)#datsbxmin)
-    datsbparsdecodn,datsbfiterrdecodn,datsbfitsdecodn = doExpFitShifts(sbdatfit,2,"datsbdwn",datsbxmax,10000,datsbfitdecorrparamsdn)
+    sbdatfit = ROOT.expFit(hdatsb,"datsbl","ER0+",datsbxmax,datsbxmin)#5000)
+    #sbdatunc = ROOT.expFitErrBandsVariableBins(hdatsb,"sbl",newedg,"ER0+",sigmabars,datsbxmax,datsbxmin)#5000)
+    sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","ER0+",sigmabars,datsbxmax,datsbxmin)#5000)
+    datsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,datsbxmin)
+    #print("The vector of shifted parameters returned to python")
+    #datsbfitdecorrparamsup.Print()
+    datsbparsdecoup,datsbfiterrdecoup,datsbfitsdecoup = doExpFitShifts(sbdatfit,2,"datsbup",datsbxmax,datsbxmin,datsbfitdecorrparamsup)
+    datsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,datsbxmin)
+    datsbparsdecodn,datsbfiterrdecodn,datsbfitsdecodn = doExpFitShifts(sbdatfit,2,"datsbdwn",datsbxmax,datsbxmin,datsbfitdecorrparamsdn)
     print("================= doing alpha ratio fit =============")
     alpha = ROOT.alphaRatioMakerExp(hsbdy,hsrdy,dysbxmax,dysbxmin,dysrxmax,dysrxmin)
     alphaups = getShiftedAlphaRatios(sbfit,srfit,dysbfitsdecoup,dysrfitsdecoup,"up")
@@ -1144,44 +1187,26 @@ if __name__=='__main__':
     datavis = go.makeOutFile('Run2_'+yearstr,'alpha_sub_tester_'+config.get(systname,syststr)+'_'+rstr+'_'+dynormname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc2.SaveAs(datavis)
 
-    plotShiftedFits(sbfit,hsbdy,dysbfitsdecoup,"DYSB","up",90,config.get(systname,syststr),dysbfitgofpad,uncbands,"decorrelatedShifts")
-    plotShiftedFits(sbfit,hsbdy,dysbfitsdecodn,"DYSB","dwn",90,config.get(systname,syststr),dysbfitgofpad,uncbands,"decorrelatedShifts")
-    plotShiftedFits(srfit,hsrdy,dysrfitsdecoup,"DYSR","up",5,config.get(systname,syststr),dysrfitgofpad,srdyunc,"decorrelatedShifts")
-    plotShiftedFits(srfit,hsrdy,dysrfitsdecodn,"DYSR","dwn",5,config.get(systname,syststr),dysrfitgofpad,srdyunc,"decorrelatedShifts")
-    plotShiftedFits(sbttfit,hsbtt,ttsbfitsdecoup,"TTSB","up",55,config.get(systname,syststr),ttsbfitgofpad,sbttunc,"decorrelatedShifts")
-    plotShiftedFits(sbttfit,hsbtt,ttsbfitsdecodn,"TTSB","dwn",55,config.get(systname,syststr),ttsbfitgofpad,sbttunc,"decorrelatedShifts")
-    plotShiftedFits(sbvvfit,hsbvv,vvsbfitsdecoup,"VVSB","up",5,config.get(systname,syststr),vvsbfitgofpad,sbvvunc,"decorrelatedShifts")
-    plotShiftedFits(sbvvfit,hsbvv,vvsbfitsdecodn,"VVSB","dwn",5,config.get(systname,syststr),vvsbfitgofpad,sbvvunc,"decorrelatedShifts")
-    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecoup,"dataSB","up",150,config.get(systname,syststr),datsbfitgofpad,sbdatunc,"decorrelatedShifts_log3800uprange",isLog=True)
-    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecodn,"dataSB","dwn",150,config.get(systname,syststr),datsbfitgofpad,sbdatunc,"decorrelatedShifts_log3800uprange",isLog=True)
+    plotShiftedFits(sbfit,hsbdy,dysbfitsdecoup,"DYSB","up",90,config.get(systname,syststr),uncbands,"decorrelatedShifts")
+    plotShiftedFits(sbfit,hsbdy,dysbfitsdecodn,"DYSB","dwn",90,config.get(systname,syststr),uncbands,"decorrelatedShifts")
+    plotShiftedFits(srfit,hsrdy,dysrfitsdecoup,"DYSR","up",5,config.get(systname,syststr),srdyunc,"decorrelatedShifts")
+    plotShiftedFits(srfit,hsrdy,dysrfitsdecodn,"DYSR","dwn",5,config.get(systname,syststr),srdyunc,"decorrelatedShifts")
+    plotShiftedFits(sbttfit,hsbtt,ttsbfitsdecoup,"TTSB","up",55,config.get(systname,syststr),sbttunc,"decorrelatedShifts")
+    plotShiftedFits(sbttfit,hsbtt,ttsbfitsdecodn,"TTSB","dwn",55,config.get(systname,syststr),sbttunc,"decorrelatedShifts")
+    plotShiftedFits(sbvvfit,hsbvv,vvsbfitsdecoup,"VVSB","up",5,config.get(systname,syststr),sbvvunc,"decorrelatedShifts")
+    plotShiftedFits(sbvvfit,hsbvv,vvsbfitsdecodn,"VVSB","dwn",5,config.get(systname,syststr),sbvvunc,"decorrelatedShifts")
+    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecoup,"dataSB","up",150,config.get(systname,syststr),sbdatunc,"decorrelatedShifts")
+    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecodn,"dataSB","dwn",150,config.get(systname,syststr),sbdatunc,"decorrelatedShifts")
     plotShiftedAlphas(alpha,alphaups,config.get(systname,syststr),"alphaups")
     plotShiftedAlphas(alpha,alphadns,config.get(systname,syststr),"alphadwns")
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsup,bkgcols[0],"subtractedDataDistsUp",config.get(systname,syststr))
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsdn,bkgcols[0],"subtractedDataDistsDwn",config.get(systname,syststr))
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp_3800uprange",config.get(systname,syststr),3000)
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp_3800uprange",config.get(systname,syststr),10000,isLog=True)
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn_3800uprange",config.get(systname,syststr),3000)
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn_3800uprange",config.get(systname,syststr),10000,isLog=True)
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp",config.get(systname,syststr))
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr))
     #plotSubtractedDistributionCompMeth(hsbdy,subdatafit,sbdatuncsub,bkgcols[0],"method comparison",config.get(systname,syststr))
     #plotAlphaExtrapCompMeth(extrap,alpharver,"methodcomp",config.get(systname,syststr))
 
-    shiftedupflip = []
-    for i,hist in enumerate(sextrpuphists):
-        histflip = hist.Clone()
-        histdiv  = hist.Clone()
-        for b in range(17,51):#min 3200 bin edge, last bin for VV fit
-            diffup = hist.GetBinContent(b)-extrphist.GetBinContent(b)
-            diffdn = sextrpdnhists[i].GetBinContent(b)-extrphist.GetBinContent(b)
-            upsign = diffup/abs(diffup)
-            dnsign = diffdn/abs(diffdn)
-            if upsign == dnsign:
-                flipval = extrphist.GetBinContent(b)-diffup
-                histflip.SetBinContent(b,flipval)
-        histdiv.Divide(hist,histflip)
-        shiftedupflip.append(histflip)
-
-
-    rootOutName = go.makeOutFile('Run2_'+yearstr,'dy_extraploationalphat_'+config.get(systname,syststr)+'_'+dynormname,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    rootOutName = go.makeOutFile('Run2_'+yearstr,'dy_extraploation'+config.get(systname,syststr)+'_'+dynormname,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootFile = ROOT.TFile(rootOutName,"recreate")
     extrphist.Write()
     extrphnoerrs.Write()
@@ -1190,10 +1215,7 @@ if __name__=='__main__':
     for h,hist in enumerate(savehists):
         hist.SetName("h_zp_mjig_"+savehistnames[h])
         hist.Write()
-
-    print("Saving the flipped versions of up extrapolations")
-    #for h,hist in enumerate(sextrpuphists):
-    for h,hist in enumerate(shiftedupflip):
+    for h,hist in enumerate(sextrpuphists):
         hist.Write()
         sextrpdnhists[h].Write()
     sbfit.Write()
@@ -1205,67 +1227,73 @@ if __name__=='__main__':
     alpha.Write()
     rootFile.Close()
 
+    #rebin testing
+    #hsbdyreb
+    #hsrdyreb
+    #hsbttreb
+    #hsbvvreb
+    #hdatsbreb
 
-#    shiftedupflip = []
-#    for i,hist in enumerate(sextrpuphists):
-#        print("Checking intersection for ",hist.GetName())
-#        histflip = hist.Clone()
-#        histdiv  = hist.Clone()
-#        for b in range(17,51):#min 3200 bin edge, last bin for VV fit
-#            diffup = hist.GetBinContent(b)-extrphist.GetBinContent(b)
-#            diffdn = sextrpdnhists[i].GetBinContent(b)-extrphist.GetBinContent(b)
-#            upsign = diffup/abs(diffup)
-#            dnsign = diffdn/abs(diffdn)
-#            if upsign == dnsign:
-#                flipval = extrphist.GetBinContent(b)-diffup
-#                histflip.SetBinContent(b,flipval)
-#                print("   Checking bin wiht Low Edge ",extrphist.GetBinLowEdge(b))
-#        histdiv.Divide(hist,histflip)
-#        shiftedupflip.append(histflip)#
-#
-#        extrphist.SetLineColor(ROOT.kBlack)
-#        hist.SetLineColor(ROOT.kOrange)
-#        hist.GetXaxis().SetTitle("RJR Z Prime Mass Estimator")
-#        hist.GetYaxis().SetTitle("Events / 200")
-#        histflip.SetLineColor(ROOT.kRed)
-#        histdiv.GetYaxis().SetRangeUser(-1,2)
-#        histdiv.GetYaxis().SetTitle("unflipped/flipped")
-#        histdiv.SetMarkerStyle(8)
-#        histdiv.GetXaxis().SetTitle("bin center")
-#        histdiv.GetXaxis().SetTitleSize(0.11)
-#        histdiv.GetXaxis().SetTitleOffset(0.65)
-#        histdiv.GetXaxis().SetLabelSize(0.075)
-#        histdiv.GetYaxis().SetTitleSize(0.11)
-#        histdiv.GetYaxis().SetTitleOffset(.45)
-#        histdiv.GetYaxis().SetLabelSize(0.08)
-#        histdiv.GetYaxis().SetLabelOffset(0.02)
-#        histdiv.GetYaxis().SetNdivisions(503)
-#
-#
-#        tcsub = ROOT.TCanvas("tcsub","tcsub",560,800)
-#        p1    = ROOT.TPad("p1","extp comp pad",0,0.3,1,1)
-#        p2    = ROOT.TPad("p2","rat pad",0,0.0,1,0.3)
-#        leg = ROOT.TLegend(0.35,0.7,0.9,0.90)
-#        leg.SetBorderSize(0)
-#        leg.AddEntry(hist,hist.GetName()+" straight Up","l")
-#        leg.AddEntry(histflip,hist.GetName()+" flipped","l")
-#        leg.AddEntry(extrphist,"Nominal Extrapolation","l")
-#
-#        tcsub.Draw()
-#        tcsub.cd()
-#        p1.Draw()
-#        p1.cd()
-#        p1.SetLogy()
-#        hist.Draw("hist")
-#        histflip.Draw("histsame")
-#        extrphist.Draw("histsame")
-#        leg.Draw()
-#        tcsub.cd()
-#        p2.Draw()
-#        p2.cd()
-#        histdiv.Draw("p")
-#
-#        testoutflip = go.makeOutFile('Run2_'+yearstr,'dy_extrap_fliptest_'+hist.GetName()+'_'+dynormname,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-#        tcsub.SaveAs(testoutflip)
-#        
-#
+    
+    #mininbin = 0.1
+    #oldtest0,newtest0 = getDifferentBins(hsrdyreb,mininbin)
+    #oldtest2,newtest2 = getDifferentBins(hdatsbreb,2)
+    #oldtest1,newtest1 = getDifferentBins(hdatsbreb,1)
+    #oldtest3,newtest3 = getDifferentBins(hdatsbreb,3)
+    #ot4,nt4 = getDifferentBins(hsbdyreb,0.1)
+    #ot5,nt5 = getDifferentBins(hsbdyreb,1)
+    #ot6,nt6 = getDifferentBins(hdatsbreb,5)
+
+    byhandat1 = [-200.0, 0.0, 200.0, 400.0, 600.0, 800.0, 1000.0, 1200.0, 1400.0, 1600.0, 1800.0, 2000.0, 2200.0, 2400.0, 2600.0, 2800.0, 3000.0, 13000.0]
+    #byhanddy1 = [-200.0, 0.0, 200.0, 400.0, 600.0, 800.0, 1000.0, 1200.0, 1400.0, 1600.0, 1800.0, 2000.0, 2200.0, 2400.0, 2600.0, 2800.0, 3000.0, 3200.0, 3400.0, 3600.0, 3800.0, 4000.0, 4600.0, 13000.0]
+    #byhand    = [-200.0, 0.0, 200.0, 400.0, 600.0, 800.0, 1000.0, 1200.0, 1400.0, 1600.0, 1800.0, 2000.0, 2200.0, 2400.0, 2600.0, 3000.0, 3600.0, 4200.0, 5000.0, 13000.0]
+    #byhand2   = [-200.0, 0.0, 200.0, 400.0, 600.0, 800.0, 1000.0, 1200.0, 1400.0, 1600.0, 1800.0, 2000.0, 2200.0, 2400.0, 2800.0, 3200.0, 3600.0, 4200.0, 4800.0, 5600.0, 13000.0]
+
+    #print(oldtest1)
+    #print('\n')
+    #print(newtest1)
+    #print('\n')
+    #print(nt5)
+
+    newtest = byhandat1[1:]
+    n2 = np.array(newtest)
+
+    #print("Rebinning all with the 1 event in dysb bins")
+
+    hsbdyreb = hsbdyreb.Rebin(len(newtest)-1,"hsbdyreb",n2)
+    hsrdyreb = hsrdyreb.Rebin(len(newtest)-1,"hsbdyreb",n2)
+    hsbttreb = hsbttreb.Rebin(len(newtest)-1,"hsbttreb",n2)
+    hsbvvreb = hsbvvreb.Rebin(len(newtest)-1,"hsbvvreb",n2)
+    hdatsbreb = hdatsbreb.Rebin(len(newtest)-1,"hdatsbreb",n2)
+
+    newhs = [hsbdyreb,hsrdyreb,hsbttreb,hsbvvreb,hdatsbreb]
+
+    for nh in newhs:
+        lbcont = nh.GetBinContent(nh.GetNbinsX())
+        lbwidth = nh.GetBinWidth(nh.GetNbinsX())
+        print("last bin contents : ",lbcont)
+        print("last bin width    : ",lbwidth)
+        corrcont = lbcont/lbwidth
+        nh.SetBinContent(nh.GetNbinsX(),corrcont)
+
+    print('Last DY SB bin low edge: ',hsbdyreb.GetBinLowEdge(hsbdyreb.GetNbinsX()))
+    print('Last DY SB bin high edge: ',hsbdyreb.GetBinLowEdge(hsbdyreb.GetNbinsX())+hsbdyreb.GetBinWidth(hsbdyreb.GetNbinsX()))
+    print('Last DY SB bin content: ',hsbdyreb.GetBinContent(hsbdyreb.GetNbinsX()))
+    print('Last DY SB bin: ',hsbdyreb.GetBinLowEdge(hsbdyreb.GetNbinsX()+1))#overflow bin edge, end of hist
+
+    tcr = ROOT.TCanvas("tcr","tcr",1500,1000)
+    tcr.Draw()
+    tcr.Divide(3,2)
+    tcr.cd(1)
+    hsbdyreb.Draw("histe")
+    tcr.cd(2)
+    hsrdyreb.Draw("histe")
+    tcr.cd(3)
+    hsbttreb.Draw("histe")
+    tcr.cd(4)
+    hsbvvreb.Draw("histe")
+    tcr.cd(5)
+    hdatsbreb.Draw("histe")
+
+    tcr.SaveAs("alpharebintest_byhandbigbin_norm.png")
+    

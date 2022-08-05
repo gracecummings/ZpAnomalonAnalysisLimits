@@ -9,6 +9,19 @@ import numpy as np
 import pandas as pd
 import configparser
 
+def getTheShiftedExtrapolations(noma,nomsub,shifta,shiftsub,direc):
+    shiftedExtraps = {}
+    for key in shiftsub.keys():
+        name = "extrap_"+key
+        fit = shiftsub[key]
+        shiftedExtraps[name] = ROOT.alphaExtrapolationFromFits(fit,noma,name)
+    for key in shifta.keys():
+        name = "extrap_"+key
+        fit = shifta[key]
+        shiftedExtraps[name] = ROOT.alphaExtrapolationFromFits(nomsub,fit,name)
+    return shiftedExtraps
+
+
 def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr,uprange,isLog=False):
     #define the basic plotting styles
     srdyhist.SetFillColor(dycolor)
@@ -42,16 +55,16 @@ def plotExtrapolations(srdyhist,nomextrap,shiftedfits,dycolor,addname,systr,upra
     tcsub.SaveAs(outfile)
 
 
-def getTheShiftedExtrapolations(noma,nomsub,shifta,shiftsub,direc):
+def getTheShiftedExtrapolationsExpN(noma,nomsub,shifta,shiftsub,direc):
     shiftedExtraps = {}
     for key in shiftsub.keys():
         name = "extrap_"+key
         fit = shiftsub[key]
-        shiftedExtraps[name] = ROOT.alphaExtrapolationFromFits(fit,noma,name)
+        shiftedExtraps[name] = ROOT.alphaExtrapolationFromFitsExpN(fit,noma,name)
     for key in shifta.keys():
         name = "extrap_"+key
         fit = shifta[key]
-        shiftedExtraps[name] = ROOT.alphaExtrapolationFromFits(nomsub,fit,name)
+        shiftedExtraps[name] = ROOT.alphaExtrapolationFromFitsExpN(nomsub,fit,name)
     return shiftedExtraps
 
 def plotAlphaExtrapCompMeth(originalalpha,newalpha,addname,systr):
@@ -200,6 +213,22 @@ def getShiftedSubtractions(sbdatfitfit,nomdat,nomtt,nomvv,shiftdata,shifttt,shif
         newsubdatasbs[name] = ssubvv
     return newsubdatasbs
 
+def getShiftedSubtractionsExpN(sbdatfitfit,nomdat,nomtt,nomvv,shiftdata,shifttt,shiftvv,direc):
+    newsubdatasbs = {}
+    listoffits = []
+    for i,fit in enumerate(shiftdata):
+        name = "subdatasb_datafit_par"+str(i)+direc
+        ssub = ROOT.subtractionFromFitsExpN(fit,nomtt,nomvv,name)
+        newsubdatasbs[name] = ssub
+    for i,fit in enumerate(shifttt):
+        name = "subdatasb_ttfit_par"+str(i)+direc
+        newsubdatasbs[name] = ROOT.subtractionFromFitsExpN(nomdat,fit,nomvv,name)
+    for i,fit in enumerate(shiftvv):
+        name = "subdatasb_vvfit_par"+str(i)+direc
+        ssubvv = ROOT.subtractionFromFitsExpN(nomdat,nomtt,fit,name)
+        newsubdatasbs[name] = ssubvv
+    return newsubdatasbs
+
 def getShiftedAlphaRatios(sbnom,srnom,sbshifts,srshifts,direc):
     newalphas = {}
     #do shifted sideband fits
@@ -210,6 +239,19 @@ def getShiftedAlphaRatios(sbnom,srnom,sbshifts,srshifts,direc):
     for i,fit in enumerate(srshifts):
         name = "alpha_DY_sr_par"+str(i)+direc
         salpha = ROOT.alphaRatioMakerExpExternalParams(sbnom,fit,name)
+        newalphas[name] = salpha
+    return newalphas
+
+def getShiftedAlphaExpNRatios(sbnom,srnom,sbshifts,srshifts,direc):
+    newalphas = {}
+    #do shifted sideband fits
+    for i,fit in enumerate(sbshifts):
+        name = "alpha_DY_sb_par"+str(i)+direc
+        salpha = ROOT.alphaRatioMakerExpNExternalParams(fit,srnom,name)
+        newalphas[name] = salpha
+    for i,fit in enumerate(srshifts):
+        name = "alpha_DY_sr_par"+str(i)+direc
+        salpha = ROOT.alphaRatioMakerExpNExternalParams(sbnom,fit,name)
         newalphas[name] = salpha
     return newalphas
     
@@ -239,6 +281,21 @@ def doExpFitShifts(nomfit,parnum,name,lowr,highr,shiftedparamsin = ROOT.TVector(
     #    fitup = ROOT.expFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,highr)
     #    shiftedfits.append(fitup)
     #    parvecedit[i] = fitpars[i]#reset the fit params
+
+    return fitpars,fiterrs,shiftedfits
+
+def doExpNFitShifts(nomfit,parnum,name,lowr,highr,shiftedparamsin = ROOT.TVector()):
+    print("doing the shifted fits!")
+    fitpars = []
+    fiterrs = []
+    shiftedfits = []
+    for i in range(parnum):
+        parvecedit = ROOT.TVector(parnum)
+        for j in range(parnum):
+            parvecedit[j] = shiftedparamsin[i][j]
+        print(parvecedit[0],parvecedit[1],parvecedit[2])
+        fit = ROOT.expNFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,highr)
+        shiftedfits.append(fit)
 
     return fitpars,fiterrs,shiftedfits
 
@@ -427,7 +484,7 @@ if __name__=='__main__':
         srstring = "110 <= m_{hcand,SD} < 150"
         srregionstring = "Signal Region"
 
-    #print(bkgs.bkgs["TT"])
+    #print(bkgs.bkgs["TT"][16]["sb"][1])
     #print(bkgs.bkgs["DYJetsToLL"][18]["sr"][1])
     #print(data.data[18]["sb"][1])
     #print(data.data[18]["vr"][1])
@@ -526,7 +583,7 @@ if __name__=='__main__':
     dysrparsdecodn,dysrfiterrdecodn,dysrfitsdecodn = doExpFitShifts(srfit,2,"dysrdwn",dysrxmax,dysrxmin,dysrfitdecorrparamsdn)
     print("================== doing tt sb fit ==================")
     sbttfit = ROOT.expFit(hsbtt,"ttsbl","ER0+",ttsbxmax,ttsbxmin)#3000)
-    sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","QR0+",sigmabars,ttsbxmax,ttsbxmin)#3000)
+    sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","QER0+",sigmabars,ttsbxmax,ttsbxmin)#3000)
     ttsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hsbtt.Clone(),"ttsbshiftfinder","ER0+",ttsbxmax,ttsbxmin)
     ttsbparsdecoup,ttsbfiterrdecoup,ttsbfitsdecoup = doExpFitShifts(sbttfit,2,"ttsbup",ttsbxmax,ttsbxmin,ttsbfitdecorrparamsup)
     ttsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hsbtt.Clone(),"ttsbshiftfinder","ER0+",ttsbxmax,ttsbxmin)
@@ -539,12 +596,14 @@ if __name__=='__main__':
     vvsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hsbvv.Clone(),"vvsbshiftfinder","ER0+",vvsbxmax,vvsbxmin)
     vvsbparsdecodn,vvsbfiterrdecodn,vvsbfitsdecodn = doExpFitShifts(sbvvfit,2,"vvsbdwn",vvsbxmax,vvsbxmin,vvsbfitdecorrparamsdn)
     print("================= doing data sb fit =================")
-    sbdatfit = ROOT.expFit(hdatsb,"datsbl","ER0+",datsbxmax,3800)#datsbxmin)#5000)
-    sbdatunc = ROOT.expFitErrBands(hdatsb,"sbl","ER0+",sigmabars,datsbxmax,3800)#datsbxmin)#5000)
-    datsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,3800)#datsbxmin)
-    datsbparsdecoup,datsbfiterrdecoup,datsbfitsdecoup = doExpFitShifts(sbdatfit,2,"datsbup",datsbxmax,10000,datsbfitdecorrparamsup)
-    datsbfitdecorrparamsdn = ROOT.expFitDecorrParamsShiftedDown(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,3800)#datsbxmin)
-    datsbparsdecodn,datsbfiterrdecodn,datsbfitsdecodn = doExpFitShifts(sbdatfit,2,"datsbdwn",datsbxmax,10000,datsbfitdecorrparamsdn)
+    sbdatfit = ROOT.expNFit(hdatsb,"datsbl","ER0+",datsbxmax,3100)#datsbxmin)#5000)
+    sbdatunc = ROOT.expNFitErrBands(hdatsb,"sbl","ER0+",sigmabars,datsbxmax,3100)#datsbxmin)#5000)
+    datsbfitdecorrparamsup = ROOT.expNFitDecorrParamsShiftedUp(hdatsb.Clone(),"datsbshiftfinder","ER0+",datsbxmax,3100)#datsbxmin)
+    #print("The vector of shifted parameters returned to python")
+    #datsbfitdecorrparamsup.Print()
+    datsbparsdecoup,datsbfiterrdecoup,datsbfitsdecoup = doExpNFitShifts(sbdatfit,3,"datsbup",datsbxmax,13000,datsbfitdecorrparamsup)
+    datsbfitdecorrparamsdn = ROOT.expNFitDecorrParamsShiftedDown(hdatsb.Clone(),"datsbshiftfinder","RE0+",datsbxmax,3100)#datsbxmin)
+    datsbparsdecodn,datsbfiterrdecodn,datsbfitsdecodn = doExpNFitShifts(sbdatfit,3,"datsbdwn",datsbxmax,13000,datsbfitdecorrparamsdn)
     print("================= doing alpha ratio fit =============")
     alpha = ROOT.alphaRatioMakerExp(hsbdy,hsrdy,dysbxmax,dysbxmin,dysrxmax,dysrxmin)
     alphaups = getShiftedAlphaRatios(sbfit,srfit,dysbfitsdecoup,dysrfitsdecoup,"up")
@@ -564,12 +623,12 @@ if __name__=='__main__':
     sbdatuncsub.SetFillColor(0)
     sbdatuncsub.Add(sbttunc,-1)
     sbdatuncsub.Add(sbvvunc,-1)
-    subdatafit = ROOT.subtractionFromFits(sbdatfit,sbttfit,sbvvfit,"subtracteddatasbfit")
-    shiftedsubsup = getShiftedSubtractions(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecoup,ttsbfitsdecoup,vvsbfitsdecoup,"up")
-    shiftedsubsdn = getShiftedSubtractions(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecodn,ttsbfitsdecodn,vvsbfitsdecodn,"dwn")
+    subdatafit = ROOT.subtractionFromFitsExpN(sbdatfit,sbttfit,sbvvfit,"subtracteddatasbfit")
+    shiftedsubsup = getShiftedSubtractionsExpN(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecoup,ttsbfitsdecoup,vvsbfitsdecoup,"up")
+    shiftedsubsdn = getShiftedSubtractionsExpN(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecodn,ttsbfitsdecodn,vvsbfitsdecodn,"dwn")
     print(shiftedsubsdn)
     print("=========doing sb extrapolation fit==================")
-    extrap  = ROOT.alphaExtrapolation(hsbdy,hsrdy,sbdatuncsub,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
+    extrap  = ROOT.alphaExtrapolationExpN(hsbdy,hsrdy,sbdatuncsub,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
     extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,sbdatuncsub,1,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
     #alpharver = ROOT.alphaExtrapolationFromFits(subdatafit,alpha,"alphaextrapnohistinput")
     shiftedextrapsup = getTheShiftedExtrapolations(alpha,subdatafit,alphaups,shiftedsubsup,"up")
@@ -1152,16 +1211,15 @@ if __name__=='__main__':
     plotShiftedFits(sbttfit,hsbtt,ttsbfitsdecodn,"TTSB","dwn",55,config.get(systname,syststr),ttsbfitgofpad,sbttunc,"decorrelatedShifts")
     plotShiftedFits(sbvvfit,hsbvv,vvsbfitsdecoup,"VVSB","up",5,config.get(systname,syststr),vvsbfitgofpad,sbvvunc,"decorrelatedShifts")
     plotShiftedFits(sbvvfit,hsbvv,vvsbfitsdecodn,"VVSB","dwn",5,config.get(systname,syststr),vvsbfitgofpad,sbvvunc,"decorrelatedShifts")
-    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecoup,"dataSB","up",150,config.get(systname,syststr),datsbfitgofpad,sbdatunc,"decorrelatedShifts_log3800uprange",isLog=True)
-    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecodn,"dataSB","dwn",150,config.get(systname,syststr),datsbfitgofpad,sbdatunc,"decorrelatedShifts_log3800uprange",isLog=True)
+    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecoup,"dataSB","up",150,config.get(systname,syststr),datsbfitgofpad,sbdatunc,"decorrelatedShifts_ExpNFunction3100",isLog=True)
+    plotShiftedFits(sbdatfit,hdatsb,datsbfitsdecodn,"dataSB","dwn",150,config.get(systname,syststr),datsbfitgofpad,sbdatunc,"decorrelatedShifts_ExpNFunction3100",isLog=True)
     plotShiftedAlphas(alpha,alphaups,config.get(systname,syststr),"alphaups")
     plotShiftedAlphas(alpha,alphadns,config.get(systname,syststr),"alphadwns")
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsup,bkgcols[0],"subtractedDataDistsUp",config.get(systname,syststr))
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsdn,bkgcols[0],"subtractedDataDistsDwn",config.get(systname,syststr))
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp_3800uprange",config.get(systname,syststr),3000)
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp_3800uprange",config.get(systname,syststr),10000,isLog=True)
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn_3800uprange",config.get(systname,syststr),3000)
-    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn_3800uprange",config.get(systname,syststr),10000,isLog=True)
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp",config.get(systname,syststr),3000)
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr),3000)
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr),10000,isLog=True)
     #plotSubtractedDistributionCompMeth(hsbdy,subdatafit,sbdatuncsub,bkgcols[0],"method comparison",config.get(systname,syststr))
     #plotAlphaExtrapCompMeth(extrap,alpharver,"methodcomp",config.get(systname,syststr))
 
