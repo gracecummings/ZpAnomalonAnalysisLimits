@@ -12,24 +12,17 @@ import argparse
 #import configparser
 
 tdrstyle.setTDRStyle()
-CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
+CMS_lumi.lumi_13TeV = go.lumiFormatter([16,17,18])
 CMS_lumi.writeExtraText = 0
-#CMS_lumi.extraText = "Simulation Preliminary"
+#
 
-#def makeBaseDataframe(filelist):
-#    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("NS")[-1]),-1.0] for x in filelist]
-#    limsdf = pd.DataFrame(limsinfo,columns = ['mzp','mnd','mns','limit'])
-#    return limsdf
 
 def makeBaseDataframe(filelist):
-    #for x in filelist:
-    #    print("Initial name: ",x.split("/")[-1].split(".")[0].split("Combine")[-1])
-    #    print("Just Sig Parts: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0])
-    #    print("Attempt Zp: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("Zp")[-1].split("ND")[0])
-    #    print("Attempt ND: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("ND")[-1].split("NS")[0])
-    #    print("Attempt NS: ",x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("NS")[-1])
-    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("NS")[-1]),-1.0] for x in filelist]
-    limsdf = pd.DataFrame(limsinfo,columns = ['mzp','mnd','mns','limit'])
+    #makes a basic data frame with dummy values for the limit and limit error. Columns for siganl mass values.
+    #real values are written later
+    #could probably use a multi index slicer (.xs) somewhere
+    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("NS")[-1]),-1.0,-1.0,-1.0,-1.0,-1.0] for x in filelist]
+    limsdf = pd.DataFrame(limsinfo,columns = ['mzp','mnd','mns','limit','limitup','limitdn','limit2up','limit2dn'])
     return limsdf
     
 
@@ -60,7 +53,9 @@ if __name__=='__main__':
     #limitpath= "limholder/limsNoJECBlownUpLumi/h"
     #limitpath = "limholder/limsWithJECs/h"
     #limitpath = "limholder/limsJEC100GeVBins/h"
-    limitpath = "analysis_output_ZpAnomalon/2021-11-17/h"
+    #limitpath = "limholder/pfMETFullGridStatsAndLumi/h"#"analysis_output_ZpAnomalon/2021-11-17/h"
+    #limitpath = "limholder/pfMETFullGridSyst_NoAutoMCStats/h"
+    limitpath = "analysis_output_ZpAnomalon/2022-08-09/higgs"
     lims = glob.glob(limitpath+"*"+"Zptcut"+zptcut+"_Hptcut"+hptcut+"_metcut"+metcut+"_btagwp"+btagwp+".txt*")
     descrip ='nottathing' 
     zpbinwidth = 500
@@ -94,9 +89,9 @@ if __name__=='__main__':
     tc1 = ROOT.TCanvas("tc1","brzllim",600,600)
 
     #Prep the z-axis colors
-    coldivl = [x*0.02 for x in range(10,18)]
+    coldivl = [x*0.005 for x in range(24,100)]
     coldivl.insert(0,0.0)
-    coldivl = coldivl+[0.4,0.45,0.65,0.8,0.95,1.1]
+    coldivl+= [x*0.05 for x in range(10,20)]
     coldiv = np.array(coldivl)
 
     #Make the 2D histogram
@@ -110,14 +105,16 @@ if __name__=='__main__':
     hlim.GetYaxis().SetTitleSize(0.05)
     hlim.GetYaxis().SetTitleOffset(1.35)
     hlim.GetYaxis().SetLabelSize(0.04)
-    hlim.GetZaxis().SetTitle("Median cross section upper limit (95% CL)")
+    hlim.GetZaxis().SetTitle("Median cross section upper limit fb (95% CL)")
     hlim.GetZaxis().SetTitleSize(0.04)
-    hlim.GetZaxis().SetTitleOffset(.9)
+    hlim.GetZaxis().SetTitleOffset(1.1)
     hlim.GetZaxis().SetLabelSize(0.025)
-    hlim.SetContour(len(coldiv),coldiv)
+    #hlim.SetMinimum(0.1)
+    hlim.SetContour(len(coldiv),coldiv)#for a custom color bar
     
     for combout in lims:
         signame = combout.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0]
+        #print(signame)
         mzpstr = signame.split("Zp")[-1].split("ND")[0]
         mndstr = signame.split("ND")[-1].split("NS")[0]
         mnsstr = signame.split("NS")[-1]
@@ -126,6 +123,15 @@ if __name__=='__main__':
         tree = f.Get("limit")
         tree.GetEntry(2)#The 50% quantiles for median limit
         limit = tree.limit
+        tree.GetEntry(3)#The 84% quantile
+        limitup = tree.limit
+        tree.GetEntry(1)#The 16% quantile
+        limitdn = tree.limit
+        tree.GetEntry(0)#The 2.5% quantile
+        limitdn2= tree.limit
+        tree.GetEntry(4)#The 97% quantile
+        limitup2= tree.limit
+
         zpbin = int((int(mzpstr)-zpmin)/zpbinwidth+1)
         ndbin = int((int(mndstr)-ndmin)/ndbinwidth+1)
         hlim.SetBinContent(zpbin,ndbin,limit)
@@ -137,15 +143,22 @@ if __name__=='__main__':
         ndzpdf = zpdf[zpdf['mnd']==int(mndstr)]
         indx = ndzpdf.index#returns the row that satisfies that slice
         limsdf.loc[indx,'limit'] = limit#edits the main dataframe
+        limsdf.loc[indx,'limitup'] = limitup
+        limsdf.loc[indx,'limitdn'] = limitdn
+        limsdf.loc[indx,'limit2up'] = limitup2
+        limsdf.loc[indx,'limit2dn'] = limitdn2
 
         #print(signame)
         #print("    The median limit is: ",limit)
-        #print("    The quantile is: ",tree.quantileExpected)
+        #print("     The upper limit is: ",limitup)
+        #print("     The lower limit is: ",limitdn)
+        
         #print("    The Zpbin: ",hlim.GetXaxis().GetBinCenter(zpbin))
         #print("    The NDbin: ",hlim.GetYaxis().GetBinCenter(ndbin))
         #print("    The bin content is: ",hlim.GetBinContent(zpbin,ndbin))
 
     tc.cd()
+    #tc.SetLogz()
     hlim.Draw('colztext')#creates the palette objects
     tc.Update()#allows the palette object to be grabbed.
     colbar = ROOT.TPaletteAxis(hlim.GetListOfFunctions().FindObject("palette"))
@@ -162,7 +175,7 @@ if __name__=='__main__':
     tc.Update()
     
     tc.Update()
-    plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_'+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    plotname = go.makeOutFile('Run2_161718_ZllHbbMET','limits_grid_mns'+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(plotname)
 
     #Make brazilian flag plot
@@ -174,22 +187,77 @@ if __name__=='__main__':
         df = limsdf[limsdf['mzp'] == mzpt]
         ndbins = len(df['mnd'])
 
+
+
         sf = df.sort_values(by=['mnd'])
         ndbinvals = sf['mnd']
         limits = sf['limit']
+        limsup = sf['limitup']
+        limsdn = sf['limitdn']
+        lims2up = sf['limit2up']
+        lims2dn = sf['limit2dn']
+
+        if mzpt == 1500:
+            print(limits)
+
         limits = np.array(limits)
+        limsup = np.array(limsup)-np.array(limits)
+        limsdn = np.array(limits)-np.array(limsdn)
+        lims2up = np.array(lims2up)-np.array(limits)
+        lims2dn = np.array(limits)-np.array(lims2dn)
+        xerrs   = np.zeros(int(ndbins))
+
         ndbinvals = np.array(ndbinvals,dtype=float)
         
-        tg = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
-        tg.SetMinimum(min(limits)-min(limits)*.2)
-        tg.SetMaximum(max(limits)+max(limits)*.2)
+        #tg = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
+        mg = ROOT.TMultiGraph()
+        mg.SetTitle(";m_{ND} (GeV);#sigma B A (fb)")
+        tg = ROOT.TGraphAsymmErrors(int(ndbins),ndbinvals,limits,xerrs,xerrs,limsdn,limsup)
+        g = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
+        tg2 = ROOT.TGraphAsymmErrors(int(ndbins),ndbinvals,limits,xerrs,xerrs,lims2dn,lims2up)
+        leg = ROOT.TLegend(0.60,0.55,0.93,0.8)
+        empt = ROOT.TObject()
+        leg.SetFillColor(0)
+        leg.SetBorderSize(0)
+        g.SetLineColor(ROOT.kBlack)
+        g.SetLineWidth(3)
+        g.SetLineStyle(9)
+
+        tg.SetFillColor(ROOT.kGreen+1)
+        tg.SetMarkerStyle(8)
+        tg2.SetFillColor(ROOT.kOrange)
+        tg2.SetMarkerStyle(8)
+
+        leg.SetHeader("95% CL Upper Limits")
+        leg.AddEntry(empt,"m_{Z'} = "+str(mzpt)+" GeV","")
+        leg.AddEntry(g,"Median Expected","l")
+        leg.AddEntry(tg,"68% expected","f")
+        leg.AddEntry(tg2,"95% expected","f")
+        mg.Add(tg2)
+        mg.Add(tg)
+        mg.Add(g)
+
+        mg.SetMinimum(0.01)
+        mg.SetMaximum(max(limits)*1000)
+        #mg.GetXaxis().SetTitle("m_{ND} (GeV)")
+        #mg.GetYaxis().SetTitle("\sigma (fb)")
+                               
+        
         tc1.cd()
-        tg.Draw()
-        plotname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_Zp'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        tc1.SetLogy()
+        mg.Draw("AC3")
+        leg.Draw()
+        CMS_lumi.writeExtraText = 1
+        CMS_lumi.extraText = "Simulation Preliminary"
+        CMS_lumi.CMS_lumi(tc1,4,13)
+        tc1.Modified()
+        tc1.Update()
+
+        plotname = go.makeOutFile('Run2_161718_ZllHbbMET','limits_Zp'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         tc1.SaveAs(plotname)
         tg.Delete()
         tc1.Clear()
 
-    pklname = go.makeOutFile('Run2_2017_2018_ZllHbbMET','limits_'+descrip+'_'+str(limsdf['mns'][0]),'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    pklname = go.makeOutFile('Run2_161718_ZllHbbMET','limits_'+descrip+'_'+str(limsdf['mns'][0]),'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     limsdf.to_pickle(pklname)
 
