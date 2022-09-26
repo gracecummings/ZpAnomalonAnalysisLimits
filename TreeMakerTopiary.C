@@ -974,8 +974,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       unsigned int nselel = SelectedElectrons->size();
       unsigned int nZmumu = ZCandidatesMuMu->size();
       unsigned int nZee = ZCandidatesEE->size();
-      unsigned int nZeu = 0;  
-      //unsigned int nZeu = ZCandidatesEU->size();//Does not work on old DY ntuples
+      //unsigned int nZeu = 0;  
+      unsigned int nZeu = ZCandidatesEU->size();//Does not work on old DY ntuples
 
       emcounter += nZeu;
       
@@ -994,7 +994,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       double evntwhem_hold = 1.0;
 
       //Channel Flags
-     /*
+     ///*
       //std::cout<<"At the part for before the Z"<<std::endl;
       if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
 	if (passTrig) countzcand += 1;
@@ -1174,7 +1174,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
       //Z Candidate Build
       //For old ntuples
-      // /*
+       /*
       if (nselmu > 0 && nselel == 0 && anchan == 4) {
       	mumuchan = true;
 	channel = 4;
@@ -1599,7 +1599,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       if (Cut(ientry) < 0) continue;
       //if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
 
-      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//loosened cuts
+      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {
 	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
 	//if (passZ && (sampleType > 0) && (channel == anchan)){
 	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
@@ -1609,7 +1609,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 
 	/////ucomment!!!
 	//else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
-      else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan) && not killelHEM) {//emu loosened cuts
+      else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan) && not killelHEM) {
 	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
 	trimTree->Fill();
 	countpass += 1;
