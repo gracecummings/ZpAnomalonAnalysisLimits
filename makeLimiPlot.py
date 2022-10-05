@@ -55,15 +55,17 @@ if __name__=='__main__':
     #limitpath = "limholder/limsJEC100GeVBins/h"
     #limitpath = "limholder/pfMETFullGridStatsAndLumi/h"#"analysis_output_ZpAnomalon/2021-11-17/h"
     #limitpath = "limholder/pfMETFullGridSyst_NoAutoMCStats/h"
-    limitpath = "analysis_output_ZpAnomalon/2022-08-09/higgs"
+    limitpath = "analysis_output_ZpAnomalon/2022-10-01/higgs"
     lims = glob.glob(limitpath+"*"+"Zptcut"+zptcut+"_Hptcut"+hptcut+"_metcut"+metcut+"_btagwp"+btagwp+".txt*")
+    interpolatedlims = glob.glob("analysis_output_ZpAnomalon/2022-10-05/higgs*")
+    extrainterp      = []#glob.glob("analysis_output_ZpAnomalon/2022-10-05/interpcombine/higgs*")
     descrip ='nottathing' 
     zpbinwidth = 500
     ndbinwidth = 200
 
     #Creates a dataframe first with just the masspoints
     #wanted to incldue tfiles, but live and learn
-    limsdf = makeBaseDataframe(lims)
+    limsdf = makeBaseDataframe(lims+interpolatedlims+extrainterp)
 
     #Find relvant params
     zpmax = max(limsdf['mzp'])
@@ -112,7 +114,7 @@ if __name__=='__main__':
     #hlim.SetMinimum(0.1)
     hlim.SetContour(len(coldiv),coldiv)#for a custom color bar
     
-    for combout in lims:
+    for combout in lims+interpolatedlims+extrainterp:
         signame = combout.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0]
         #print(signame)
         mzpstr = signame.split("Zp")[-1].split("ND")[0]
