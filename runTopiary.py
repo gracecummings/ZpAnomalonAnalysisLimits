@@ -4,8 +4,88 @@ import argparse
 import os
 import sys
 import numpy as np
-import gecorg_test as go
+#import gecorg_test as go
 from datetime import date
+
+def sampleType(sampstring,givejecs=False):
+    #Make numerical code for type of sample
+    if "Run" in sampstring:
+        if "SingleMuon" in sampstring:
+            samptype = -1
+        elif ("SingleElectron" in sampstring) or ("EGamma" in sampstring):
+            samptype = -2
+        else:
+            samptype = 0
+    elif "ZpAnomalon" in sampstring:
+        samptype = 1
+    elif "DYJetsToLL" in sampstring:
+         samptype = 2
+    elif "TTTo" in sampstring:
+        samptype = 3
+    elif "WZTo" in sampstring:
+        samptype = 4
+    elif "ZZTo" in sampstring:
+        samptype = 5
+    elif "WWTo" in sampstring:
+        samptype = 6
+
+    else:
+        samptype = -1000
+
+    if "2018" in sampstring:
+        year = 18
+        if givejecs:
+            if "Run2018A" in sampstring:
+                year = 180
+            if "Run2018B" in sampstring:
+                year = 181
+            if "Run2018C" in sampstring:
+                year = 182
+            if "Run2018D" in sampstring:
+                year = 183
+    if "Autumn18" in sampstring:
+        year = 18
+    if "2017" in sampstring:
+        year = 17
+        if givejecs:
+            if "Run2017B" in sampstring:
+                year = 170
+            if "Run2017C" in sampstring:
+                year = 171
+            if "Run2017D" in sampstring:
+                year = 172
+            if "Run2017E" in sampstring:
+                year = 172
+            if "Run2017F" in sampstring:
+                year = 173
+    if "Fall17" in sampstring:
+        year = 17
+    if "2016" in sampstring:
+        year = 16
+        if givejecs:
+            if "Run2016B" in sampstring:
+                year = 160
+            if "Run2016C" in sampstring:
+                year = 160
+            if "Run2016D" in sampstring:
+                year = 160
+            if "Run2016E" in sampstring: 
+                year = 161
+            if "Run2016F" in sampstring:
+                year = 161
+            if "Run2016G" in sampstring:
+                year = 162
+            if "Run2016H" in sampstring:
+                year = 162
+    if "Summer16" in sampstring:
+        year = 16
+    return samptype,year
+
+def makeOutFile(sampstring,descrip,ftype,zptcut,hptcut,metcut,btagwp):
+    if not os.path.exists("analysis_output_ZpAnomalon/"+str(date.today())+"/"):
+        os.makedirs("analysis_output_ZpAnomalon/"+str(date.today())+"/")
+    outFile = "analysis_output_ZpAnomalon/"+str(date.today())+"/"+sampstring+"_"+descrip+"_Zptcut"+zptcut+"_Hptcut"+hptcut+"_metcut"+metcut+"_btagwp"+btagwp+ftype
+    return outFile
 
 def channelEncoding(string):
     #channel code comes from a 3 bit binary
@@ -43,7 +123,7 @@ if __name__=="__main__":
     samptype = -1000
     extrajeccrap = True
     #Check what you are working with
-    samptype,checkedyear = go.sampleType(samp,extrajeccrap)
+    samptype,checkedyear = sampleType(samp,extrajeccrap)
     channel,channelprint = channelEncoding(args.channel)
 
     topyear = checkedyear #has era encoding
@@ -56,19 +136,19 @@ if __name__=="__main__":
     year = "20"+str(checkedyear)
     
     if samptype < -10:
-        print("You have a problem, we do not undertand the sample coding")
+        print "You have a problem, we do not undertand the sample coding"
         sys.exit()
     if channel <= 0:
-        print("You have a problem, no channel given")
+        print "You have a problem, no channel given"
         sys.exit()
     origevnts = 0
 
     #First set of print statements
-    print( "Making topiary of ",samp)
-    print("     Sample type ",samptype)
-    print("     Sample Year ",year)
-    print("     Topiary Year ",topyear)#This is a debug
-    print("    ",channelprint)
+    print "Making topiary of ",samp
+    print "     Sample type ",samptype
+    print "     Sample Year ",year
+    print "     Topiary Year ",topyear #This is a debug
+    print "    ",channelprint
 
     #Prepare your TChain
     if samptype != 1 and ".root" not in samp:
@@ -85,9 +165,10 @@ if __name__=="__main__":
             origevnts += tf.Get("hnevents").GetBinContent(1)
     elif ".root" in samp:
         #for debug, and ntuple in working directory
-        inChain = ROOT.TChain("TreeMaker2/PreSelection")
+        #inChain = ROOT.TChain("TreeMaker2/PreSelection")#ntuple
+        inChain = ROOT.TChain("PreSelection")#skim
         inChain.Add(samp)
-    elif samptype == 1 and ".root" not in samp:
+    elif samptype == 1 and ".root" not in samp and ".txt" not in samp:
         inChain = ROOT.TChain("TreeMaker2/PreSelection")
         #inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
         inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
@@ -102,6 +183,19 @@ if __name__=="__main__":
         inputs = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
         inChain.Add("../dataHandling/"+year+"/"+samp+"*.root")
         origevnts = inChain.GetEntries()
+
+    if ".txt" in samp:
+        #for EOS signal sample
+        #print("Ami eikhane")
+        inChain = ROOT.TChain("PreSelection")
+        with open(samp) as ftxt:
+            lines = ftxt.readlines()
+            inputs = [i.strip() for i in lines if i.startswith("root")]
+        print(inputs)
+        for f in inputs:
+            inChain.Add(f)
+            tf = ROOT.TFile.Open(f)
+            origevnts = inChain.GetEntries()
 
 
     #Systematics?
@@ -134,29 +228,26 @@ if __name__=="__main__":
     sysvec[5] = systunclind
 
     if sysvec.Norm1() > 1.0:
-        print("Too many systematic flags at one time, stopping this maddness")
+        print "Too many systematic flags at one time, stopping this maddness"
         exit()
 
         
     #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','No','Req','On','Reco')#Needs to become dynamic with cuts
     #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#normal name
-    outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#nemu
+    outFile = makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','0.0','0.0','0.0')#nemu
 
-    print("     Systematics ",syststring)
-    print("     Events in TChain: ",inChain.GetEntries())
-    print(("     Original data set had {0} events in type.").format(origevnts))
-    print("    Saving topiary in ",outFile)
+    print "     Systematics ",syststring
+    print "     Events in TChain: ",inChain.GetEntries()
+    print "     "+("Original data set had {0} events in type.").format(origevnts)
+    print "    Saving topiary in ",outFile
 
+    ROOT.gSystem.Load("RestFrames/lib/libRestFrames.so")
     ROOT.gSystem.Load("../UHH2/JetMETObjects/obj/libSUHH2JetMETObjects.so")
     ROOT.gROOT.ProcessLine(".include ../UHH2/JetMETObjects/interface")
-    ROOT.gSystem.Load("TreeMakerTopiary.so")
+    ROOT.gSystem.Load("TreeMakerTopiary.so")#having problems grabbing restframes
     ROOT.gInterpreter.Declare('#include "TreeMakerTopiary.h"')
 
-
-    #topiary = ROOT.TreeMakerTopiary(inChain,samptype,topyear,channel,systind)
-    #topiary.Loop(outFile,origevnts,samptype,topyear,channel,systind)
-
-    topiary = ROOT.TreeMakerTopiary(inChain,samptype,topyear,channel,sysvec)
+    topiary = ROOT.TreeMakerTopiary(inChain,samptype,topyear,channel,sysvec)#Trying to access something that is not there
     topiary.Loop(outFile,origevnts,samptype,topyear,channel,sysvec)
 
 

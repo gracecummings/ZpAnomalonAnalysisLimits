@@ -167,6 +167,7 @@ public :
    vector<double>  *JetsAK8Clean_girth;
    vector<bool>    *JetsAK8Clean_ID;
    vector<double>  *JetsAK8Clean_jecFactor;
+   vector<double>  *JetsAK8Clean_jerFactor;
    vector<int>     *JetsAK8Clean_multiplicity;
    vector<double>  *JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb;
    vector<double>  *JetsAK8Clean_ptD;
@@ -392,6 +393,7 @@ public :
    TBranch        *b_JetsAK8Clean_girth;   //!
    TBranch        *b_JetsAK8Clean_ID;   //!
    TBranch        *b_JetsAK8Clean_jecFactor;   //!
+   TBranch        *b_JetsAK8Clean_jerFactor;   //!
    TBranch        *b_JetsAK8Clean_multiplicity;   //!
    TBranch        *b_JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb;   //!
    TBranch        *b_JetsAK8Clean_ptD;   //!
@@ -762,6 +764,7 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
    JetsAK8Clean_girth = 0;
    JetsAK8Clean_ID = 0;
    JetsAK8Clean_jecFactor = 0;
+   JetsAK8Clean_jerFactor = 0;
    JetsAK8Clean_multiplicity = 0;
    JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb = 0;
    JetsAK8Clean_ptD = 0;
@@ -962,6 +965,7 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
    fChain->SetBranchAddress("JetsAK8Clean_girth", &JetsAK8Clean_girth, &b_JetsAK8Clean_girth);
    fChain->SetBranchAddress("JetsAK8Clean_ID", &JetsAK8Clean_ID, &b_JetsAK8Clean_ID);
    fChain->SetBranchAddress("JetsAK8Clean_jecFactor", &JetsAK8Clean_jecFactor, &b_JetsAK8Clean_jecFactor);
+   fChain->SetBranchAddress("JetsAK8Clean_jerFactor", &JetsAK8Clean_jerFactor, &b_JetsAK8Clean_jerFactor);
    fChain->SetBranchAddress("JetsAK8Clean_multiplicity", &JetsAK8Clean_multiplicity, &b_JetsAK8Clean_multiplicity);
    fChain->SetBranchAddress("JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb", &JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb, &b_JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb);
    fChain->SetBranchAddress("JetsAK8Clean_ptD", &JetsAK8Clean_ptD, &b_JetsAK8Clean_ptD);
