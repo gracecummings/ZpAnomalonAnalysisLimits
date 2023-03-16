@@ -17,7 +17,7 @@ def makeSignalErrorDictionary(flist):
     
 
 def lumiFormatter(yearlist):
-    lumidict = {16:35.9,17:41.53,18:59.74}
+    lumidict = {16:36.31,17:41.53,18:59.74}
     lumi = 0
     for year in yearlist:
         lumi += lumidict[year]
@@ -114,7 +114,8 @@ def makeOutFile(sampstring,descrip,ftype,zptcut,hptcut,metcut,btagwp):
     return outFile
 
 def orderDY(histFile):
-    s1 = histFile.split("to")[0]
+    s0 = histFile.split("/")[-1]
+    s1 = s0.split("to")[0]
     s2 = s1.split("HT-")[1]
     return int(s2)       
 
@@ -173,7 +174,7 @@ def prepSig(sigfiles,sig_colors,sig_xsec,lumi,sigerrs):
     print("          Fix your hack for ntuple signal counting, setting sample size to 35000")
     for s,sig in enumerate(sigfiles):
         sig_dict = {}
-        sig_dict["tfile"] = ROOT.TFile(sig)
+        sig_dict["tfile"] = ROOT.TFile(sig,"read")
         sig_samplesize    = 0.0#str(sig_dict["tfile"].Get('hnevents').GetString())
         if float(sig_samplesize) == 0.0:
             sig_samplesize = "35000.0"###HACK
@@ -491,7 +492,7 @@ class backgrounds:
         scales = []
         for year in years:
             if year == 16:
-                lumi = 35.9
+                lumi = 36.31
             if year == 17:
                 lumi = 41.53
             if year == 18:
@@ -541,20 +542,22 @@ class backgrounds:
         uncsqdDYJetsdf = sum(bkgdfs)
         uncDYJetsdf    = uncsqdDYJetsdf**(1/2)
 
-        alpha = 1.- 0.682689492
+        #alpha = 1.- 0.682689492
         for ibin in range(hist.GetNbinsX()+1):
             if ibin == 0:
                 continue
-            elif hist.GetBinContent(ibin) > 0:
+            else:
+            #elif hist.GetBinContent(ibin) > 0:
                 binerr = uncDYJetsdf[hname][ibin-1]
                 hist.SetBinError(ibin,binerr)
-            else:
-                binerrbase = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
-                errs = [binerrbase*scale for scale in scales]
-                erssq = [err*err for err in errs]
-                sumer = sum(erssq)
-                binerr = (sumer)**(1/2)
-                hist.SetBinError(ibin,binerr)
+            #for garwood interavls    
+            #else:
+                #binerrbase = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                #errs = [binerrbase*scale for scale in scales]
+                #erssq = [err*err for err in errs]
+                #sumer = sum(erssq)
+                #binerr = (sumer)**(1/2)
+                #hist.SetBinError(ibin,binerr)
                 
 
         #print("    integral added hist: ",hist.Integral())
@@ -701,7 +704,7 @@ class signal:
         if systr != "":
             systr = "_"+systr
 
-        lumidict = {16:35.9,17:41.53,18:59.74}
+        lumidict = {16:36.31,17:41.53,18:59.74}
         lumi = 0
         for year in years:
             lumi += lumidict[year]
@@ -709,13 +712,13 @@ class signal:
         
         
         #gather signas
-        self.sigsr = glob.glob(str(path)+'/*Zp*_upout_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-        self.sigsb = glob.glob(str(path)+'/*Zp*_upout_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-        self.sigtr = glob.glob(str(path)+'/*Zp*_upout_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.sigsr = glob.glob(str(path)+'/Autumn18*Zp*_upout_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.sigsb = glob.glob(str(path)+'/Autumn18*Zp*_upout_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+        self.sigtr = glob.glob(str(path)+'/Autumn18*Zp*_upout_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
         #gather signas
-        self.sigsrerrs = glob.glob(str(path)+'/*Zp*_selected_errors_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
-        self.sigsberrs = glob.glob(str(path)+'/*Zp*_selected_errors_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
-        self.sigtrerrs = glob.glob(str(path)+'/*Zp*_selected_errors_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.sigsrerrs = glob.glob(str(path)+'/Autumn18*Zp*_selected_errors_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.sigsberrs = glob.glob(str(path)+'/Autumn18*Zp*_selected_errors_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
+        self.sigtrerrs = glob.glob(str(path)+'/Autumn18*Zp*_selected_errors_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl')
 
         self.sigsrerrsdict = makeSignalErrorDictionary(self.sigsrerrs)
         self.sigsberrsdict = makeSignalErrorDictionary(self.sigsberrs)
@@ -735,9 +738,10 @@ class signal:
         
     def getPreppedSig(self,region,xs,years=[16,17,18]):
         signal = self.sigs[region][0]
+        #print(signal)
         signalerrs = self.sigs[region][1]
         sig_colors = colsFromPalette(signal,ROOT.kCMYK)
-        lumidict = {16:35.9,17:41.53,18:59.74}
+        lumidict = {16:36.31,17:41.53,18:59.74}
         l = 0
         for year in years:
             l += lumidict[year]
@@ -748,6 +752,184 @@ class signal:
         preppedsig = prepSig(signal,sig_colors,xs,l,signalerrs)
         return preppedsig
 
+class signal_run2:
+    def __init__(self,path,zptcut,hptcut,metcut,btagwp,xs,years = [16,17,18],systr=""):
+        self.path = path
+        self.zptcut = zptcut
+        self.hptcut = hptcut
+        self.metcut = metcut
+        self.btagwp = btagwp
+        self.systr = systr
+        
+        if systr != "":
+            systr = "_"+systr
+            
+        lumidict = {16:36.31,17:41.53,18:59.74}
+        lumi = 0
+        for year in years:
+            lumi += lumidict[year]
+            
+        #gather signals
+        #2016
+        self.sig16sr = sorted(glob.glob(str(path)+'/Summer16.Zp*_upout_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        self.sig16sb = sorted(glob.glob(str(path)+'/Summer16.Zp*_upout_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        self.sig16tr = sorted(glob.glob(str(path)+'/Summer16.Zp*_upout_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        #2017
+        self.sig17sr = sorted(glob.glob(str(path)+'/Fall17.Zp*_upout_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        self.sig17sb = sorted(glob.glob(str(path)+'/Fa;;17.Zp*_upout_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        self.sig17tr = sorted(glob.glob(str(path)+'/Fall17.Zp*_upout_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        #2018
+        self.sig18sr = sorted(glob.glob(str(path)+'/Autumn18.Zp*_upout_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        self.sig18sb = sorted(glob.glob(str(path)+'/Autumn18.Zp*_upout_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        self.sig18tr = sorted(glob.glob(str(path)+'/Autunmn18.Zp*_upout_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root'))
+        
+        #gather signal errors
+        #2016
+        self.sig16srerrs = sorted(glob.glob(str(path)+'/Summer16.Zp*_selected_errors_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        self.sig16sberrs = sorted(glob.glob(str(path)+'/Summer16.Zp*_selected_errors_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        self.sig16trerrs = sorted(glob.glob(str(path)+'/Summer16.Zp*_selected_errors_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        #2017
+        self.sig17srerrs = sorted(glob.glob(str(path)+'/Fall17.Zp*_selected_errors_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        self.sig17sberrs = sorted(glob.glob(str(path)+'/Fall17.Zp*_selected_errors_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        self.sig17trerrs = sorted(glob.glob(str(path)+'/Fall17.Zp*_selected_errors_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        #2018
+        self.sig18srerrs = sorted(glob.glob(str(path)+'/Autumn18.Zp*_selected_errors_signalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        self.sig18sberrs = sorted(glob.glob(str(path)+'/Autumn18.Zp*_selected_errors_sideband'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+        self.sig18trerrs = sorted(glob.glob(str(path)+'/Autumn18.Zp*_selected_errors_totalr'+systr+'*_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.pkl'))
+
+
+        self.signames18 = [x.split('ZpAnomalonHZ_UFO-')[-1].split("_Tune")[0] for x in self.sig18sr]
+        self.signames17 = [x.split('ZpAnomalonHZ_UFO-')[-1].split("_Tune")[0] for x in self.sig17sr]
+        self.signames16 = [x.split('ZpAnomalonHZ_UFO-')[-1].split("_Tune")[0] for x in self.sig16sr]
+
+        int1817 = set(self.signames18).intersection(set(self.signames17))
+        int1816 = set(self.signames18).intersection(set(self.signames16))
+        not1718 = set(self.signames18) - int1817
+        not1618 = set(self.signames18) - int1816
+        neither1617 = not1718.union(not1618)
+        allthreeyearssig = list(set(self.signames18) - neither1617)
+
+        self.sigs ={18:
+                    {"sb":[self.sig18sb,self.sig18sberrs],
+                     "sr":[self.sig18sr,self.sig18srerrs],
+                     "tr":[self.sig18tr,self.sig18trerrs]},
+                    17:
+                    {"sb":[self.sig17sb,self.sig17sberrs],
+                     "sr":[self.sig17sr,self.sig17srerrs],
+                     "tr":[self.sig17tr,self.sig17trerrs]},
+                    16:
+                    {"sb":[self.sig16sb,self.sig16sberrs],
+                     "sr":[self.sig16sr,self.sig16srerrs],
+                     "tr":[self.sig16tr,self.sig16trerrs]},
+        }
+        
+        #removing names with no match in 2018
+        for name in neither1617:
+            badidx = self.signames18.index(name)
+            files2018 = [self.sigs[18]["sb"],self.sigs[18]["sr"],self.sigs[18]["tr"]]
+            for region in files2018:
+                for group in region:
+                    if len(group)  > badidx:
+                        badval = group[badidx]
+                        if name in badval:
+                            del group[badidx]
+
+        self.sigsbyname = {}
+        for i,name in enumerate(sorted(allthreeyearssig)):
+            self.sigsbyname[name] = {'sb':
+                                     {18:[[],[]],
+                                      17:[[],[]],
+                                      16:[[],[]]
+                                      },
+                                     'sr':
+                                     {18:[[],[]],
+                                      17:[[],[]],
+                                      16:[[],[]]
+                                      },
+                                     'tr':
+                                     {18:[[],[]],
+                                      17:[[],[]],
+                                      16:[[],[]]
+                                      },
+            }
+            for year in lumidict.keys():
+                for region in self.sigs[year].keys():
+                    for group in self.sigs[year][region]:
+                        groupidx = self.sigs[year][region].index(group)
+                        if len(group) > 0:
+                            if name in group[i]:
+                                self.sigsbyname[name][region][year][groupidx].append(group[i])
+    #DIeally that whole shenaniga would hae just been a dataframe...
+                        
+
+        
+    def getAddedHist(self,signalname,xs,hist,region,hname,years = [16,17,18]):
+        sig = self.sigsbyname[signalname]
+        sigdfs  = []
+        scales = []
+        for year in years:
+            if year == 16:
+                lumi = 36.31
+            if year == 17:
+                lumi = 41.53
+            if year == 18:
+                lumi = 59.74
+                
+            f = sig[region][year][0][0]
+            errs  = sig[region][year][1][0]
+            fparts = f.split("/")
+            name = fparts[-1]
+            tf = ROOT.TFile(f)
+            numevents = float(str(tf.Get('hnevents').GetString()))
+            scale = findScale(numevents,xs,lumi)
+            scales.append(scale)
+            h = tf.Get(hname)
+            hscaled = h.Clone()
+            hscaled.Scale(scale)
+            hist.Add(hscaled)
+                
+            #calc hist errors
+            df = pd.read_pickle(errs)
+            sdf = df*scale
+            sqrddf = sdf**2
+            sigdfs.append(sqrddf)
+
+            debugstring = name+" "+str(xs)+" "+str(scale)
+            #print(debugstring)
+            #print("   integral of unscaled histogram: ",h.Integral())
+            #print("                            scale: ",scale)
+            #print("      intgral of scaled histogram: ",hscaled.Integral())
+
+        uncsqdDYJetsdf = sum(sigdfs)
+        uncDYJetsdf    = uncsqdDYJetsdf**(1/2)
+
+        #alpha = 1.- 0.682689492
+        for ibin in range(hist.GetNbinsX()+1):
+            if ibin == 0:
+                continue
+            else:
+            #elif hist.GetBinContent(ibin) > 0:
+                binerr = uncDYJetsdf[hname][ibin-1]
+                hist.SetBinError(ibin,binerr)
+            #for garwood interavls    
+            #else:
+                #binerrbase = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                #errs = [binerrbase*scale for scale in scales]
+                #erssq = [err*err for err in errs]
+                #sumer = sum(erssq)
+                #binerr = (sumer)**(1/2)
+                #hist.SetBinError(ibin,binerr)
+                
+
+        #print("    integral added hist: ",hist.Integral())
+        return hist
+
+
+
+
+        
+
+    
 
 class validation:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr):
@@ -909,7 +1091,7 @@ class validation:
         
         for year in years:
             if year == 16:
-                lumi = 35.9
+                lumi = 36.31
             if year == 17:
                 lumi = 41.53
             if year == 18:
