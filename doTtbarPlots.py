@@ -12,7 +12,7 @@ import argparse
 
 
 tdrstyle.setTDRStyle()
-CMS_lumi.lumi_13TeV = "137 fb^{-1}"
+CMS_lumi.lumi_13TeV = "137.6 fb^{-1}"
 CMS_lumi.writeExtraText = 1
 CMS_lumi.extraText = "Simulation Preliminary"
 
@@ -86,17 +86,19 @@ if __name__=='__main__':
     metcut  = args.metcut#'200.0'
     btagwp  = args.btagwp#'0.8'
 
-    systr = 'systnominal_hem_kf_btagdwn_muid_mutrig_eltrig_elid_elreco'
+    systr = 'systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco'
 
-    ttmcemu  = go.backgrounds('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_btag',zptcut,hptcut,metcut,btagwp,systr)
-    ttmcmumu = go.backgrounds('mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref_btag',zptcut,hptcut,metcut,btagwp,systr)
-    dataemu  = go.run2('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref',zptcut,hptcut,metcut,btagwp,'systnominal_btagnom_muidnom')
+    ttmcemu  = go.backgrounds('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref',zptcut,hptcut,metcut,btagwp,systr)
+    ttmcmumu = go.backgrounds('mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref',zptcut,hptcut,metcut,btagwp,systr)
+    #ttmcemu  = go.backgrounds('analysis_output_ZpAnomalon/2023-03-01',zptcut,hptcut,metcut,btagwp,systr)#prefire
+    #ttmcmumu = go.backgrounds('analysis_output_ZpAnomalon/2023-03-01/muonchannel',zptcut,hptcut,metcut,btagwp,systr)#prefire
+    #dataemu  = go.run2('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref',zptcut,hptcut,metcut,btagwp,'systnominal_btagnom_muidnom')
 
-    #print(ttmcemu.bkgs)
-    #print(ttmcmumu.bkgs['TT'])
+    print(ttmcmumu.bkgs['TT'][18]['tr'])
+    print(ttmcemu.bkgs['TT'][18]['tr'])
     #print(dataemu.data)
     
-    tf1 = ROOT.TFile(ttmcemu.a18ttsr[0])
+    tf1 = ROOT.TFile(ttmcemu.a18tttr[0])
     emptypt = tf1.Get('h_z_pt').Clone()
     emptyphi = tf1.Get('h_z_phiw').Clone()
     emptyeta = tf1.Get('h_z_eta').Clone()

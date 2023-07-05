@@ -3,21 +3,57 @@
 #include "RestFrames/RestFrames.hh"
 #include "JetCorrectionUncertainty.h"
 #include "JetCorrectorParameters.h"
+#include "JetResolution.h"
 #include "XYMETCorrection_withUL17andUL18andUL16.h"
 #include <TLeaf.h>
 #include <TVector.h>
 #include <TH1.h>
+#include <TProfile.h>
 #include <TString.h>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <cmath>
+#include <limits>
+#include "GEScaleSyst.cc"
 
 using std::vector;
 using std::string;
 
 RestFrames::RFKey ensure_autoload(1);
 using namespace RestFrames;
+
+double deltaR(TLorentzVector T1, TLorentzVector T2){
+  double p1 = T1.Phi(); 
+  double p2 = T2.Phi(); 
+  double e1 = T1.Eta(); 
+  double e2 = T2.Eta(); 
+  auto dp=std::abs(p1-p2); if (dp>float(M_PI)) dp-=float(2*M_PI);
+  return std::sqrt((e1-e2)*(e1-e2) + dp*dp);
+}
+
+TLorentzVector closestgenjetParticle(TLorentzVector jet, vector<TLorentzVector>* genjets){
+  double deltarmin = std::numeric_limits<double>::infinity();
+  TLorentzVector next;
+  for(unsigned int i=0; i<genjets->size(); ++i) {
+    TLorentzVector pi = genjets->at(i);
+    double dr = deltaR(genjets->at(i), jet);
+    //std::cout<<"dr is :  "<< dr << " Pt : Eta : Phi:  " << pi.Pt() << " : " << pi.Eta() << " : " << pi.Phi() <<std::endl;
+    if(dr < deltarmin && pi != jet) {
+      deltarmin = dr;
+      next = pi;
+    }
+  }
+  //std::cout<<"next pt : eta : phi :  "<< next.Pt() << " : " << next.Eta() << " : " << next.Phi() << std::endl;
+  return next;
+}
+
+TVector2 getShiftedPtvec(double pt,double ptunc, double phi,int dir){
+  double vecx = (pt+dir*ptunc)*std::cos(phi);//dir needs to -1 for down, +1 for up
+  double vecy = (pt+dir*ptunc)*std::sin(phi);
+  TVector2 vec(vecx,vecy);
+  return vec;
+}
 
 float getPDFUncertainty(vector<float>* LHEPdfWeight){
   // http://nnpdf.mi.infn.it/wp-content/uploads/2019/03/NNPDFfits_Positivity_PhysicalCrossSections_v2.pdf
@@ -31,9 +67,13 @@ std::pair<float,float> getQCDScaleUpDwn(vector<float>* scales){
   //Remove the 0.5 and 2 pairs
   //Take the highest and lowest as the up and down scale
   vector<float>* redscale = scales;
+  
+  //for (std::size_t i = 0; i < redscale->size();++i){
+  //  std::cout<<i<<" "<<redscale->at(i)<<std::endl;
+  //}
   redscale->erase(std::next(redscale->begin(),5));
   redscale->erase(std::next(redscale->begin(),6));
-  redscale->erase(redscale->begin());
+  redscale->erase(redscale->begin());//deletes [1,1]
 
   //std::cout<<"The new scales"<<std::endl;
   float max = -99999;
@@ -49,9 +89,9 @@ std::pair<float,float> getQCDScaleUpDwn(vector<float>* scales){
   }
   
   std::pair<float,float> updwn(min,max);
-  //std::cout<<"The up/dwn weights"<<std::endl;
-  //std::cout<<updwn.first<<std::endl;
-  //std::cout<<updwn.second<<std::endl;
+  //std::cout<<"The dwn/up weights"<<std::endl;
+  //std::cout<<"       "<<updwn.first<<std::endl;
+  //std::cout<<"       "<<updwn.second<<std::endl;
   return updwn;
 
 }
@@ -240,19 +280,20 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    fChain->SetBranchStatus("RunNum",1);
    fChain->SetBranchStatus("LumiBlockNum",1);
    fChain->SetBranchStatus("EvtNum",1);
-   fChain->SetBranchStatus("GenMET",1);
-   fChain->SetBranchStatus("GenMETPhi",1);
+   //fChain->SetBranchStatus("GenMET",1);
+   //fChain->SetBranchStatus("GenMETPhi",1);
    fChain->SetBranchStatus("TriggerPass",1);
    fChain->SetBranchStatus("JetsAK8Clean*",1);
    fChain->SetBranchStatus("Muons*",1);
-   fChain->SetBranchStatus("Electrons*",1);
+   //fChain->SetBranchStatus("Electrons*",1);
    fChain->SetBranchStatus("MET",1);
    fChain->SetBranchStatus("METPhi",1);
    fChain->SetBranchStatus("METUp",1);
    fChain->SetBranchStatus("METPhiUp",1);
    fChain->SetBranchStatus("METDown",1);
    fChain->SetBranchStatus("METPhiDown",1);
-   fChain->SetBranchStatus("SelectedMuons*",1);
+   fChain->SetBranchStatus("SelectedMuons",1);
+   //fChain->SetBranchStatus("SelectedMuonsTunepMomenErr",1);
    fChain->SetBranchStatus("ZCandidates*",1);
    fChain->SetBranchStatus("SelectedElectrons*",1);
    fChain->SetBranchStatus("eeBadScFilter",1);
@@ -260,12 +301,17 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    fChain->SetBranchStatus("ZCandidatesEE",1);
    fChain->SetBranchStatus("ZCandidatesEU",1);
    fChain->SetBranchStatus("NVtx",1);
+   //fChain->SetBranchStatus("JetsAK8*",1);
+   //fChain->SetBranchStatus("GenJetsAK8*",1);
+   //fChain->SetBranchStatus("Jets*",1);
 
    if (sampleType > 0){
      fChain->SetBranchStatus("GenParticles*",1);
      fChain->SetBranchStatus("ScaleWeights",1);
      fChain->SetBranchStatus("PDFweights",1);
-     
+     //fChain->SetBranchStatus("puSysDown",1);
+     //fChain->SetBranchStatus("puSysUp",1);
+     //fChain->SetBranchStatus("puWeight",1);
    }
 
    if (year == 16 or year == 17 && sampleType > 0){
@@ -290,6 +336,12 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double ZCandidate_phi;
    double ZCandidate_eta;
    double ZCandidate_m;
+   double ZupCandidate_pt;
+   double ZCorrCandidate_pt;
+   double ZupCandidate_m;
+   double ZCorrCandidate_m;
+   double ZdnCandidate_pt;
+   double ZdnCandidate_m;
    double hCandidate_pt;
    double hCandidate_phi;
    double hCandidate_eta;
@@ -327,11 +379,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double LMuCandidate_phi;
    double LMuCandidate_eta;
    double LMuCandidate_m;
+   double LMuCandidate_ptunc;
    TLorentzVector sLMuCandidate;
    double sLMuCandidate_pt;
    double sLMuCandidate_phi;
    double sLMuCandidate_eta;
    double sLMuCandidate_m;
+   double sLMuCandidate_ptunc;
    TLorentzVector LEleCandidate;
    double LEleCandidate_pt;
    double LEleCandidate_phi;
@@ -353,6 +407,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    double channelflag;
    double metusable;
    double metxycorr;
+   double metmuup;
+   double metmudn;
    double metxyphicorr;
    double metphiusable;
    TLorentzVector eventleade;
@@ -361,17 +417,29 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    float pdfweightdn;
    float qcdweightup;
    float qcdweightdn;
+   float puweightnom;
+   float puweightup;
+   float puweightdn;
+   float puweightvtxup;
+   float puweightvtxdn;
 
-   
    //Define the skimmed skim  output file and tree
    TFile* trimFile = new TFile(outputFileName.c_str(),"recreate");
    TTree* trimTree = fChain->CloneTree(0);
    TH1F*  hnskimed = new TH1F("hnskimed","number of events at skim level",1,0,1);
+   TH1F*  hnskimedup = new TH1F("hnskimedup","weighed qcd scale events up sum",1,0,1);
+   TH1F*  hnskimeddwn = new TH1F("hnskimeddwn","weighed qcd scale events dwn sum",1,0,1);
    TH1F*  hnorigevnts = new TH1F("hnorigevnts","original number of events, preskim",1,0,1);
    TH1F*  htrigpass = new TH1F("htrigpass","trigger pass",1,0,1);
    TH1F*  hZpass = new TH1F("hZpass","Z pass",1,0,1);
    TH1F*  hHpass = new TH1F("hHpass","h pass",1,0,1);
    TH1F*  hpass  = new TH1F("hpass","passing all req",1,0,1);
+   TH1F*  hnpu = new TH1F("hnpu","number pileup weighted",1,0,1);
+   TH1F*  hnpuup = new TH1F("hnpuup","number pileup weighted up",1,0,1);
+   TH1F*  hnpudwn = new TH1F("hnpudwn","number pileup weighted dwn",1,0,1);
+   TH1F*  hnpunumup = new TH1F("hnpunumup","number pileup weighted nvtx up",1,0,1);
+   TH1F*  hnpunumdwn = new TH1F("hnpunumdwn","number pileup weighted nvtx dwn",1,0,1);
+
 
    //Add these horrible plots for efficiency
    TH1F* hzpasstrig_pt = new TH1F("hzpasstrig_pt","Z pt > 100 and passing triggers",74,60,800);
@@ -387,7 +455,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TH1F* hjetpt = new TH1F("hjetpt","All Jet Pt",48,0,1200);
    TH1F* hjeteta = new TH1F("hjeteta","All Jet eta",30,-2.8,2.8);
    TH1F* hjetphi = new TH1F("hjetphi","All Jet phi",30,-3.14159,3.14159);
-
+   TH1F* hjetptJER = new TH1F("hjetptJER","All Jet Pt After JER",48,0,1200);
+   TH1F* hjetetaJER = new TH1F("hjetetaJER","All Jet eta after JER",30,-2.8,2.8);
+   TH1F* hjetphiJER = new TH1F("hjetphiJER","All Jet phi after JER",30,-3.14159,3.14159);
    
    TBranch *hCand     = trimTree->Branch("hCandidate","TLorentzVector",&hCandidate);
    TBranch *hCand_pt  = trimTree->Branch("hCandidate_pt",&hCandidate_pt,"hCandidate_pt/D");
@@ -401,9 +471,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *hCand_middb       = trimTree->Branch("hCandidate_pfMassIndependentDeepDoubleBvLJetTagsProbHbb",&hCandidate_middb,"hCandidate_middb/D");
    TBranch *ZCand     = trimTree->Branch("ZCandidate","TLorentzVector",&ZCandidate);
    TBranch *ZCand_pt  = trimTree->Branch("ZCandidate_pt",&ZCandidate_pt,"ZCandidate_pt/D");
+   TBranch *ZCorrCand_pt  = trimTree->Branch("ZCorrCandidate_pt",&ZCorrCandidate_pt,"ZCorrCandidate_pt/D");
+   TBranch *ZupCand_pt  = trimTree->Branch("ZupCandidate_pt",&ZupCandidate_pt,"ZupCandidate_pt/D");
+   TBranch *ZdnCand_pt  = trimTree->Branch("ZdnCandidate_pt",&ZdnCandidate_pt,"ZdnCandidate_pt/D");
    TBranch *ZCand_phi = trimTree->Branch("ZCandidate_phi",&ZCandidate_phi,"ZCandidate_phi/D");
    TBranch *ZCand_eta = trimTree->Branch("ZCandidate_eta",&ZCandidate_eta,"ZCandidate_eta/D");
    TBranch *ZCand_m   = trimTree->Branch("ZCandidate_m",&ZCandidate_m,"ZCandidate_m/D");
+   TBranch *ZdnCand_m   = trimTree->Branch("ZdnCandidate_m",&ZdnCandidate_m,"ZdnCandidate_m/D");
+   TBranch *ZCorrCand_m   = trimTree->Branch("ZCorrCandidate_m",&ZCorrCandidate_m,"ZCorrCandidate_m/D");
+   TBranch *ZupCand_m   = trimTree->Branch("ZupCandidate_m",&ZupCandidate_m,"ZupCandidate_m/D");
    TBranch *ZpMest    = trimTree->Branch("ZPrime_mass_est",&mEstZp,"mEstZp/D");
    TBranch *NDMest    = trimTree->Branch("ND_mass_est",&mEstND,"mEstND/D");
    TBranch *NSMest    = trimTree->Branch("NS_mass_est",&mEstNS,"mEstNS/D");
@@ -431,13 +507,20 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *qcdweightsup = trimTree->Branch("qcdweight_up",&qcdweightup,"qcdweightup/F");
    TBranch *pdfweightsdwn = trimTree->Branch("pdfweight_dwn",&pdfweightdn,"pdfweightdn/F");
    TBranch *pdfweightsup = trimTree->Branch("pdfweight_up",&pdfweightup,"pdfweightup/F");
+   TBranch *puweights    = trimTree->Branch("puweight",&puweightnom,"puweightnom/F");
+   TBranch *puweightsup    = trimTree->Branch("puweight_up",&puweightup,"puweightup/F");
+   TBranch *puweightsdn    = trimTree->Branch("puweight_dwn",&puweightdn,"puweightdn/F");
+   TBranch *puweightsvtxup    = trimTree->Branch("puweightvtx_up",&puweightvtxup,"puweightvtxup/F");
+   TBranch *puweightsvtxdn    = trimTree->Branch("puweightvtx_dwn",&puweightvtxdn,"puweightvtxdn/F");
    TBranch *channelf   = trimTree->Branch("channel_flag",&channelflag,"channelflag/D");
    TBranch *LMuCand     = trimTree->Branch("LMuCandidate","TLorentzVector",&LMuCandidate);
    TBranch *LMuCand_pt  = trimTree->Branch("LMuCandidate_pt",&LMuCandidate_pt,"LMuCandidate_pt/D");
+   TBranch *LMuCand_ptunc  = trimTree->Branch("LMuCandidate_ptunc",&LMuCandidate_ptunc,"LMuCandidate_ptunc/D");
    TBranch *LMuCand_phi = trimTree->Branch("LMuCandidate_phi",&LMuCandidate_phi,"LMuCandidate_phi/D");
    TBranch *LMuCand_eta = trimTree->Branch("LMuCandidate_eta",&LMuCandidate_eta,"LMuCandidate_eta/D");
    TBranch *sLMuCand     = trimTree->Branch("sLMuCandidate","TLorentzVector",&sLMuCandidate);
    TBranch *sLMuCand_pt  = trimTree->Branch("sLMuCandidate_pt",&sLMuCandidate_pt,"sLMuCandidate_pt/D");
+   TBranch *sLMuCand_ptunc  = trimTree->Branch("sLMuCandidate_ptunc",&sLMuCandidate_ptunc,"sLMuCandidate_ptunc/D");
    TBranch *sLMuCand_phi = trimTree->Branch("sLMuCandidate_phi",&sLMuCandidate_phi,"sLMuCandidate_phi/D");
    TBranch *sLMuCand_eta = trimTree->Branch("sLMuCandidate_eta",&sLMuCandidate_eta,"sLMuCandidate_eta/D");
    TBranch *LEleCand     = trimTree->Branch("LEleCandidate","TLorentzVector",&LEleCandidate);
@@ -459,6 +542,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TBranch *metu       = trimTree->Branch("metsuable",&metusable,"metusable/D");
    TBranch *metu_phi   = trimTree->Branch("metphiusable",&metphiusable,"metphiusable/D");
    TBranch *metuxy       = trimTree->Branch("metxycorr",&metxycorr,"metxycorr/D");
+   TBranch *metmuupb       = trimTree->Branch("metmuup",&metmuup,"metmuup/D");
+   TBranch *metmudnb       = trimTree->Branch("metmudn",&metmudn,"metmudn/D");
    TBranch *metuxy_phi   = trimTree->Branch("metxyphicorr",&metxyphicorr,"metxyphicorr/D");
 
    //Uncertainty + Scale Factor Stuff
@@ -479,6 +564,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    
    //
    int jecsys = metsys[1];//metsys is a 6D vector. JER, JES ...
+   int jeRsys = metsys[0];
+   std::cout<<"The value JER we are applying is: "<< jeRsys <<std::endl;
+
+
    
    TString uncfile = "badstring";
    TString btagfile = "badstring";
@@ -494,6 +583,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TString eltrigsffile = "badstring";
    TString eltrigsfhname = "badstring";
    TString yearstr = "badstring";
+   TString unjerfile = "badstring";
+   TString unjerfilesf = "badstring";
+   TString pufileName = "badstring";
 
    TH1F *hbtagsf = 0;
    TH1F *hbtagsfuncup = 0;
@@ -504,6 +596,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    TH2D *helectronTRIGsf = 0;
    TH2F *hmuontrigsf = 0;
    TH2F *hmuontrigef = 0;
+   TH1F *hpuweight = 0;
+   TH1F *hpuweightup = 0;
+   TH1F *hpuweightdwn = 0;
+   TProfile *hnvtxtrans = 0;
    
    if (sampleType == 3) {//ttbar
      btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_ttscalefactors_Zptcut_Hptcut_metcut_btagwp.root";
@@ -519,24 +615,35 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      std::cout<<"In Run2018RunA"<<std::endl;
      yearstr = "2018";
      uncfile = "JEC/Autumn18_RunA_V19_DATA/Autumn18_RunA_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Autumn18_V7b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Autumn18_V7b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 181){
      yearstr = "2018";
      uncfile = "JEC/Autumn18_RunB_V19_DATA/Autumn18_RunB_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Autumn18_V7b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Autumn18_V7b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 182){
      yearstr = "2018";
      uncfile = "JEC/Autumn18_RunC_V19_DATA/Autumn18_RunC_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Autumn18_V7b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Autumn18_V7b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 183){
      yearstr = "2018";
      uncfile = "JEC/Autumn18_RunD_V19_DATA/Autumn18_RunD_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Autumn18_V7b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Autumn18_V7b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 18) {
      yearstr = "2018";
      //JEC
      std::cout<<"In Autumn18"<<std::endl;
      uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+     //JER
+     unjerfile = "JER/Autumn18_V7b_MC_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Autumn18_V7b_MC_SF_AK8PFPuppi.txt";
      //Muon ID SF
      muonsffile = "leptonsf/Run2018ABCD_muon_SF_ID.root";
      muonsfhname = "NUM_TightID_DEN_TrackerMuons_pt_abseta";
@@ -584,11 +691,27 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hbtagsfuncdwn->SetDirectory(0);
      hbtagsf->SetDirectory(0);
      btagsf.Close();
+     //PileUp ReWeighting
+     pufileName = "pilueuphists/PileupHistograms_2018_69mb_pm5.root";
+     TFile pufile(pufileName,"READ");
+     hpuweight = new TH1F(*((TH1F*)pufile.Get("pu_weights_central")));
+     hpuweightup = new TH1F(*((TH1F*)pufile.Get("pu_weights_up")));
+     hpuweightdwn = new TH1F(*((TH1F*)pufile.Get("pu_weights_down")));
+     hpuweight->SetDirectory(0);
+     hpuweightup->SetDirectory(0);
+     hpuweightdwn->SetDirectory(0);
+     pufile.Close();
+     TFile numintfile("pilueuphists/Run2_161718_pileUpTransferFunctions_Averages_Zptcut_Hptcut_metcut_btagwp.root");
+     hnvtxtrans = new TProfile(*((TProfile*)numintfile.Get("tprofile_allmc_2018")));
+     hnvtxtrans->SetDirectory(0);
+     numintfile.Close();
    }
    if (year == 17) {
      yearstr = "2017";
      //JEC
      uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Fall17_V3b_MC_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Fall17_V3b_MC_SF_AK8PFPuppi.txt";
      //Muon ID SF
      muonsffile = "leptonsf/Run2017BCDEF_muon_SF_ID.root";
      muonsfhname = "NUM_TightID_DEN_genTracks_pt_abseta";
@@ -637,27 +760,53 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hbtagsf->SetDirectory(0);
      hbtagsf->SetDirectory(0);
      btagsf.Close();
+     //PileUp ReWeighting
+     pufileName = "pilueuphists/PileupHistograms_2017_69mb_pm5.root";
+     TFile pufile(pufileName,"READ");
+     hpuweight = new TH1F(*((TH1F*)pufile.Get("pu_weights_central")));
+     hpuweightup = new TH1F(*((TH1F*)pufile.Get("pu_weights_up")));
+     hpuweightdwn = new TH1F(*((TH1F*)pufile.Get("pu_weights_down")));
+     hpuweight->SetDirectory(0);
+     hpuweightup->SetDirectory(0);
+     hpuweightdwn->SetDirectory(0);
+     pufile.Close();
+     TFile numintfile("pilueuphists/Run2_161718_pileUpTransferFunctions_Averages_Zptcut_Hptcut_metcut_btagwp.root");
+     hnvtxtrans = new TProfile(*((TProfile*)numintfile.Get("tprofile_allmc_2017")));
+     hnvtxtrans->SetDirectory(0);
+     numintfile.Close();
+
    }
    if (year == 170) {
      yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017B_V32_DATA/Fall17_17Nov2017B_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Fall17_V3b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Fall17_V3b_DATA_SF_AK8PFPuppi.txt";
        }
    if (year == 171) {
      yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017C_V32_DATA/Fall17_17Nov2017C_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Fall17_V3b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Fall17_V3b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 172) {
      yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017DE_V32_DATA/Fall17_17Nov2017DE_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Fall17_V3b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Fall17_V3b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 173) {
      yearstr = "2017";
      uncfile = "JEC/Fall17_17Nov2017F_V32_DATA/Fall17_17Nov2017F_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Fall17_V3b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Fall17_V3b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 16) {
      yearstr = "2016";
      //JEC
      uncfile = "JEC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK8PFPuppi.txt";
+     //JER
+     unjerfile = "JER/Summer16_25nsV1b_MC_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Summer16_25nsV1b_MC_SF_AK8PFPuppi.txt";
      //Muon ID SF
      muonsffile = "leptonsf/Run2016_muon_SF_ID.root";
      muonsfhname = "hflip";
@@ -706,26 +855,51 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
      hbtagsf->SetDirectory(0);
      hbtagsf->SetDirectory(0);
      btagsf.Close();
+     //PileUp ReWeighting
+     pufileName = "pilueuphists/PileupHistograms_2016_69mb_pm5.root";
+     TFile pufile(pufileName,"READ");
+     hpuweight = new TH1F(*((TH1F*)pufile.Get("pu_weights_central")));
+     hpuweightup = new TH1F(*((TH1F*)pufile.Get("pu_weights_up")));
+     hpuweightdwn = new TH1F(*((TH1F*)pufile.Get("pu_weights_down")));
+     hpuweight->SetDirectory(0);
+     hpuweightup->SetDirectory(0);
+     hpuweightdwn->SetDirectory(0);
+     pufile.Close();
+     TFile numintfile("pilueuphists/Run2_161718_pileUpTransferFunctions_Averages_Zptcut_Hptcut_metcut_btagwp.root");
+     hnvtxtrans = new TProfile(*((TProfile*)numintfile.Get("tprofile_allmc_2016")));
+     hnvtxtrans->SetDirectory(0);
+     numintfile.Close();
    }
    if (year == 160) {
      yearstr = "2016";
      uncfile = "JEC/Summer16_07Aug2017BCD_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Summer16_25nsV1b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Summer16_25nsV1b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 161) {
      yearstr = "2016";
      uncfile = "JEC/Summer16_07Aug2017EF_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Summer16_25nsV1b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Summer16_25nsV1b_DATA_SF_AK8PFPuppi.txt";
    }
    if (year == 162) {
      yearstr = "2016";
      uncfile = "JEC/Summer16_07Aug2017GH_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+     unjerfile = "JER/Summer16_25nsV1b_DATA_PtResolution_AK8PFPuppi.txt";
+     unjerfilesf = "JER/Summer16_25nsV1b_DATA_SF_AK8PFPuppi.txt";
    }
    std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
+   std::cout<<"Using JER uncertainty file "<<unjerfile<<std::endl;
+   std::cout<<"Using JER SF  file "<<unjerfilesf<<std::endl;
    std::cout<<"Using btagsf file  "<<btagfile<<std::endl;
    std::cout<<"Using muon ID sf file  "<<muonsffile<<std::endl;
    std::cout<<"Using muon trigger sf file  "<<muontrigsffile<<std::endl;
    std::cout<<"Using electron sf file  "<<electronsffile<<std::endl;
 
    JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
+   // JER from the txt files : https://github.com/cms-jet/JRDatabase/tree/master/textFiles
+   JME::JetResolution resolution_ = JME::JetResolution(unjerfile.Data());
+   JME::JetResolutionScaleFactor res_sf_ = JME::JetResolutionScaleFactor(unjerfilesf.Data());
 
    //bring data era encoding back to normal numbers
    //Data era added as a digit on the end of the year
@@ -816,6 +990,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::vector<std::vector<std::vector<string>>> trigs = {trig16,trig17,trig18};
    
    //counters
+   float qcdwskimup = 0;
+   float qcdwskimdwn = 0;
+   float puweighttot = 0;
+   float puweightuptot = 0;
+   float puweightdwntot = 0;
+   float puweightvtxuptot = 0;
+   float puweightvtxdntot = 0;
    int emcounter = 0;
    int counttrigpass = 0;
    int countzpass    = 0;
@@ -920,6 +1101,11 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       std::pair<float,float> qcdupdwn(1.0,1.0);
       float pdfwup = 1.0;
       float pdfwdn = 1.0;
+      float puwnom = 1;
+      float puwup =1;
+      float puwdwn =1;
+      float puwnumup =1;
+      float puwnumdwn =1;
       if (sampleType > 0) {//Not Data
 	int gpid;
 	unsigned long ngen = GenParticles->size();
@@ -937,6 +1123,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	float qcdnlosf   = 1;
 	double qcdnnlosf = 1;
 	float ewknlosf   = 1;
+	float ntruenom = NVtx;
+	float ntrueup =  NVtx;
+	float ntruedwn = NVtx; 
 	if (sampleType == 2) {//DY+Jets
 	  qcdnlosf = 1.423*exp(-0.002257*theGenZ.Pt())+0.451;
 	  if (qcdnlosf <= 0.0) {
@@ -960,11 +1149,39 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	
 	//std::cout<<"PDF Up "<<pdfwup<<std::endl;
 	//std::cout<<"PDF Dn "<<pdfwdn<<std::endl;
-	
+
+	//Do QCD Uncertainty
 	qcdupdwn = getQCDScaleUpDwn(ScaleWeights);
+	qcdwskimup+= qcdupdwn.second;
+	qcdwskimdwn+= qcdupdwn.first;
+
+	//Get Pileup Weight
+	ntruenom  = hnvtxtrans->GetBinContent(hnvtxtrans->FindBin(NVtx));
+	ntrueup   = ntruenom+hnvtxtrans->GetBinError(hnvtxtrans->FindBin(NVtx));
+	ntruedwn  = ntruenom-hnvtxtrans->GetBinError(hnvtxtrans->FindBin(NVtx));
+	puwnom    = hpuweight->GetBinContent(hpuweight->FindBin(ntruenom));
+	puwup     = hpuweightup->GetBinContent(hpuweightup->FindBin(ntruenom));
+	puwdwn    = hpuweightdwn->GetBinContent(hpuweightdwn->FindBin(ntruenom));
+	puwnumup  = hpuweight->GetBinContent(hpuweight->FindBin(ntrueup));
+	puwnumdwn = hpuweight->GetBinContent(hpuweight->FindBin(ntruedwn));
+	puweighttot+=puwnom;
+	puweightuptot+=puwup;
+	puweightdwntot+=puwdwn;
+	puweightvtxuptot+=puwnumup;
+	puweightvtxdntot+=puwnumdwn;
+	//std::cout<<"    NVTx       "<<NVtx<<std::endl;
+	//std::cout<<"    True Num   "<<ntruenom<<std::endl;
+	//std::cout<<"    True NumUp "<<ntrueup<<std::endl;
+	//std::cout<<"    True NumDn "<<ntruedwn<<std::endl;
+	//std::cout<<"       puw nom "<<puwnom<<std::endl;
+	//std::cout<<"        puw up "<<puwup<<std::endl;
+	//std::cout<<"        puw dn "<<puwdwn<<std::endl;			    
+	//std::cout<<"    puw num up "<<puwnumup<<std::endl;
+	//std::cout<<"    puw num dn "<<puwnumdwn<<std::endl;			    
+	
       }
 
-
+      
       //Only deal with exact events
       unsigned int nmutest = Muons->size();
       unsigned int neltest = Electrons->size();
@@ -981,6 +1198,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       
       TLorentzVector leadmu;
       TLorentzVector subleadmu;
+      double leadmupt_unc = 0;
+      double subleadmupt_unc = 0;
       TLorentzVector leade;
       TLorentzVector subleade;
       TLorentzVector testmu;
@@ -992,6 +1211,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       int muld = 0;
       int elld = 0;
       double evntwhem_hold = 1.0;
+
+      //Build shifted Z
+      TLorentzVector upleadmu;
+      TLorentzVector dnleadmu;
+      TLorentzVector upsubleadmu;
+      TLorentzVector dnsubleadmu;
+      TLorentzVector upZ;
+      TLorentzVector dnZ;
+      TLorentzVector corrZ;
 
       //Channel Flags
      ///*
@@ -1012,6 +1240,87 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    subleadmu.SetPtEtaPhiM(muit->Pt(),muit->Eta(),muit->Phi(),muit->M());;
 	 }
 	}
+
+	//This omitts a check, but the leading muon should always be first
+	//std::cout<<"About to check the uncertainty"<<std::endl;
+	//leadmupt_unc = *SelectedMuonsTunepMomenErr->begin();
+	//subleadmupt_unc = SelectedMuonsTunepMomenErr->back();
+	//std::cout<<"The leading muon's error "<<leadmupt_unc<<std::endl;
+	//std::cout<<"The subleading muon's error "<<subleadmupt_unc<<std::endl;
+
+	//upleadmu.SetPtEtaPhiM(leadmu.Pt()+leadmupt_unc,leadmu.Eta(),leadmu.Phi(),leadmu.M());
+	//dnleadmu.SetPtEtaPhiM(leadmu.Pt()-leadmupt_unc,leadmu.Eta(),leadmu.Phi(),leadmu.M());
+	//upsubleadmu.SetPtEtaPhiM(subleadmu.Pt()+subleadmupt_unc,subleadmu.Eta(),subleadmu.Phi(),subleadmu.M());
+	//dnsubleadmu.SetPtEtaPhiM(subleadmu.Pt()-subleadmupt_unc,subleadmu.Eta(),subleadmu.Phi(),subleadmu.M());
+	//upZ = upleadmu+upsubleadmu;
+	//dnZ = dnleadmu+dnsubleadmu;
+
+	//Checks the muon momentum scale crap`
+	//Prepare to do muon momentum tuning
+	TLorentzVector leadmucorr;
+	TLorentzVector leadmucorrup;
+	TLorentzVector leadmucorrdn;
+	TLorentzVector subleadmucorr;
+	TLorentzVector subleadmucorrup;
+	TLorentzVector subleadmucorrdown;
+
+
+	if (sampleType > 0) {
+	   std::string muera = "badstring";
+	  if (year == 18){
+	    muera = "2018";
+	  }
+	  if (year == 17){
+	    muera = "2017";
+	  }
+	  if (year == 16){
+	    muera = "2016";
+	  }
+	GEScaleSyst GE(muera);
+	GE.SetVerbose(0);
+
+	int qlmu = 0;
+	int qslmu = 0;
+	//std::cout<<Muons->size()<<std::endl;
+	for (muit = Muons->begin(); muit != Muons->end();++muit){
+	  if (deltaR(leadmu,*muit) < 0.2 && deltaR(subleadmu,*muit) > 0.2) {
+	    qlmu = Muons_charge->at(muit-Muons->begin());
+	  }
+	  else if (deltaR(subleadmu,*muit) < 0.2 && deltaR(leadmu,*muit) > 0.2) {
+	    qslmu = Muons_charge->at(muit-Muons->begin());
+	  }
+	  else if (deltaR(subleadmu,*muit) < 0.2 && deltaR(leadmu,*muit) < 0.2) {
+	    if (deltaR(subleadmu,*muit) < deltaR(leadmu,*muit)){
+	      qslmu = Muons_charge->at(muit-Muons->begin());
+	    }
+	    else if (deltaR(subleadmu,*muit) > deltaR(leadmu,*muit)){
+	      qlmu = Muons_charge->at(muit-Muons->begin());
+	    }
+	  }
+	  //else {
+	  //  std::cout<<"!!!!!!!!!!!!!!!!!No muons matching the Z muons found"<<std::endl;
+	  //  std::cout<<" size of muon array: "<<Muons->size()<<std::endl;
+      
+	    
+	  //}
+	}
+	//std::cout<<"Leading muon charge: "<<qlmu <<std::endl;
+	//std::cout<<"subLeading muon charge: "<<qslmu <<std::endl;
+	leadmucorr = GE.GEScaleCorrLvec(leadmu.Pt(),leadmu.Eta(),leadmu.Phi(),qlmu,0,0);
+	leadmucorrup = GE.GEScaleCorrLvec(leadmu.Pt(),leadmu.Eta(),leadmu.Phi(),qlmu,0,1);
+	leadmucorrdn = GE.GEScaleCorrLvec(leadmu.Pt(),leadmu.Eta(),leadmu.Phi(),qlmu,0,2);
+	subleadmucorr = GE.GEScaleCorrLvec(subleadmu.Pt(),subleadmu.Eta(),subleadmu.Phi(),qslmu,0,0);
+	subleadmucorrup = GE.GEScaleCorrLvec(subleadmu.Pt(),subleadmu.Eta(),subleadmu.Phi(),qslmu,0,1);
+	subleadmucorrdown = GE.GEScaleCorrLvec(subleadmu.Pt(),subleadmu.Eta(),subleadmu.Phi(),qslmu,0,2);
+	//std::cout<<"Original leading muon pT: "<<leadmu.Pt()<<std::endl;
+	//std::cout<<"corr leading muon pT:     "<<leadmucorr.Pt()<<std::endl;
+
+	corrZ = leadmucorr+subleadmucorr;
+	upZ   = leadmucorrup+subleadmucorrup;
+	dnZ   = leadmucorrdn+subleadmucorrdown;
+	}
+
+	
 	std::vector<TLorentzVector>::iterator zit;
 	for (zit = ZCandidatesMuMu->begin(); zit != ZCandidatesMuMu->end(); ++zit) {
 	  double massZdiff = std::abs(91.1876 - zit->M());
@@ -1174,7 +1483,9 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       }
       //Z Candidate Build
       //For old ntuples
-       /*
+      /*
+	leadmupt_unc = 0;
+	subleadmupt_unc = 0;
       if (nselmu > 0 && nselel == 0 && anchan == 4) {
       	mumuchan = true;
 	channel = 4;
@@ -1284,6 +1595,7 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
       std::pair<double,double> metshift;
       bool hemshift = 0;
       //double metshift = 0;
+      double jerfactor = 0;
 
       /*
       if (nZs > 0 && nfat == 0){
@@ -1310,12 +1622,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	  fat = JetsAK8Clean->at(i);
 	  fsd = JetsAK8Clean_softDropMass->at(i);
 	  fid = JetsAK8Clean_ID->at(i);
+	  //std::cout<<"right before jer factor"<<std::endl;
+	  jerfactor = JetsAK8Clean_jerFactor->at(i);
 	  hjetpt->Fill(fat.Pt(),evntwkf_hold);
 	  hjeteta->Fill(fat.Eta(),evntwkf_hold);
 	  hjetphi->Fill(fat.Phi(),evntwkf_hold);
 	  jec_unc->setJetEta(fat.Eta());
 	  jec_unc->setJetPt(fat.Pt());
 	  double unc = 0;
+	  //std::cout<<"right before jec factor"<<std::endl;
 	  unc = std::abs(jec_unc->getUncertainty(true));
 	  double jecsysfac = 1 + jecsys*unc;
 	  fat = fat*jecsysfac;
@@ -1335,6 +1650,63 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	    fat = hemfat;
 	  }
 	  //*/
+
+	  if (jeRsys != 0){//Should do this only if we want to look at JEr systematics
+	    TLorentzVector closest_genjet = closestgenjetParticle(fat, GenJetsAK8);
+	    fat = fat * (1./jerfactor); // undo smearing 
+	    // redo smearing with new smearing factor from txt file
+	    float recopt = fat.Pt();
+	    float recoeta = fat.Eta();
+	    float abseta = fabs(recoeta);
+	    float rho = fat.Rho();
+	    //
+	    float resolution = resolution_.getResolution({{JME::Binning::JetPt, recopt}, {JME::Binning::JetEta, recoeta}, {JME::Binning::Rho, rho}});
+	    //
+	    //
+	    float genpt = -1;
+	    if(!(closest_genjet.Pt() == 0) && deltaR(closest_genjet, fat) < 0.5*0.8){
+	      genpt = closest_genjet.Pt();
+	    }
+	    if( fabs(genpt-recopt) > 3*resolution*recopt){
+	      genpt=-1;
+	    }
+	    if(genpt < 15.0f) {
+	      genpt=-1.;
+	    }
+	  //
+	  //
+	  float c = -1;
+	  if (jeRsys == 1) { 
+	    c = res_sf_.getScaleFactor({{JME::Binning::JetPt, recopt}, {JME::Binning::JetEta, recoeta}}, Variation::UP);
+	  } else if (jeRsys == -1) {
+	    c = res_sf_.getScaleFactor({{JME::Binning::JetPt, recopt}, {JME::Binning::JetEta, recoeta}}, Variation::DOWN);
+	  } else{
+	    c = res_sf_.getScaleFactor({{JME::Binning::JetPt, recopt}, {JME::Binning::JetEta, recoeta}});
+	  }
+	  //
+	  // Calculate the new pt
+	  float new_pt = -1.;
+
+	  //An alternative approach, which does not require the presence of a matching particle-level jet, is the stochastic smearing: https://twiki.cern.ch/twiki/bin/viewauth/CMS/JetResolution
+
+	  //TRandom rand((int)(1000*abseta));
+	  //float random_gauss = rand.Gaus(0, resolution);
+	  if(genpt > 0){
+	    new_pt = std::max(0.0f, genpt + c * (recopt - genpt));
+	  } else{
+	    float random_gauss = gRandom->Gaus(0, resolution);
+
+	    new_pt = recopt * (1 + random_gauss*sqrt(std::max(c*c-1, 0.0f)));
+	  }
+
+	  fat *= new_pt / recopt;
+	  //
+	  //
+	  hjetptJER->Fill(fat.Pt(),evntwkf_hold);
+	  hjetetaJER->Fill(fat.Eta(),evntwkf_hold);
+	  hjetphiJER->Fill(fat.Phi(),evntwkf_hold);
+	  }
+
 	  double masshdiff = std::abs(125.18 - fsd);
 	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
 	    basehdiff = masshdiff;
@@ -1448,6 +1820,35 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	//*/
       }
 
+      //muon momentum shift
+      /*
+      double ptmiss_x  = ptmiss*std::cos(ptmiss_phi);
+      double ptmiss_y  = ptmiss*std::sin(ptmiss_phi);
+      TVector2 metvec0(ptmiss_x,ptmiss_y);
+      double leadmu_x  = leadmu.Pt()*std::cos(leadmu.Phi());
+      double leadmu_y  = leadmu.Pt()*std::sin(leadmu.Phi());
+      TVector2 leadmuptvec(leadmu_x,leadmu_y);
+      double subleadmu_x  = subleadmu.Pt()*std::cos(subleadmu.Phi());
+      double subleadmu_y  = subleadmu.Pt()*std::sin(subleadmu.Phi());
+      TVector2 subleadmuptvec(subleadmu_x,subleadmu_y);
+      TVector2 leadmuupvec = getShiftedPtvec(leadmu.Pt(),leadmupt_unc,leadmu.Phi(),1);
+      TVector2 leadmudnvec = getShiftedPtvec(leadmu.Pt(),leadmupt_unc,leadmu.Phi(),-1);
+      TVector2 subleadmuupvec = getShiftedPtvec(subleadmu.Pt(),subleadmupt_unc,subleadmu.Phi(),1);
+      TVector2 subleadmudnvec = getShiftedPtvec(subleadmu.Pt(),subleadmupt_unc,subleadmu.Phi(),-1);
+
+      TVector2 cleanedmet = metvec0+leadmuptvec+subleadmuptvec;
+      TVector2 metmuonsup = cleanedmet-leadmuupvec-subleadmuupvec;
+      TVector2 metmuonsdn = cleanedmet-leadmudnvec-subleadmudnvec;
+
+      double muupmet = metmuonsup.Mod();
+      double mudnmet = metmuonsdn.Mod();
+      */
+      
+      //std::cout<<"Initial MET                             : "<<ptmiss<<std::endl;
+      //std::cout<<"    MET with the muons no longer counted: "<<cleanedmet.Mod()<<std::endl;
+      //std::cout<<"                       MET with up muons: "<<metmuonsup.Mod()<<std::endl;
+      //std::cout<<"                       MET with dn muons: "<<metmuonsdn.Mod()<<std::endl;
+
 
 
       //Do MET Correction
@@ -1524,9 +1925,15 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	hCandidate_middb = hmiddb;
 	ZCandidate = theZ;
 	ZCandidate_pt  = theZ.Pt();
+	ZCorrCandidate_pt  = corrZ.Pt();
+	ZupCandidate_pt  = upZ.Pt();
+	ZdnCandidate_pt  = dnZ.Pt();
 	ZCandidate_phi = theZ.Phi();
 	ZCandidate_eta = theZ.Eta();
+	ZCorrCandidate_m   = corrZ.M();
 	ZCandidate_m   = theZ.M();
+	ZupCandidate_m   = upZ.M();
+	ZdnCandidate_m   = dnZ.M();
 	//event weight ones
 	evntwhem = evntwhem_hold;
 	evntwkf = evntwkf_hold;
@@ -1554,13 +1961,22 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	pdfweightdn = pdfwdn;
 	qcdweightup = qcdupdwn.second;
 	qcdweightdn = qcdupdwn.first;
+	//pileup
+	puweightnom = puwnom;
+	puweightup = puwup;
+	puweightdn = puwdwn;
+	puweightvtxup = puwnumup;
+	puweightvtxdn = puwnumdwn;
+
 	LMuCandidate = leadmu;
 	LMuCandidate_pt  = leadmu.Pt();
+	LMuCandidate_ptunc  = leadmupt_unc;
 	LMuCandidate_phi = leadmu.Phi();
 	LMuCandidate_eta = leadmu.Eta();
 	LMuCandidate_m   = leadmu.M();
 	sLMuCandidate = subleadmu;
 	sLMuCandidate_pt  = subleadmu.Pt();
+	sLMuCandidate_ptunc  = subleadmupt_unc;
 	sLMuCandidate_phi = subleadmu.Phi();
 	sLMuCandidate_eta = subleadmu.Eta();
 	sLMuCandidate_m   = subleadmu.M();
@@ -1586,6 +2002,8 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
 	metphiusable = ptmiss_phi;
 	metxyphicorr = metxycorrpair.second;
 	metxycorr= metxycorrpair.first;
+	//metmuup = muupmet;
+	//metmudn = mudnmet;
 	channelflag = channel;
 	counthpass += 1;
 	if (muld > 0) emumulead+=1;
@@ -1636,6 +2054,10 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    std::cout<<"Events with zmumuzeezemu "<<zmumuzeezemu<<std::endl;
    std::cout<<"Events with zee          "<<zee<<std::endl;
    std::cout<<"Events with zeezemu      "<<zeezemu<<std::endl;
+
+   std::cout<<"Number of events in skims:                  "<<nentries<<std::endl;
+   std::cout<<"Number of events in skims qcdweighted up:   "<<qcdwskimup<<std::endl;
+   std::cout<<"Number of events in skims qcdweighted dn:   "<<qcdwskimdwn<<std::endl;
 //std::cout<<"Events with zemu         "<<zemu<<std::endl;
 
    /*
@@ -1647,6 +2069,13 @@ void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvent
    hZpass->SetBinContent(1,countzpass);
    hHpass->SetBinContent(1,counthpass);
    hpass->SetBinContent(1,countpass);
+   hnskimedup->SetBinContent(1,qcdwskimup);
+   hnskimeddwn->SetBinContent(1,qcdwskimdwn);
+   hnpu->SetBinContent(1,puweighttot);
+   hnpuup->SetBinContent(1,puweightuptot);
+   hnpudwn->SetBinContent(1,puweightdwntot);
+   hnpunumup->SetBinContent(1,puweightvtxuptot);
+   hnpunumdwn->SetBinContent(1,puweightvtxdntot);
    
    trimFile->Write();
    trimFile->Close();   

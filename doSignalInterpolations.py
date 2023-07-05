@@ -25,6 +25,20 @@ def getRealSignals(f):
         hists[massesKey] = hist
     return hists
 
+def getLumiScaledRun2RealSignals(f):
+    hists = {}
+    tf=r.TFile(f)
+    histKeys = [key.GetName() for key in tf.GetListOfKeys() if "_lumixs" in key.GetName()]
+    print(histKeys)
+    for histKey in histKeys:
+        massesKey = tuple(float(x) for x in histKey.replace("Zp", "").split("-NS")[0].split("-ND"))
+        hist = tf.Get(histKey).Clone()
+        hist.SetDirectory(0)
+        r.SetOwnership(hist, r.kFALSE)
+        hists[massesKey] = hist
+    return hists
+
+
 def getQuantileInterps(mZp,mND,quantrbf):
     interpQuantiles = {}
     for quantileKey in quantrbf.keys():
@@ -33,25 +47,36 @@ def getQuantileInterps(mZp,mND,quantrbf):
 
 if __name__=="__main__":
 
-    files = glob.glob("analysis_output_ZpAnomalon/2022-10-02/Run2_161718_ZllHbbMET_syst*")
+    #files = glob.glob("analysis_output_ZpAnomalon/2022-10-10/Run2_161718_ZllHbbMET_syst*")#for ns=1
+    #files = glob.glob("analysis_output_ZpAnomalon/2022-10-05/Run2_161718_ZllHbbMET_systnominal*")
 
+    files = glob.glob("analysis_output_ZpAnomalon/2023-05-16/Run2_161718_ZllHbbMET_inputsForInterp_syst*")
+
+    #print(files)
+    print(files[:1])
     for f in files:
         ####file with the histograms to seed the interpolations
         #f = "analysis_output_ZpAnomalon/2022-10-05/Run2_161718_ZllHbbMET_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_Zptcut100_Hptcut300_metcut75_btagwp8E-10.root"
-        systr = f.split("Run2_161718_ZllHbbMET_")[-1].split("_Zptcut100_Hptcut300_metcut75_btagwp8E-10.root")[0]
+        systr = f.split("Run2_161718_ZllHbbMET_inputsForInterp_")[-1].split("_Zptcut100_Hptcut300_metcut75_btagwp8E-10.root")[0]
         print("Doing signal interpolations for ",systr)
         #systr = "systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco"
     
         ####Get the real signal histograms from a file
         #returns a dictionary of hists with the masses in a float
-        hists = getRealSignals(f)
+        #hists = getRealSignals(f)#2018 signal only
+        hists  = getLumiScaledRun2RealSignals(f)
+        #print(hists)
         masspoints = set(hists.keys())
-        totalgrid = set([tuple([x,400+y*200]) for x in range(1500,6000,500) for y in range(0,int(x/400)-1)])
+        #print(masspoints)
+        totalgrid = set([tuple([x,400+y*200]) for x in range(1500,6000,500) for y in range(0,int(x/400)-1)])#NS=200
+        #totalgrid = set([tuple([x,400+y*200]) for x in range(1500,5500,500) for y in range(0,int(x/400)-1)])#NS=1
+        #print(totalgrid)
         missing = totalgrid - masspoints
+        #print(missing)
         
         ####Build quantile info
         # the precision here can be lowered
-        nQuantiles = 10000
+        nQuantiles = 1000
         empty = [0. for i in range(0,nQuantiles)]
         # % corresponding to the quantiles
         xes = [(i)*1/float(nQuantiles) for i in range(0, nQuantiles)]
@@ -109,14 +134,14 @@ if __name__=="__main__":
         interpHists = {}
         cans= []
 
-        #namer = 0
+        namer = 0
         outfname = makeOutFile("interpolation",systr,".root","100.0","300.0","75.0","0.8")
         outf = r.TFile(outfname,"RECREATE")
         print("Writing interpolations to ",outfname)
 
         for iPoint, pointToTest in enumerate(pointsToTest):
-            #cans.append(r.TCanvas())
-            #cans[-1].cd()
+            cans.append(r.TCanvas())
+            cans[-1].cd()
             newQuantiles = getQuantileInterps(*pointToTest,rbfs)
             #nFromHist = list(hists.values())[0].GetSumOfWeights()
             nToGenerate = 10000
@@ -129,9 +154,9 @@ if __name__=="__main__":
                     interpHists[pointToTest].Fill(r.gRandom.Uniform(interpQuantiles[i], interpQuantiles[i+1]))
             interpHists[pointToTest].Scale(scaleFactor)
             interpHists[pointToTest].Rebin(int(rebinFactor))
-            #interpHists[pointToTest].Draw("HIST SAME")
+            interpHists[pointToTest].Draw("HIST SAME")
             #cans[-1].SaveAs("canvas"+str(namer)+".png")
             interpHists[pointToTest].SetName("Zp"+str(round(pointToTest[0]))+"ND"+str(round(pointToTest[1]))+"NS200")
             interpHists[pointToTest].Write()
-            #namer+=1
+            namer+=1
 

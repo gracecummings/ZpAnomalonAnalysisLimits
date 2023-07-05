@@ -22,7 +22,7 @@ def regionFormatter(regionstr):
     return formatted
 
 def lumiFormatter(yearlist):
-    lumidict = {16:35.9,17:41.53,18:59.74}
+    lumidict = {16:36.31,17:41.53,18:59.74}
     lumi = 0
     for year in yearlist:
         lumi += lumidict[year]
@@ -69,6 +69,8 @@ if __name__=='__main__':
     systr     = args.syst
     plot_data = args.data
     sigdivsor = 5
+    valid = False
+    islog = False
     
     #Select Plotting years and region
     years = [16,17,18]
@@ -80,19 +82,23 @@ if __name__=='__main__':
         print('Plotting the data!')
     else:
         print('You know you are not plotting data, right?')
-
+        
     #Gather Input
     bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
-    data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,systr)
+    data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,'systnominal_btagnom_muidnom')
     sigs =  go.signal(pathplots,zptcut,hptcut,metcut,btagwp,sig_xsec,years,systr)
+    datareg = 'sb'
+    if valid:
+        #dynorm = np.load('analysis_output_ZpAnomalon/2022-05-17/Run2_161718_dynormalization_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
+        bkgs = go.validation('mumu_2022-03-31_ProperREOIDSF_validationOfAlphaMethodExtrap',zptcut,hptcut,metcut,btagwp,'systnominal_kfnom_btagnom_muidnom_elidnom_elreconom')
+        data = go.validation('mumu_2022-03-31_ProperREOIDSF_validationOfAlphaMethodExtrap',zptcut,hptcut,metcut,btagwp,systr)
+        datareg = 'vr'
 
-    #print(bkgs.bkgs)
-    
     dynorm = 1
     if len(years) == 2:#dynorms only matter for composite years
         dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
     elif len(years) == 3:
-            dynorm = np.load(pathplots+'/Run2_161718_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
+            dynorm = np.load(pathplots+'/Run2_161718_dynormalization_alphat_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
 
     #Colors, Naming, general style
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
@@ -115,19 +121,60 @@ if __name__=='__main__':
     siginfo = sorted(siginfo,key = lambda sig: (sig["mzp"],sig["mnd"])) 
 
     #names and param. To Do: expand to include plot limits for linear scale
+    #titles = {
+    #    "h_z_pt":["Z p_{T} (GeV)",0,40,1],
+    #    "h_z_eta":["\eta_{Z}",0,100,1],
+    #    "h_z_phi":["\phi_{Z}",0,90,2],
+    #    "h_z_phiw":["\phi_{Z}",0,90,2],
+    #    "h_z_m":["m_{Z} (GeV)",0,60,1],
+    #    "h_h_pt":["Higgs p_{T} (GeV)",0,60,1],
+    #    "h_h_eta":["\eta_{Higss}",0,130,1],
+    #    "h_h_phi":["\phi_{Higgs}",0,70,2],
+    #    "h_h_phiw":["\phi_{Higgs}",0,70,2],
+    #    "h_h_m":["m_{h} (GeV)",0,50,1],
+    #    "h_h_sd":["Higgs Soft Drop Mass (GeV)",0,75,1],#45 normally max
+    #    "h_met":["p_{T}^{miss} (GeV)",0,100,1],
+    #    "h_met_phi":["\phi p_{T}^{miss}",0,80,2],
+    #    "h_met_phiw":["\phi p_{T}^{miss}",0,80,2],
+    #    "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,60,2],
+    #    "h_nd_jigm":["Jigsaw Mass Estimator ND",0,60,1],
+    #    "h_ns_jigm":["Jigsaw Mass Estimator NS",0,100,1],
+    #    "h_btag":["btag operating point",0,70,1],
+    #    "h_dphi_zh":["\Delta\phi_{ZH}",0,80,2],
+    #    "h_dphi_zmet":["\Delta\phi_{ZMET}",0,60,2],
+    #    "h_dphi_hmet":["\Delta\phi_{HMET}",0,60,2],
+    #    "h_dr_zh":["\Delta R(ZH)",0,170,1],
+    #    "h_dr_lmuh":["\Delta R(lmu,H)",0,200,1],
+    #    "h_dr_slmuh":["\Delta R(slmu,H)",0,200,1],
+    #    "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,60,1],
+    #    "h_dr_gz_gh":["\Delta R(genZ,genH)",0,250,1],
+    #    "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,250,1],
+    #    "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,250,1],
+    #    "h_LMu_pt":["leading \mu p_{T} (GeV)",0,40,1],
+    #    "h_LMu_phi":["\phi_{leading \mu}",0,100,2],
+    #    "h_LMu_eta":["\eta_{leading \mu} ",0,100,1],
+    #    "h_sLMu_pt":["subleading \mu p_{T} (GeV)",0,40,1],
+    #    "h_sLMu_phi":["\phi_{subleading \mu}",0,100,2],
+    #    "h_sLMu_eta":["\eta_{subleading \mu}",0,100,1],
+    #}
+
+    #For antibtagged alpha method region
     titles = {
-        "h_z_pt":["Z p_{T}",0,40,1],
+        "h_z_pt":["Z p_{T} (GeV)",0,40,2],
         "h_z_eta":["\eta_{Z}",0,100,1],
         "h_z_phi":["\phi_{Z}",0,90,2],
         "h_z_phiw":["\phi_{Z}",0,90,2],
-        "h_z_m":["m_{Z}",0,60,1],
-        "h_h_pt":["Higgs p_{T}",0,60,1],
+        "h_z_m":["m_{Z} (GeV)",0,100,1],
+        "h_h_pt":["Higgs p_{T} (GeV)",0,60,1],
         "h_h_eta":["\eta_{Higss}",0,130,1],
         "h_h_phi":["\phi_{Higgs}",0,70,2],
         "h_h_phiw":["\phi_{Higgs}",0,70,2],
-        "h_h_m":["m_{h}",0,50,1],
-        "h_h_sd":["Higgs Soft Drop Mass",0,75,1],#45 normally max
-        "h_met":["p_{T}^{miss}",0,100,1],
+        "h_h_m":["m_{h} (GeV)",0,50,1],
+        "h_h_sd":["Higgs Soft Drop Mass (GeV)",0,70,1],#45 normally max
+        "h_metxy":["p_{T}^{miss} xy corrected (GeV)",0,100,1],
+        "h_metxy_phi":["\phi p_{T}^{miss} xy corrected",0,80,2],
+        "h_metxy_phiw":["\phi p_{T}^{miss} xy corrected",0,80,2],
+        "h_met":["p_{T}^{miss} (GeV)",0,100,1],
         "h_met_phi":["\phi p_{T}^{miss}",0,80,2],
         "h_met_phiw":["\phi p_{T}^{miss}",0,80,2],
         "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,60,2],
@@ -144,12 +191,17 @@ if __name__=='__main__':
         "h_dr_gz_gh":["\Delta R(genZ,genH)",0,250,1],
         "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,250,1],
         "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,250,1],
-        "h_LMu_pt":["leading \mu p_{T}",0,40,1],
+        "h_LMu_pt":["leading \mu p_{T} (GeV)",0,40,1],
         "h_LMu_phi":["\phi_{leading \mu}",0,100,2],
-        "h_LMu_eta":["\eta_{leading \mu}",0,100,1],
-        "h_sLMu_pt":["subleading \mu p_{T}",0,40,1],
+        "h_LMu_eta":["\eta_{leading \mu} ",0,100,1],
+        "h_sLMu_pt":["subleading \mu p_{T} (GeV)",0,40,1],
         "h_sLMu_phi":["\phi_{subleading \mu}",0,100,2],
         "h_sLMu_eta":["\eta_{subleading \mu}",0,100,1],
+        "h_totmom":["Total Scalar Transverse Momentum",0,80,4],
+        "h_metfrac":["MET/(Total Scalar Transverse Momentum)",0,100,2],
+        "h_zptfrac":["p_{T}(Z)/(Total Scalar Transverse Momentum)",0,100,2],
+        "h_hptfrac":["p_{T}(H)/(Total Scalar Transverse Momentum)",0,100,2],
+        
     }
 
 
@@ -157,8 +209,12 @@ if __name__=='__main__':
     for key in keys:
         hname = key.GetName()
         print("working to make stacked plot of ",hname)
-
+        #if "h_zp_jigm" not in hname:
+        #    continue
         if ("gh" in hname) or ("gz" in hname) and plot_data:
+            continue
+
+        if ("h_h_sd" not in hname) and ("totalr" in regname):
             continue
         
         #Make holder histograms
@@ -214,11 +270,14 @@ if __name__=='__main__':
         hsbkg.Add(hdy)
         hsbkg.SetMinimum(titles[hname][1])
         hsbkg.SetMaximum(titles[hname][2])
+        if islog:
+            hsbkg.SetMinimum(0.01)
+            hsbkg.SetMaximum(10000000)
         
         #Make added hist for ratio plotting
         hbkg = hzz.Clone()
         hbkg.Add(hwz)
-        hbkg.Add(hzz)
+        #hbkg.Add(hzz)
         hbkg.Add(htt)
         hbkg.Add(hdy)
 
@@ -234,7 +293,10 @@ if __name__=='__main__':
         if plot_data:
             #Make the data histograms
             #hdat = data.getAddedHist(empty6,reg,hname,years=years)
-            hdat = data.getAddedHist(empty6,'sb',hname,years=years)
+            if valid:
+                hdat = data.getAddedHistData(empty6,datareg,hname,years=years)
+            if not valid:
+                hdat = data.getAddedHist(empty6,datareg,hname,years=years)
             hdat.Rebin(titles[hname][3])
             hdat.SetBinErrorOption(1)
             hdat.SetMarkerStyle(8)
@@ -253,6 +315,7 @@ if __name__=='__main__':
             ratline = ROOT.TLine(hbkg.GetBinLowEdge(1),1,hbkg.GetBinLowEdge(hbkg.GetNbinsX())+hbkg.GetBinWidth(hbkg.GetNbinsX()),1)
 
         #Plotting itself
+
         tc = ROOT.TCanvas("tc",hname,tcanvasdims[0],tcanvasdims[1])
         p1 = ROOT.TPad("p1","stack_"+hname,0,stkpadydims[0],1.0,stkpadydims[1])
         p1.SetLeftMargin(0.15)
@@ -266,6 +329,7 @@ if __name__=='__main__':
         #Prepare first pad for stack
         p1.Draw()
         p1.cd()
+        #p1.SetLogy()
 
         #Draw the stack
         hsbkg.Draw("HIST")#add PFC for palette drawing
@@ -278,8 +342,17 @@ if __name__=='__main__':
         hsbkg.GetYaxis().SetLabelSize(0.04)
         CMS_lumi.CMS_lumi(p1,4,13)
 
+
+        #Print some parameters:
+        print("The total background is: ",hbkg.Integral())
+        
         #Draw the Signal
         for s,sig in enumerate(siginfo):
+            print(sig["name"])
+            if s % 5 != 0:
+                continue
+            if "Zp5500-ND1800-NS200_TuneCP5_13TeV-madgraph-pythia8" not in sig["name"]:
+                continue
             name = sig["name"]
             signame = 'holder'
             if "Tune" in name:
@@ -293,6 +366,8 @@ if __name__=='__main__':
             hsig.Scale(sig['scale'])
             hsig.SetLineColor(sigcolors[s])
             hsig.SetStats(0)
+            print("The total signal for {0} is: {1}".format(signame,hsig.Integral()))
+
 
         
             if s == 0:
@@ -301,6 +376,8 @@ if __name__=='__main__':
             elif s % sigdivsor == 0:
                 hsig.Draw("histsame")
                 leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
+            #hsig.Draw("histsame")
+            #leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
             p1.cd()
 
         leg.Draw()
@@ -308,6 +385,7 @@ if __name__=='__main__':
         tc.cd()
 
         if plot_data:
+            print("The total data is: ",hdat.Integral())
             p1.cd()
             hdat.Draw("histsame,pe")
             tc.cd()

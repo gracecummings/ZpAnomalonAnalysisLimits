@@ -210,9 +210,11 @@ if __name__=='__main__':
     config.read_file(fp)
     systs = config.sections()
 
-    #signal       = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
 
     signal_run2  = go.signal_run2(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
+    #signal_run2  = go.signal_run2(config.get('jer','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('jer','strnom'))#jer has a different overall normal for some reason
+    #print(signal_run2.sig18sr)
+    #print(signal_run2.sig17sr)
 
     #get a histogram
     tftest = ROOT.TFile(signal_run2.sig18sr[0])
@@ -248,15 +250,18 @@ if __name__=='__main__':
 
     #Get the signals
     signalsamps = signal_run2.sigsbyname
-    for signalname in signalsamps.keys():
-        if "Zp5500-ND1800-NS200" not in signalname:
-            continue
+    #print(signalsamps)
+    tests = ['Zp4000-ND800-NS200','Zp2000-ND400-NS200','Zp5500-ND1800-NS200']
+    #for signalname in signalsamps.keys():
+    for signalname in tests:
+        #if "Zp5500-ND1800-NS200" not in signalname:
+        #    continue
         syst = 'systmatic'
     
-        test18 = signal_run2.getAddedHist(signalname,1.0,emp1,"sr","h_zp_jigm",[18])
-        test17 = signal_run2.getAddedHist(signalname,1.0,emp2,"sr","h_zp_jigm",[17])
-        test16 = signal_run2.getAddedHist(signalname,1.0,emp3,"sr","h_zp_jigm",[16])
-        testclasssum = signal_run2.getAddedHist(signalname,1.0,emp4,"sr","h_zp_jigm")
+        test18 = signal_run2.getAddedHist(signalname,1.0,empty.Clone(),"sr","h_zp_jigm",[18])
+        test17 = signal_run2.getAddedHist(signalname,1.0,empty.Clone(),"sr","h_zp_jigm",[17])
+        test16 = signal_run2.getAddedHist(signalname,1.0,empty.Clone(),"sr","h_zp_jigm",[16])
+        testclasssum = signal_run2.getAddedHist(signalname,1.0,empty.Clone(),"sr","h_zp_jigm")
 
         test18 = newNameAndStructure(test18,signalname+'2018',2,limrangelow,limrangehigh)
         test17 = newNameAndStructure(test17,signalname+'2017',2,limrangelow,limrangehigh)
@@ -283,9 +288,10 @@ if __name__=='__main__':
         year_plots = [test16,test17,test18]
 
 
-        for syst in systs[1:]:
+        for syst in systs[1:]:#avoid the nominal
             print("Checking systematics for: ",syst)
-            if "prefire" not in syst:
+            #if "jer" not in syst: continue
+            if "qcdscale" not in syst:
                 print("    have not run full run 2 uncertainties. this is a hard coded message.")
                 continue
 

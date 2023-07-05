@@ -17,7 +17,8 @@ if __name__=='__main__':
     maxr = args.maxr
     minr = args.minr
     binw = args.binwidth
-    binnumber = int(abs(maxr)+abs(minr)/binw)
+    if minr and maxr:
+        binnumber = int(abs(maxr)+abs(minr)/binw)
 
     #open the files and get the basic objects
     tf = ROOT.TFile(f)
@@ -26,15 +27,19 @@ if __name__=='__main__':
     savef = ROOT.TFile(outf,"recreate")
 
     #define the histograms to fill
-    hr = ROOT.TH1F("hr","r {fit_status==0}",binnumber,minr,maxr)
-    hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",20,-5,5)
-    hdrerr = ROOT.TH1F("hdrerr","(r -r_exp)/rErr, standard error, {fit_status==0})",40,-5,5)
-    hdrerrhl = ROOT.TH1F("hdrerrhl","(r -r_exp)/rErr, hilow error, {fit_status==0})",40,-5,5)
-    hrge = ROOT.TH1F("hrge","r {fit_status>=0}",binnumber,minr,maxr)
-    hdrge = ROOT.TH1F("hdrge","r-r_exp {fit_status>=0}",20,-5,5)
-    hdrerrge = ROOT.TH1F("hdrerrge","(r -r_exp)/rErr, standard error, {fit_status>=0}",40,-5,5)
-    hdrerrgehl = ROOT.TH1F("hdrerrgehl","(r -r_exp)/rErr, hilow error, {fit_status>=0}",40,-5,5)
-    #hhilowerr = ROOT.TH1F("hhilowerr","hilow error, {fit_status>=0}",40,-5,5)
+    #hr = ROOT.TH1F("hr","r {fit_status==0}",binnumber,minr,maxr)
+    hr = ROOT.TH1F("hr","r {fit_status==0}",60,-10,10)
+    #hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",20,-5,5)
+    #hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",60,-10,10)
+    hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",60,-10,10)
+    #hdrerr = ROOT.TH1F("hdrerr","(r -r_exp)/rErr, standard error, {fit_status==0})",20,-5,5)
+    hdrerrhl = ROOT.TH1F("hdrerrhl","(r -r_exp)/rErr, hilow error, {fit_status==0})",60,-10,10)
+    hrge = ROOT.TH1F("hrge","r {fit_status>=0}",60,-10,-10)
+    #hdrge = ROOT.TH1F("hdrge","r-r_exp {fit_status>=0}",20,-5,5)
+    hdrge = ROOT.TH1F("hdrge","r-r_exp {fit_status>=0}",60,-10,10)
+    #hdrerrge = ROOT.TH1F("hdrerrge","(r -r_exp)/rErr, standard error, {fit_status>=0}",20,-5,5)
+    hdrerrgehl = ROOT.TH1F("hdrerrgehl","(r -r_exp)/rErr, hilow error, {fit_status>=0}",60,-10,10)
+    #hhilowerr = ROOT.TH1F("hhilowerr","hilow error, {fit_status>=0}",60,-5,5)
 
     #fill the histograms
     #comparators = ["==",">="]
@@ -47,19 +52,20 @@ if __name__=='__main__':
     deltarstrge = "(r-"+str(expsig)+")>>hdrge"
     tree.Draw(deltarstr,"fit_status == 0","")
     tree.Draw(deltarstrge,"fit_status >= 0","")
-    drerrstr = "(r-"+str(expsig)+")/rErr>>hdrerr"
-    drerrstrge = "(r-"+str(expsig)+")/rErr>>hdrerrge"
-    tree.Draw(drerrstr,"fit_status == 0","")
-    tree.Draw(drerrstrge,"fit_status >= 0","")
+    #drerrstr = "(r-"+str(expsig)+")/rErr>>hdrerr"
+    #drerrstrge = "(r-"+str(expsig)+")/rErr>>hdrerrge"
+    #tree.Draw(drerrstr,"fit_status == 0","")
+    #tree.Draw(drerrstrge,"fit_status >= 0","")
 
-    rerrstr = "(rHiErr*((r-"+str(expsig)+")<0)+rLoErr*((r-"+str(expsig)+")>0))"
+    rerrstr = "(rHiErr*((r-"+str(expsig)+")<0)+rLoErr*((r-"+str(expsig)+")>0))"#first hilow err string
     drerrstrhl = "(r-"+str(expsig)+")/"+rerrstr+">>hdrerrhl"
     drerrstrgehl = "(r-"+str(expsig)+")/"+rerrstr+">>hdrerrgehl"
     tree.Draw(drerrstrhl,"fit_status == 0","")
     tree.Draw(drerrstrgehl,"fit_status >= 0","")
     #tree.Draw(rerrstr+" >>hhilowerr","fit_status >= 0","")
 
-    hists = [hr,hdr,hdrerr,hrge,hdrge,hdrerrge,hdrerrhl,hdrerrgehl]
+    #hists = [hr,hdr,hdrerr,hrge,hdrge,hdrerrge,hdrerrhl,hdrerrgehl]
+    hists = [hr,hdr,hrge,hdrge,hdrerrhl,hdrerrgehl]
     #ROOT.gStyle.SetOptFit(1111)
     f1 = ROOT.TF1("f1","[0]*exp(-0.5*((x-[1])/[2])^2)")
     
@@ -68,7 +74,7 @@ if __name__=='__main__':
         ROOT.gStyle.SetOptFit(1111)#fit window on all but first hist
         f1.SetParameter(0,hist.GetMaximum())
         f1.SetParameter(1,hist.GetBinLowEdge(hist.GetMaximumBin())+0.5*hist.GetBinWidth(hist.GetMaximumBin()))
-        f1.SetParameter(2,hist.GetBinLowEdge(hist.FindBin(hist.GetMaximum()/2))+0.5*hist.GetBinWidth(hist.FindBin(hist.GetMaximum()/2)))
+        f1.SetParameter(2,hist.GetBinLowEdge(hist.FindLastBinAbove(hist.GetMaximum()/2))+0.5*hist.GetBinWidth(hist.FindBin(hist.GetMaximum()/2)))
         hist.Fit(f1)
         hist.GetYaxis().SetTitle("Number of toys")
         print("Making ",hist.GetName())

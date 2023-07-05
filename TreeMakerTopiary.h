@@ -167,6 +167,7 @@ public :
    vector<double>  *JetsAK8Clean_girth;
    vector<bool>    *JetsAK8Clean_ID;
    vector<double>  *JetsAK8Clean_jecFactor;
+   vector<double>  *JetsAK8Clean_jerFactor;
    vector<int>     *JetsAK8Clean_multiplicity;
    vector<double>  *JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb;
    vector<double>  *JetsAK8Clean_ptD;
@@ -231,6 +232,7 @@ public :
    Int_t           PrimaryVertexFilter;
    vector<TLorentzVector> *SelectedElectrons;
    vector<TLorentzVector> *SelectedMuons;
+   vector<double> *SelectedMuonsTunepMomenErr;
    vector<TLorentzVector> *TAPElectronTracks;
    vector<double>  *TAPElectronTracks_dxypv;
    vector<bool>    *TAPElectronTracks_leptonMatch;
@@ -392,6 +394,7 @@ public :
    TBranch        *b_JetsAK8Clean_girth;   //!
    TBranch        *b_JetsAK8Clean_ID;   //!
    TBranch        *b_JetsAK8Clean_jecFactor;   //!
+   TBranch        *b_JetsAK8Clean_jerFactor;   //!
    TBranch        *b_JetsAK8Clean_multiplicity;   //!
    TBranch        *b_JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb;   //!
    TBranch        *b_JetsAK8Clean_ptD;   //!
@@ -456,6 +459,7 @@ public :
    TBranch        *b_PrimaryVertexFilter;   //!
    TBranch        *b_SelectedElectrons;   //!
    TBranch        *b_SelectedMuons;   //!
+   TBranch        *b_SelectedMuonsTunepMomenErr;
    TBranch        *b_TAPElectronTracks;   //!
    TBranch        *b_TAPElectronTracks_dxypv;   //!
    TBranch        *b_TAPElectronTracks_leptonMatch;   //!
@@ -544,6 +548,9 @@ public :
    vector<float>   *PDFweights;
    vector<float>   *PSweights;
    vector<float>   *ScaleWeights;
+   Double_t  *puSysDown;
+   Double_t  *puSysUp;
+   Double_t  *puWeight;
 
    //Definte the Branches
    TBranch        *b_GenElectrons;   //!
@@ -607,6 +614,10 @@ public :
    TBranch        *b_PDFweights;
    TBranch        *b_PSweights;
    TBranch        *b_ScaleWeights;
+   TBranch        *b_puSysDown;
+   TBranch        *b_puSysUp;
+   TBranch        *b_puWeight;
+   
 
 
    TreeMakerTopiary(TChain *tree=0,int sampt=0,int year=0,int anchan=0,TVector metsys = {0,0,0,0,0,0});
@@ -762,6 +773,7 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
    JetsAK8Clean_girth = 0;
    JetsAK8Clean_ID = 0;
    JetsAK8Clean_jecFactor = 0;
+   JetsAK8Clean_jerFactor = 0;
    JetsAK8Clean_multiplicity = 0;
    JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb = 0;
    JetsAK8Clean_ptD = 0;
@@ -799,6 +811,7 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
    Photons_sigmaIetaIeta = 0;
    SelectedElectrons = 0;
    SelectedMuons = 0;
+   SelectedMuonsTunepMomenErr = 0;
    TAPElectronTracks = 0;
    TAPElectronTracks_dxypv = 0;
    TAPElectronTracks_leptonMatch = 0;
@@ -962,6 +975,7 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
    fChain->SetBranchAddress("JetsAK8Clean_girth", &JetsAK8Clean_girth, &b_JetsAK8Clean_girth);
    fChain->SetBranchAddress("JetsAK8Clean_ID", &JetsAK8Clean_ID, &b_JetsAK8Clean_ID);
    fChain->SetBranchAddress("JetsAK8Clean_jecFactor", &JetsAK8Clean_jecFactor, &b_JetsAK8Clean_jecFactor);
+   fChain->SetBranchAddress("JetsAK8Clean_jerFactor", &JetsAK8Clean_jerFactor, &b_JetsAK8Clean_jerFactor);
    fChain->SetBranchAddress("JetsAK8Clean_multiplicity", &JetsAK8Clean_multiplicity, &b_JetsAK8Clean_multiplicity);
    fChain->SetBranchAddress("JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb", &JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb, &b_JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb);
    fChain->SetBranchAddress("JetsAK8Clean_ptD", &JetsAK8Clean_ptD, &b_JetsAK8Clean_ptD);
@@ -1024,6 +1038,7 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
    fChain->SetBranchAddress("PrimaryVertexFilter", &PrimaryVertexFilter, &b_PrimaryVertexFilter);
    fChain->SetBranchAddress("SelectedElectrons", &SelectedElectrons, &b_SelectedElectrons);
    fChain->SetBranchAddress("SelectedMuons", &SelectedMuons, &b_SelectedMuons);
+   fChain->SetBranchAddress("SelectedMuonsTunepMomenErr",&SelectedMuonsTunepMomenErr, &b_SelectedMuonsTunepMomenErr);
    fChain->SetBranchAddress("TAPElectronTracks", &TAPElectronTracks, &b_TAPElectronTracks);
    fChain->SetBranchAddress("TAPElectronTracks_dxypv", &TAPElectronTracks_dxypv, &b_TAPElectronTracks_dxypv);
    fChain->SetBranchAddress("TAPElectronTracks_leptonMatch", &TAPElectronTracks_leptonMatch, &b_TAPElectronTracks_leptonMatch);
@@ -1120,6 +1135,9 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
      PDFweights = 0;
      PSweights = 0;
      ScaleWeights = 0;
+     puSysDown = 0;
+     puSysUp = 0;
+     puWeight = 0;
 
      //Branches
      //Too many branches confuse root, so only maintaining ones we will
@@ -1139,16 +1157,16 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
      fChain->SetBranchAddress("GenParticles_ParentIdx", &GenParticles_ParentIdx, &b_GenParticles_ParentIdx);
      fChain->SetBranchAddress("GenParticles_PdgId", &GenParticles_PdgId, &b_GenParticles_PdgId);
      fChain->SetBranchAddress("GenParticles_Status", &GenParticles_Status, &b_GenParticles_Status);
-     fChain->SetBranchAddress("GenTaus", &GenTaus, &b_GenTaus);
-     fChain->SetBranchAddress("GenTaus_had", &GenTaus_had, &b_GenTaus_had);
-     fChain->SetBranchAddress("HT5JECdown", &HT5JECdown, &b_HT5JECdown);
-     fChain->SetBranchAddress("HT5JECup", &HT5JECup, &b_HT5JECup);
-     fChain->SetBranchAddress("HT5JERdown", &HT5JERdown, &b_HT5JERdown);
-     fChain->SetBranchAddress("HT5JERup", &HT5JERup, &b_HT5JERup);
-     fChain->SetBranchAddress("HTJECdown", &HTJECdown, &b_HTJECdown);
-     fChain->SetBranchAddress("HTJECup", &HTJECup, &b_HTJECup);
-     fChain->SetBranchAddress("HTJERdown", &HTJERdown, &b_HTJERdown);
-     fChain->SetBranchAddress("HTJERup", &HTJERup, &b_HTJERup);
+     //fChain->SetBranchAddress("GenTaus", &GenTaus, &b_GenTaus);
+     //fChain->SetBranchAddress("GenTaus_had", &GenTaus_had, &b_GenTaus_had);
+     //fChain->SetBranchAddress("HT5JECdown", &HT5JECdown, &b_HT5JECdown);
+     //fChain->SetBranchAddress("HT5JECup", &HT5JECup, &b_HT5JECup);
+     //fChain->SetBranchAddress("HT5JERdown", &HT5JERdown, &b_HT5JERdown);
+     //fChain->SetBranchAddress("HT5JERup", &HT5JERup, &b_HT5JERup);
+     //fChain->SetBranchAddress("HTJECdown", &HTJECdown, &b_HTJECdown);
+     //fChain->SetBranchAddress("HTJECup", &HTJECup, &b_HTJECup);
+     //fChain->SetBranchAddress("HTJERdown", &HTJERdown, &b_HTJERdown);
+     //fChain->SetBranchAddress("HTJERup", &HTJERup, &b_HTJERup);
      fChain->SetBranchAddress("JetIDAK8JECdown", &JetIDAK8JECdown, &b_JetIDAK8JECdown);
      fChain->SetBranchAddress("JetIDAK8JECup", &JetIDAK8JECup, &b_JetIDAK8JECup);
      fChain->SetBranchAddress("JetIDAK8JERdown", &JetIDAK8JERdown, &b_JetIDAK8JERdown);
@@ -1186,6 +1204,9 @@ void TreeMakerTopiary::Init(TChain *tree, int sampt, int year, int anchan,TVecto
      fChain->SetBranchAddress("PDFweights", &PDFweights, &b_PDFweights);
      fChain->SetBranchAddress("PSweights", &PSweights, &b_PSweights);
      fChain->SetBranchAddress("ScaleWeights", &ScaleWeights, &b_ScaleWeights);
+     fChain->SetBranchAddress("puWeight", &puWeight, &b_puWeight);
+     fChain->SetBranchAddress("puSysDown", &puSysDown, &b_puSysDown);
+     fChain->SetBranchAddress("puSysUp", &puSysUp, &b_puSysUp);
    }
    
    Notify();

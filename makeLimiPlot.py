@@ -17,11 +17,15 @@ CMS_lumi.writeExtraText = 0
 #
 
 
-def makeBaseDataframe(filelist):
+def makeBaseDataframe(filelist,iden):
     #makes a basic data frame with dummy values for the limit and limit error. Columns for siganl mass values.
     #real values are written later
     #could probably use a multi index slicer (.xs) somewhere
-    limsinfo = [[int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0].split("NS")[-1]),-1.0,-1.0,-1.0,-1.0,-1.0] for x in filelist]
+    limsinfo = [[int(x.split("/")[-1].split(".")[0].split(iden+"_mumu_")[-1].split("_")[0].split("Zp")[-1].split("ND")[0]),int(x.split("/")[-1].split(".")[0].split(iden+"_mumu_")[-1].split("_")[0].split("ND")[-1].split("NS")[0]),int(x.split("/")[-1].split(".")[0].split(iden+"_mumu_")[-1].split("_")[0].split("NS")[-1]),-1.0,-1.0,-1.0,-1.0,-1.0] for x in filelist]
+    #print(limsinfo)
+    #print(filelist[0].split("/")[-1].split(".")[0].split(iden+"_mumu_")[-1].split("_")[0].split("Zp")[-1].split("ND")[0])
+    #print(filelist[0].split("/")[-1].split(".")[0].split(iden+"_mumu_")[-1].split("_")[0].split("ND")[-1].split("NS")[0])
+    #print(filelist[0].split("/")[-1].split(".")[0].split(iden+"_mumu_")[-1].split("_")[0].split("NS")[-1])
     limsdf = pd.DataFrame(limsinfo,columns = ['mzp','mnd','mns','limit','limitup','limitdn','limit2up','limit2dn'])
     return limsdf
     
@@ -55,9 +59,16 @@ if __name__=='__main__':
     #limitpath = "limholder/limsJEC100GeVBins/h"
     #limitpath = "limholder/pfMETFullGridStatsAndLumi/h"#"analysis_output_ZpAnomalon/2021-11-17/h"
     #limitpath = "limholder/pfMETFullGridSyst_NoAutoMCStats/h"
-    limitpath = "analysis_output_ZpAnomalon/2022-10-01/higgs"
+    #limitpath = "analysis_output_ZpAnomalon/2022-10-01/higgs"#ns200
+    #limitpath = "analysis_output_ZpAnomalon/2023-05-04/higgs"#may 2023 - JER
+    #limitpath = "analysis_output_ZpAnomalon/2023-05-15/higgs"#may 2023 - vv bug fix
+    limitpath = "analysis_output_ZpAnomalon/2023-06-06/higgs"#may 2023 - conservative pu
+    #limitpath = "analysis_output_ZpAnomalon/2022-10-10_mc/higgs"#ns=1
     lims = glob.glob(limitpath+"*"+"Zptcut"+zptcut+"_Hptcut"+hptcut+"_metcut"+metcut+"_btagwp"+btagwp+".txt*")
-    interpolatedlims = glob.glob("analysis_output_ZpAnomalon/2022-10-05/higgs*")
+    #interpolatedlims = []#glob.glob("analysis_output_ZpAnomalon/2022-10-05/higgs*")#ns=200
+    #interpolatedlims = glob.glob("analysis_output_ZpAnomalon/2022-10-10_interp/higgs*")
+    #interpolatedlims = glob.glob("analysis_output_ZpAnomalon/2023-05-17/higgs*")
+    interpolatedlims = []
     extrainterp      = []#glob.glob("analysis_output_ZpAnomalon/2022-10-05/interpcombine/higgs*")
     descrip ='nottathing' 
     zpbinwidth = 500
@@ -65,7 +76,7 @@ if __name__=='__main__':
 
     #Creates a dataframe first with just the masspoints
     #wanted to incldue tfiles, but live and learn
-    limsdf = makeBaseDataframe(lims+interpolatedlims+extrainterp)
+    limsdf = makeBaseDataframe(lims+interpolatedlims+extrainterp,"pileupuncs")
 
     #Find relvant params
     zpmax = max(limsdf['mzp'])
@@ -107,16 +118,16 @@ if __name__=='__main__':
     hlim.GetYaxis().SetTitleSize(0.05)
     hlim.GetYaxis().SetTitleOffset(1.35)
     hlim.GetYaxis().SetLabelSize(0.04)
-    hlim.GetZaxis().SetTitle("Median cross section upper limit fb (95% CL)")
+    hlim.GetZaxis().SetTitle("Median #sigma #times B #times A 95% CL upper limit (fb)")
     hlim.GetZaxis().SetTitleSize(0.04)
     hlim.GetZaxis().SetTitleOffset(1.1)
     hlim.GetZaxis().SetLabelSize(0.025)
     #hlim.SetMinimum(0.1)
     hlim.SetContour(len(coldiv),coldiv)#for a custom color bar
+
     
     for combout in lims+interpolatedlims+extrainterp:
-        signame = combout.split("/")[-1].split(".")[0].split("Combine")[-1].split("_")[0]
-        #print(signame)
+        signame = combout.split("/")[-1].split(".")[0].split("pileupuncs_mumu_")[-1].split("_")[0]
         mzpstr = signame.split("Zp")[-1].split("ND")[0]
         mndstr = signame.split("ND")[-1].split("NS")[0]
         mnsstr = signame.split("NS")[-1]
@@ -158,6 +169,8 @@ if __name__=='__main__':
         #print("    The Zpbin: ",hlim.GetXaxis().GetBinCenter(zpbin))
         #print("    The NDbin: ",hlim.GetYaxis().GetBinCenter(ndbin))
         #print("    The bin content is: ",hlim.GetBinContent(zpbin,ndbin))
+
+    hlim.GetXaxis().SetRangeUser(1250,5750)
 
     tc.cd()
     #tc.SetLogz()

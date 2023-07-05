@@ -400,7 +400,7 @@ if __name__=='__main__':
     ####load in the files with the nominal distributions
     bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
     #sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
-    sig   = ROOT.TFile('analysis_output_ZpAnomalon/2022-10-05/interpolation_'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+    sig   = ROOT.TFile('analysis_output_ZpAnomalon/2022-10-10/interpolation_'+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
     dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationalphat_'+config.get('nominal','strnom')+'__Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
     #print("hardcoded the DY files!!!!!!")
@@ -470,7 +470,9 @@ if __name__=='__main__':
     #nomsigs = [s["name"] for s in siginfo]
 
     sigkeys = sig.GetListOfKeys()
+    print(sigkeys)
     nomsigs = [key.GetName() for key in sigkeys]
+    print(nomsigs)
 
     for name in nomsigs:
         #name = signom[s]["name"]
@@ -482,10 +484,12 @@ if __name__=='__main__':
             #signame = name.replace("-","")
         print("------- Looking at signal sample ",name)
 
-        #if "Zp4000ND600NS200" not in name:
-        #    continue
-        if "NS1" in name:
+        if "Zp4500ND1800NS200" in name:
             continue
+        if "Zp5000ND1200NS200" in name:
+            continue
+        #if "NS1" in name:
+        #    continue
 
         ####Make Files
         prepRootName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET','interpolation_'+chan+'_'+name,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
@@ -493,6 +497,7 @@ if __name__=='__main__':
 
         ####Nominal Signal
         hsigori = sig.Get(name)#signom[s]["tfile"].Get("h_zp_jigm")
+        #hsigori.SetDirectory(0)
         #hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
         hsig = hsigori.Clone()
         scale = go.findScale(35000,137.6,sigxs)#interpolation based on 35000...

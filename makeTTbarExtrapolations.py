@@ -134,6 +134,10 @@ if __name__=='__main__':
     metup    = np.load('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_unclmet/Run2_2016_2017_2018_ttemunormalization_systunclup_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
     btgup    = np.load('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_btag/Run2_2016_2017_2018_ttemunormalization_systnominal_hem_kf_btagup_muid_mutrig_eltrig_elid_elreco_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
     btgdn    = np.load('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_btag/Run2_2016_2017_2018_ttemunormalization_systnominal_hem_kf_btagdwn_muid_mutrig_eltrig_elid_elreco_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+    pdfup    = np.load('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_MCscale/Run2_2016_2017_2018_ttemunormalization_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_pdfup_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+    pdfdn    = np.load('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_MCscale/Run2_2016_2017_2018_ttemunormalization_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_pdfdwn_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+    qcdup    = np.load('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_MCscale/Run2_2016_2017_2018_ttemunormalization_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_qcdup_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
+    qcddn    = np.load('emu_2022-07-17_ProperSF_EE_METXY_HEMveto_Pref_MCscale/Run2_2016_2017_2018_ttemunormalization_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_qcddwn_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.npy')[0]
 
     print("Scaling the emu yield by ",emuscale)
 
@@ -142,7 +146,7 @@ if __name__=='__main__':
 
     scales = {"nominal":emuscale,"Up":emuscale+emuunc,"Down":emuscale-emuunc}#"jecUp":jecup,"jecDown":jecdn,"unclmetUp":metup,"unclmetDown":metdn,"btagUp":btgup,"btagDown":btgdn}
 
-    systscales = {"jec":[jecup,jecdn],"unclmet":[metup,metdn],"btag":[btgup,btgdn]}
+    systscales = {"jec":[jecup,jecdn],"unclmet":[metup,metdn],"btag":[btgup,btgdn],"pdfscale":[pdfup,pdfdn],"qcdscale":[qcdup,qcddn]}
     
     tf1 = ROOT.TFile(bkgs.a18ttsr[0])
     emptymzp = tf1.Get('h_zp_jigm').Clone()

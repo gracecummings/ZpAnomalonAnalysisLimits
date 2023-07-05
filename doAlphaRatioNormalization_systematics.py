@@ -226,9 +226,9 @@ if __name__=='__main__':
 
 
     #will replace with command line options
-    pathbkg    = args.directory#'pfMETNominal/'
-    pathdata   = args.directory#'pfMETNominal/'
-    #pathdata   = "mumu_2022-03-31_ProperREOIDSF"
+    pathbkg    = args.directory
+    pathdata   = args.directory
+    pathdata   = "mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref_alphatest"
     zptcut  = args.zptcut#'150.0'
     hptcut  = args.hptcut#'300.0'
     metcut  = args.metcut#'200.0'
@@ -269,7 +269,7 @@ if __name__=='__main__':
     #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_btagnom_muidnom")
     #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
 
-    #print(bkgs.bkgs)
+    #print(bkgs.bkgs["DYJetsToLL"][16]["tr"])
     #print(data.data)
 
     tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
@@ -290,8 +290,21 @@ if __name__=='__main__':
     htrtt  = bkgs.getAddedHist(empty6,"TT","tr","h_h_sd")
     htrzz  = bkgs.getAddedHist(empty7,"ZZTo2L2Q","tr","h_h_sd")
     htrwz  = bkgs.getAddedHist(empty8,"WZTo2L2Q","tr","h_h_sd")
-    htrvv  = htrzz.Clone()
-    htrvv.Add(htrwz)
+    #htrvv  = htrzz.Clone()
+    #htrvv.Add(htrwz)
+    print("original zz: ",htrzz.Integral())
+    print("original wz: ",htrwz.Integral())
+
+    #xs test
+    print("doing xs stuff, things are replaced")
+    htrzzxs  = bkgs.getAddedHistXSErr(empty.Clone(),"ZZTo2L2Q","tr","h_h_sd",1)#1 is up, -1 is down
+    htrwzxs  = bkgs.getAddedHistXSErr(empty.Clone(),"WZTo2L2Q","tr","h_h_sd",1)
+    print("uncertainty zz: ",htrzzxs.Integral())
+    print("uncertainty wz: ",htrwzxs.Integral())
+    htrvv  = htrzzxs.Clone()
+    htrvv.Add(htrwzxs)
+    #
+
 
     #Background hist styles
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]

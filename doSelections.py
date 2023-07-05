@@ -6,6 +6,7 @@ import boost_histogram as bh
 import argparse
 import glob
 import gecorg_test as go
+import matplotlib.pyplot as plt
 
 
 parser = argparse.ArgumentParser()
@@ -67,6 +68,11 @@ def boostUnc(values,weights,nbins,binstart,binstop):
     boosterr = np.sqrt(boostvar)
     return boosterr
 
+def boosthist(values,weights,nbins,binstart,binstop):
+    boosth = bh.Histogram(bh.axis.Regular(bins=nbins,start=binstart,stop=binstop),storage=bh.storage.Weight())
+    return boosth
+
+
 def wrapPhi(phi):
     if phi < 0:
         wphi = -1*phi
@@ -120,8 +126,23 @@ if __name__=='__main__':
     parser.add_argument("-syst","--systematics",type=str)
     parser.add_argument("-prefireup","--prefireup",type=bool,help = "up prefire uncs?")
     parser.add_argument("-prefiredwn","--prefiredwn",type=bool,help = "down prefire uncs?")
+    parser.add_argument("-pdfup","--pdfup",type=bool,help = "up pdf uncs?")
+    parser.add_argument("-pdfdwn","--pdfdwn",type=bool,help = "down pdf uncs?")
+    parser.add_argument("-qcdup","--qcdup",type=bool,help = "up qcd uncs?")
+    parser.add_argument("-qcddwn","--qcddwn",type=bool,help = "down qcd uncs?")
+    parser.add_argument("-pu","--pileup",type=bool,help = "apply pu weights?")
+    parser.add_argument("-puup","--pileupup",type=bool,help = "apply up pu weights?")
+    parser.add_argument("-pudwn","--pileupdwn",type=bool,help = "apply down pu weights?")
+    #special pileup weights
+    parser.add_argument("-pumap","--pileupmap",type=bool,help = "apply pu weights from mapping?")
+    parser.add_argument("-puupder","--pileupupder",type=bool,help = "apply up pu weights derived from mapped value?")
+    parser.add_argument("-pudwnder","--pileupdwnder",type=bool,help = "apply down pu weights derived from mapped value?")
+    parser.add_argument("-puupmap","--pileupupmap",type=bool,help = "apply up pu weights derived from up-mapped value?")
+    parser.add_argument("-pudwnmap","--pileupdwnmap",type=bool,help = "apply down pu weights derived from up-mapped value?")
+    #other
     parser.add_argument("-a","--alphar",type=bool,help = "alpha ratio regions?")
     parser.add_argument("-c","--chan",type=str)
+    parser.add_argument("-unblind","--unblind",type=bool,help = "override unblinding protections and unblind")
     args = parser.parse_args()
 
     sampname   = args.sample
@@ -138,9 +159,10 @@ if __name__=='__main__':
     alphatest = args.alphar
     channel = args.chan
     topdir = args.directory
+    print(topdir)
 
     print(sampname)
-
+    print(channel)
     inputfiles = glob.glob(topdir+'/'+sampname+'*_topiary_'+channel+'*.root')
     #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-14/noLeadingReq/Run2016H-17Jul2018-v1.SingleElectron_topiary_emu_systnominal_elecTrigNoLeadingRequirement_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
     #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-28/Autumn18.TTToSemiLeptonic_TuneCP5_13TV-powheg-pythia8_topiary_mumu_systnominal_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
@@ -174,11 +196,22 @@ if __name__=='__main__':
                     b'event_weight*',
                     b'metxycorr',
                     b'metxyphicorr',
+                    b'ZupCandidate_*',
+                    b'ZdnCandidate_*',
+                    #b'metmuup',
+                    #b'metmudn',
         ]
 
         if (stype > 0):
             mcbranches = [b'ghCandidate_*',
-                          b'gzCandidate_*']
+                          b'gzCandidate_*',
+                          b'pdfweight_*',
+                          b'qcdweight_*',
+                          #b'puWeight',
+                          #b'puSysUp',
+                          #b'puSysDown',
+                          b'puweight*',
+            ]
             branches.extend(mcbranches)
 
         if (channel == "emu"):
@@ -256,10 +289,27 @@ if __name__=='__main__':
 
         if alphatest:
             metcut = 0.0
+
+
+
+        #print("all prefire weights sum, topiary selecs    ",sum(events["NonPrefiringProb"]))
+        #print("all prefireup weights sum, topiary selecs  ",sum(events["NonPrefiringProbUp"]))
+        #print("all prefiredwn weights sum, topiary selecs ",sum(events["NonPrefiringProbDown"]))
+
+        #Added for muon investigation
+        #leadmudf = events[events['LMuCandidate_pt']-events['LMuCandidate_ptunc'] > 60.0]
+        #subleadmudf = leadmudf[leadmudf['sLMuCandidate_pt']-leadmudf['sLMuCandidate_ptunc'] > 20.0]
+        #leadmudf = events[events['LMuCandidate_pt']+events['LMuCandidate_ptunc'] > 60.0]
+        #subleadmudf = leadmudf[leadmudf['sLMuCandidate_pt']+leadmudf['sLMuCandidate_ptunc'] > 20.0]
             
+        #Usual analysis    
         zptdf  = events[events['ZCandidate_pt'] > zptcut]
+        #zptdf  = subleadmudf[subleadmudf['ZupCandidate_pt'] > zptcut]
+        #zptdf  = subleadmudf[subleadmudf['ZCandidate_pt'] > zptcut]
         #metdf   = zptdf[zptdf['metsuable'] > metcut]
         metdf   = zptdf[zptdf['metxycorr'] > metcut]
+        #metdf   = zptdf[zptdf['metmudn'] > metcut]
+        #metdf   = zptdf[zptdf['metmuup'] > metcut]
         hptdf  = metdf[metdf['hCandidate_pt'] > hptcut]
         btdf   = hptdf[hptdf['hCandidate_'+btaggr] > float(btagwp)]
 
@@ -315,6 +365,11 @@ if __name__=='__main__':
                 fdf = totdf
                 region = "totalr"
                 print("    using full region selections")
+            elif stype <= 0 and args.unblind:
+                fdf = srdf
+                region = "signalr"
+                print("    using signal region selections")
+                print("    YOU HAVE UNBLINDED YOU HAVE UNBLINDED -- YOU HAVE UNBLINDED IN CASE YOU STILL HAVE NOT NOTICED")
             else:
                 fdf = sbdf
                 print("    using sideband selections")
@@ -353,6 +408,10 @@ if __name__=='__main__':
         deltaphizmetdf = deltaPhi(fdf['ZCandidate_phi'],fdf['metxyphicorr'])
         deltaphihmetdf = deltaPhi(fdf['hCandidate_phi'],fdf['metxyphicorr'])
         deltaRzhdf     = deltaR(fdf['ZCandidate_phi'],fdf['hCandidate_phi'],fdf['ZCandidate_eta'],fdf['hCandidate_eta'])
+        tscalmom       = fdf['ZCandidate_pt']+fdf['hCandidate_pt']+fdf['metxycorr']
+        metscalmomfrac = fdf['metxycorr']/tscalmom
+        zptscalmomfrac = fdf['ZCandidate_pt']/tscalmom
+        hptscalmomfrac = fdf['hCandidate_pt']/tscalmom
 
         #the leading and subleading lepton stuff
         if (channel == "mumu"): 
@@ -455,22 +514,110 @@ if __name__=='__main__':
             print("Doing scale factor variations of type: ",systl)
             eventweights,systname = makeEventWeightSeriesWithUncertainties(fdf,systl)
 
-        if ((year == 16) or (year == 17)) and stype > 0:
-            print("    Applying prefiring weights!")
-            eventweights = eventweights*fdf["NonPrefiringProb"]
-        if ((year == 16) or (year == 17)) and stype > 0 and args.prefireup:
-            print("    Applying up prefiring weights!")
-            eventweights = eventweights*fdf["NonPrefiringProbUp"]
-            systname = systname+"_prfup"
+        #print(fdf["NonPrefiringProb"])
+        #print(fdf["NonPrefiringProbUp"])
+        #print(fdf["NonPrefiringProbDown"])
+        #print("all prefire weights sum, final selecs    ",sum(fdf["NonPrefiringProb"]))
+        #print("all prefireup weights sum, final selecs  ",sum(fdf["NonPrefiringProbUp"]))
+        #print("all prefiredwn weights sum, final selecs ",sum(fdf["NonPrefiringProbDown"]))
+        #print("****event weight investiagtion***")
+        #print("   basic weights, final selecs           ",sum(eventweights))
+        #print("   basic weights w/ prefir, final selecs ",sum(eventweights*fdf["NonPrefiringProb"]))
+        #print("   weights with prefireup, final selecs  ",sum(eventweights*fdf["NonPrefiringProbUp"]))
+        #print("   weights with prefiredwn, final selecs ",sum(eventweights*fdf["NonPrefiringProbDown"]))
+
+
+
+        #prefire weights
         if ((year == 16) or (year == 17)) and stype > 0 and args.prefiredwn:
             print("    Applying dwn prefiring weights!")
             eventweights = eventweights*fdf["NonPrefiringProbDown"]
             systname = systname+"_prfdwn"
+        elif ((year == 16) or (year == 17)) and stype > 0 and args.prefireup:
+            print("    Applying up prefiring weights!")
+            eventweights = eventweights*fdf["NonPrefiringProbUp"]
+            systname = systname+"_prfup"
+        elif ((year == 16) or (year == 17)) and stype > 0:
+            print("    Applying prefiring weights!")
+            eventweights = eventweights*fdf["NonPrefiringProb"]
+        else:
+            print("This is not 2016 or 2017 MC, does not need prefire weights")
+
+        #pile-up weights
+        if stype > 0 and args.pileup:
+            print("    Applying pileup weights!")
+            eventweights = eventweights*fdf["puWeight"]
+        elif stype > 0 and args.pileupup:
+            print("    Applying pileup weights - up!")
+            eventweights = eventweights*fdf["puSysUp"]
+        elif stype > 0 and args.pileupdwn:
+            print("    Applying pileup weights - down!")
+            eventweights = eventweights*fdf["puSysDown"]
+        else:
+            print("This is not MC or you do not want to apply pileup weights")
+
+        #mapped pile-up weights
+        f = up3.open(inputfiles[0])
+        if stype > 0 and args.pileupmap:
+            print("    Applying pileup weights from mapping!")
+            skimtot     = f['hnskimed'].values[0]
+            skimpu      = f['hnpu'].values[0]
+            eventweights = eventweights*fdf["puweight"]*(skimtot/skimpu)
+        elif stype > 0 and args.pileupupder:
+            skimtot     = f['hnskimed'].values[0]
+            skimpuup    = f['hnpuup'].values[0]
+            print("    Applying pileup weights - up! from mapped value")
+            eventweights = eventweights*fdf["puweight_up"]*(skimtot/skimpuup)
+        elif stype > 0 and args.pileupdwnder:
+            skimtot     = f['hnskimed'].values[0]
+            skimpudn    = f['hnpudwn'].values[0]
+            print("    Applying pileup weights - down! from mapped value")
+            eventweights = eventweights*fdf["puweight_dwn"]*(skimtot/skimpudn)
+        elif stype > 0 and args.pileupupmap:
+            skimtot     = f['hnskimed'].values[0]
+            skimpumapup    = f['hnpunumup'].values[0]
+            print("    Applying pileup weights from up shifted map value")
+            eventweights = eventweights*fdf["puweightvtx_up"]*(skimtot/skimpumapup)
+        elif stype > 0 and args.pileupdwnmap:
+            skimtot     = f['hnskimed'].values[0]
+            skimpumapdn    = f['hnpunumdwn'].values[0]
+            print("    Applying pileup weights from down shifted map value")
+            eventweights = eventweights*fdf["puweightvtx_dwn"]*(skimtot/skimpumapdn)
+        else:
+            print("This is not MC or you do not want to apply pileup weights")
+
+
+
+
+        f = up3.open(inputfiles[0])
+        if stype > 0 and args.qcddwn:
+            print("    Applying dwn qcd weights!")
+            skimqcddown = f['hnskimeddwn'].values[0]
+            skimtot     = f['hnskimed'].values[0]
+            eventweights = eventweights*fdf["qcdweight_dwn"]*(skimtot/skimqcddown)
+            systname = systname+"_qcddwn"
+        if stype > 0 and args.qcdup:
+            print("    Applying up qcd weights!")
+            skimqcdup = f['hnskimedup'].values[0]
+            skimtot     = f['hnskimed'].values[0]
+            eventweights = eventweights*fdf["qcdweight_up"]*(skimtot/skimqcdup)
+            
+            systname = systname+"_qcdup"
+        
+        if stype > 0 and args.pdfdwn:
+            print("    Applying dwn pdf weights!")
+            eventweights = eventweights*fdf["pdfweight_dwn"]
+            systname = systname+"_pdfdwn"
+        if stype > 0 and args.pdfup:
+            print("    Applying up pdf weights!")
+            eventweights = eventweights*fdf["pdfweight_up"]
+            systname = systname+"_pdfup"
 
                 
         print("The event weights are wrong for general leading lepton dR plots")
-        print("    number of passing events straight ",len(fdf))
-        print("    number of passing events weighted ",eventweights.sum())
+        if stype > 0 and  not args.unblind:
+            print("    number of passing events straight ",len(fdf))
+            print("    number of passing events weighted ",eventweights.sum())
         #print("    max Zp mass estimator: ",fdf['ZPrime_mass_est'].max())
 
         #lets make some histograms.
@@ -509,6 +656,10 @@ if __name__=='__main__':
         rootOutFile["h_dphi_zmet"]  = np.histogram(deltaphizmetdf,bins=100,range=(0,3.14159),weights=eventweights)
         rootOutFile["h_dphi_hmet"]  = np.histogram(deltaphihmetdf,bins=100,range=(0,3.14159),weights=eventweights)
         rootOutFile["h_dr_zh"]      = np.histogram(deltaRzhdf,bins=30,range=(0,6),weights=eventweights)
+        rootOutFile["h_totmom"]     = np.histogram(tscalmom,bins=250,range=(0,2500),weights=eventweights)
+        rootOutFile["h_metfrac"]    = np.histogram(metscalmomfrac,bins=100,range=(0,1),weights=eventweights)
+        rootOutFile["h_zptfrac"]    = np.histogram(zptscalmomfrac,bins=100,range=(0,1),weights=eventweights)
+        rootOutFile["h_hptfrac"]    = np.histogram(hptscalmomfrac,bins=100,range=(0,1),weights=eventweights)
 
         zpterrs      = boostUnc(fdf['ZCandidate_pt'],eventweights,80,0,800)
         zetaerrs     = boostUnc(fdf['ZCandidate_eta'],eventweights,30,-5,5)
@@ -535,6 +686,11 @@ if __name__=='__main__':
         dphizmeterrs   = boostUnc(deltaphizmetdf,eventweights,100,0,3.14159)
         dphihmeterrs   = boostUnc(deltaphihmetdf,eventweights,100,0,3.14159)
         drzherrs       = boostUnc(deltaRzhdf,eventweights,30,0,6)
+        tscalerrs      = boostUnc(tscalmom,eventweights,250,0,2500)
+        metscalerrs    = boostUnc(metscalmomfrac,eventweights,100,0,1)
+        zptscalerrs    = boostUnc(zptscalmomfrac,eventweights,100,0,1)
+        hptscalerrs    = boostUnc(hptscalmomfrac,eventweights,100,0,1)
+        
         #drlmuherrs     = boostUnc(deltaRlmuhdf,eventweights,30,0,6)
         #drslmuherrs    = boostUnc(deltaRslmuhdf,eventweights,30,0,6)
         #drslmulmuerrs  = boostUnc(deltaRslmulmudf,eventweights,30,0,6)
@@ -570,6 +726,10 @@ if __name__=='__main__':
                       dphizmeterrs,
                       dphihmeterrs,
                       drzherrs,
+                      tscalerrs,
+                      metscalerrs,
+                      zptscalerrs,
+                      hptscalerrs,
         ]
 
         unc_names = ['h_z_pt',
@@ -597,6 +757,10 @@ if __name__=='__main__':
                      'h_dphi_zmet',
                      'h_dphi_hmet',
                      'h_dr_zh',
+                     'h_totmom',
+                     'h_metfrac',
+                     'h_zptfrac',
+                     'h_hptfrac',
         ]
         
         if (stype > 0 and channel != "emu"):
@@ -616,8 +780,8 @@ if __name__=='__main__':
             rootOutFile["h_dr_lmuh"]    = np.histogram(deltaRlmuhdf,bins=30,range=(0,6),weights=eventweights)
             rootOutFile["h_dr_slmuh"]   = np.histogram(deltaRslmuhdf,bins=30,range=(0,6),weights=eventweights)
             rootOutFile["h_dr_slmulmu"] = np.histogram(deltaRslmulmudf,bins=30,range=(0,6),weights=eventweights)
-            rootOutFile["h_LMu_pt"]     = np.histogram(fdf['LMuCandidate_pt'],bins=50,range=(0,500),weights=eventweights)
-            rootOutFile["h_sLMu_pt"]     = np.histogram(fdf['sLMuCandidate_pt'],bins=50,range=(0,500),weights=eventweights)
+            rootOutFile["h_LMu_pt"]     = np.histogram(fdf['LMuCandidate_pt'],bins=200,range=(0,2000),weights=eventweights)
+            rootOutFile["h_sLMu_pt"]     = np.histogram(fdf['sLMuCandidate_pt'],bins=200,range=(0,2000),weights=eventweights)
             rootOutFile["h_LMu_phi"]    = np.histogram(fdf['LMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
             rootOutFile["h_sLMu_phi"]    = np.histogram(fdf['sLMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=eventweights)
             rootOutFile["h_LMu_eta"]    = np.histogram(fdf['LMuCandidate_eta'],bins=30,range=(-5,5),weights=eventweights)
@@ -625,8 +789,8 @@ if __name__=='__main__':
             drlmuherrs     = boostUnc(deltaRlmuhdf,eventweights,30,0,6)
             drslmuherrs    = boostUnc(deltaRslmuhdf,eventweights,30,0,6)
             drslmulmuerrs  = boostUnc(deltaRslmulmudf,eventweights,30,0,6)
-            lmupterrs      = boostUnc(fdf['LMuCandidate_pt'],eventweights,50,0,500)
-            smupterrs      = boostUnc(fdf['sLMuCandidate_pt'],eventweights,50,0,500)
+            lmupterrs      = boostUnc(fdf['LMuCandidate_pt'],eventweights,200,0,2000)
+            smupterrs      = boostUnc(fdf['sLMuCandidate_pt'],eventweights,200,0,2000)
             lmuphierrs     = boostUnc(fdf['LMuCandidate_phi'],eventweights,30,-3.14159,3.14159)
             smuphierrs     = boostUnc(fdf['sLMuCandidate_phi'],eventweights,30,-3.14159,3.14159)
             lmuetaerrs     = boostUnc(fdf['LMuCandidate_eta'],eventweights,30,-5,5)
@@ -656,8 +820,8 @@ if __name__=='__main__':
             rootOutFile["h_dr_leadleph"]  = np.histogram(deltaRllephdf,bins=30,range=(0,6),weights=lepdrweights)
             rootOutFile["h_dr_sleadleph"] = np.histogram(deltaRslephdf,bins=30,range=(0,6),weights=lepdrweights)
             rootOutFile["h_dr_leps"]      = np.histogram(deltaRsleplepdf,bins=30,range=(0,6),weights=lepdrweights)
-            rootOutFile["h_leadlep_pt"]   = np.histogram(leadpt,bins=50,range=(0,500),weights=eventweights)
-            rootOutFile["h_sleadlep_pt"]  = np.histogram(sleadpt,bins=50,range=(0,500),weights=eventweights)
+            rootOutFile["h_leadlep_pt"]   = np.histogram(leadpt,bins=200,range=(0,2000),weights=eventweights)
+            rootOutFile["h_sleadlep_pt"]  = np.histogram(sleadpt,bins=200,range=(0,2000),weights=eventweights)
             rootOutFile["h_leadlep_phi"]  = np.histogram(leadphi,bins=30,range=(-3.14159,3.14159),weights=eventweights)
             rootOutFile["h_sleadlep_phi"] = np.histogram(sleadphi,bins=30,range=(-3.14159,3.14159),weights=eventweights)
             rootOutFile["h_leadlep_eta"]  = np.histogram(leadeta,bins=30,range=(-5,5),weights=eventweights)
@@ -665,11 +829,11 @@ if __name__=='__main__':
             rootOutFile["h_electron_pt"]  = np.histogram(allelpt,bins=50,range=(0,500),weights=eventweights)
             rootOutFile["h_electron_phi"]  = np.histogram(allelphi,bins=30,range=(-3.14159,3.14159),weights=eventweights)
             rootOutFile["h_electron_eta"]  = np.histogram(alleleta,bins=30,range=(-5,5),weights=eventweights)
-            rootOutFile["h_muon_pt"]  = np.histogram(allmupt,bins=50,range=(0,500),weights=eventweights)
+            rootOutFile["h_muon_pt"]  = np.histogram(allmupt,bins=200,range=(0,2000),weights=eventweights)
             rootOutFile["h_muon_phi"]  = np.histogram(allmuphi,bins=30,range=(-3.14159,3.14159),weights=eventweights)
             rootOutFile["h_muon_eta"]  = np.histogram(allmueta,bins=30,range=(-5,5),weights=eventweights)
             #new kinematic plots
-            rootOutFile["h_lmuon_pt"]  = np.histogram(leadmuc['LMuCandidate_pt'],bins=50,range=(0,500),weights=lmuweights)
+            rootOutFile["h_lmuon_pt"]  = np.histogram(leadmuc['LMuCandidate_pt'],bins=200,range=(0,2000),weights=lmuweights)
             rootOutFile["h_lmuon_phi"]  = np.histogram(leadmuc['LMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=lmuweights)
             rootOutFile["h_lmuon_eta"]  = np.histogram(leadmuc['LMuCandidate_eta'],bins=30,range=(-5,5),weights=lmuweights)
             rootOutFile["h_slelectron_pt"]  = np.histogram(leadmuc['sLEleCandidate_pt'],bins=50,range=(0,500),weights=lmuweights)
@@ -678,7 +842,7 @@ if __name__=='__main__':
             rootOutFile["h_lelectron_pt"]  = np.histogram(leadelc['LEleCandidate_pt'],bins=50,range=(0,500),weights=lelweights)
             rootOutFile["h_lelectron_phi"]  = np.histogram(leadelc['LEleCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=lelweights)
             rootOutFile["h_lelectron_eta"]  = np.histogram(leadelc['LEleCandidate_eta'],bins=30,range=(-5,5),weights=lelweights)
-            rootOutFile["h_slmuon_pt"]  = np.histogram(leadelc['sLMuCandidate_pt'],bins=50,range=(0,500),weights=lelweights)
+            rootOutFile["h_slmuon_pt"]  = np.histogram(leadelc['sLMuCandidate_pt'],bins=200,range=(0,2000),weights=lelweights)
             rootOutFile["h_slmuon_phi"]  = np.histogram(leadelc['sLMuCandidate_phi'],bins=30,range=(-3.14159,3.14159),weights=lelweights)
             rootOutFile["h_slmuon_eta"]  = np.histogram(leadelc['sLMuCandidate_eta'],bins=30,range=(-5,5),weights=lelweights)
             rootOutFile["h_dr_leadmuonh"]  = np.histogram(deltaRemuLeadMuh,bins=30,range=(0,6),weights=lmuweights)
@@ -701,7 +865,7 @@ if __name__=='__main__':
             allmupterrs = boostUnc(allmupt,eventweights,50,0,500)
             allmuphierrs = boostUnc(allmuphi,eventweights,30,-3.14159,3.14159)
             allmuetaerrs = boostUnc(allmueta,eventweights,30,-5,5)
-            emulmupterrs  = boostUnc(leadmuc['LMuCandidate_pt'],lmuweights,50,0,500)
+            emulmupterrs  = boostUnc(leadmuc['LMuCandidate_pt'],lmuweights,200,0,2000)
             emulmuphierrs = boostUnc(leadmuc['LMuCandidate_phi'],lmuweights,30,-3.14159,3.14159)
             emulmuetaerrs = boostUnc(leadmuc['LMuCandidate_eta'],lmuweights,30,-5,5)
             emuslelpterrs = boostUnc(leadmuc['sLEleCandidate_pt'],lmuweights,50,0,500)
@@ -710,7 +874,7 @@ if __name__=='__main__':
             emulelpterrs = boostUnc(leadelc['LEleCandidate_pt'],lelweights,50,0,500)
             emulelphierrs = boostUnc(leadelc['LEleCandidate_phi'],lelweights,30,-3.14159,3.14159)
             emuleletaerrs = boostUnc(leadelc['LEleCandidate_eta'],lelweights,30,-5,5)
-            emuslmupterrs = boostUnc(leadelc['sLMuCandidate_pt'],lelweights,50,0,500)
+            emuslmupterrs = boostUnc(leadelc['sLMuCandidate_pt'],lelweights,200,0,2000)
             emuslmuphierrs = boostUnc(leadelc['sLMuCandidate_phi'],lelweights,30,-3.14159,3.14159)
             emuslmuetaerrs = boostUnc(leadelc['sLMuCandidate_eta'],lelweights,30,-5,5)
             emudrlmuherrs  = boostUnc(deltaRemuLeadMuh,lmuweights,30,0,6)
@@ -795,7 +959,7 @@ if __name__=='__main__':
         uncdf.to_pickle("./"+pklfilename)
     
         #Book Keeping
-        f = up3.open(inputfiles[0])
+        #f = up3.open(inputfiles[0])
         np.save(npOutFile,np.array([f['hnorigevnts'].values[0]]))
         rootOutFile["hnevents"]      = str(f['hnorigevnts'].values[0])
         rootOutFile["hnevents_pMET"] = str((metdf['event_weight_kf']*metdf['event_weight_btag']*metdf['event_weight_muid']).sum())#str(len(metdf))
@@ -820,3 +984,89 @@ if __name__=='__main__':
             print("Weighted Events, sideband:      ",str((sbdf['event_weight_kf']*sbdf['event_weight_btag']*sbdf['event_weight_muid']).sum()))
 
                 
+        #plots to understand stuff.
+        #higgspt = fdf['LMuCandidate_pt']
+
+        #print(fdf['LMuCandidate_pt'])
+        #print(fdf['LMuCandidate_ptunc'])
+        #print(fdf['LMuCandidate_ptunc']/fdf['LMuCandidate_pt'])
+        #higgspt = fdf['sLMuCandidate_ptunc']/fdf['sLMuCandidate_pt']
+        #higgspt = fdf['hCandidate_pt']
+        #higgspt  = fdf['metxycorr']
+        #higgspt  = fdf['ZCandidate_pt']
+        #zpmest  = fdf['ZPrime_mass_est']
+        #zpmest  = fdf['sLMuCandidate_pt']
+        #scale = go.findScale(35000,137.6,1)
+        #wscale = [scale for i in range(len(higgspt))]
+        #wscale = np.array(wscale)
+        #hboost = boosthist(hptscalmonfrac,eventweights,100,0,1000)
+        #hboost = boosthist(fdf['hCandidate_pt'],eventweights,40,200,1200)
+        #hboost = boosthist(fdf['metxycorr'],eventweights,80,0,2000)
+        #hboost = boosthist(fdf['ZCandidate_pt'],eventweights,80,0,800)
+        #hboost = boosthist(higgspt,eventweights,200,0,2000)#when muon pT alone y-axis
+        #hboost  = boosthist(higgspt,eventweights,10,0,0.2)
+        #hedg   = hboost.axes.edges
+        #zpbst  = boosthist(fdf['ZPrime_mass_est'],eventweights,65,0,13000)#when RJR along x-axis
+        #zpbst = boosthist(zpmest,eventweights,200,0,2000)
+        #zpedg = zpbst.axes.edges
+        #h2d, xedges, yedges = np.histogram2d(zpmest,higgspt,(zpedg[0],hedg[0]),weights=wscale)
+        #h2d, xedges, yedges = np.histogram2d(zpmest,higgspt,(zpedg[0],hedg[0]))
+
+        
+
+
+        #h2d = h2d.T
+        #xaxis,yaxis = np.meshgrid(xedges,yedges)
+        #plt.pcolormesh(xaxis,yaxis,h2d)
+        #plt.colorbar()
+        #plt.xlabel("RJR Z Prime Mass Estimator")
+        #plt.xlabel("Subleading Muon Momentum")
+        #plt.ylabel("Leading Muon Momentum")
+        #plt.ylabel("Relative Muon Momentum Unctertainty")
+        #plt.title("Zp 5500 ND 1800 NS 200, signal region, xs = 1 fb")
+        #plt.title("Zp 5500 ND 1800 NS 200, signal region, no xs scale")
+        #plt.show()
+
+        #highvals = [500.0,750.0,1000.0]
+
+        #highzps = zpedg[0][zpedg[0] >= 5000]
+        #highzps = highzps[highzps < 9800.0]
+
+        #highval = 1000.0
+
+        #for highval in highvals:
+        #    highfracs = []
+        #    numevents = []
+        #    numhighs  = []
+        #    for zp in highzps:
+        #        zpdf = fdf[fdf['ZPrime_mass_est'] >= zp]
+        #        trunzpdf = zpdf[zpdf['ZPrime_mass_est'] < 10000.0]
+        #        himu = len(trunzpdf[trunzpdf['LMuCandidate_pt'] >= highval])
+        #        numevents.append(len(trunzpdf))
+        #        numhighs.append(himu)
+        #        if len(trunzpdf) < 1:
+        #            highfracs.append(0)
+        #        else:
+        #            highfrac = himu/len(trunzpdf)
+        #            highfracs.append(highfrac)
+                
+        #    fig, axs = plt.subplots(2)
+
+        #    scales = [x*scale for x in numhighs]
+        #    axs[0].plot(highzps,scales)
+        #    axs[0].set_title('Number of leading muons w/ pT > {0} GeV'.format(highval))
+        #    axs[1].plot(highzps,highfracs)
+        #    axs[1].set_title('Fraction of total events w/ leading muon pT > {0} GeV'.format(highval))
+        #    axs[1].set(xlabel='Lower edge of RJR Estimator Overflow Bin')
+        #    plt.ylim([0.0,1])
+
+        #    for ax in axs.flat:
+        #        ax.label_outer()
+
+        #    figname = go.makeOutFile("leadingmuoninfo_vs_jigzp_scaled",'highptmucut'+str(int(highval))+'_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+
+        
+        #    plt.savefig(figname)
+        #    plt.close()
+        
+        

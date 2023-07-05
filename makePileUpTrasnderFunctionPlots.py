@@ -33,8 +33,8 @@ ROOT.gStyle.SetOptStat(0)
 #    tcs.append(ROOT.TCanvas("tc"+nameh,"tc"+nameh,600,400))
 #    h = tf.Get(pair[0])
 #    p = tf.Get(pair[1])
-#    h.GetXaxis().SetTitle("True Number of Vtx")
-#    h.GetYaxis().SetTitle("NVtx Reco")
+#    h.GetYaxis().SetTitle("True Number of Vtx")
+#    h.GetXaxis().SetTitle("NVtx Reco")
 #    h.SetTitle(nameh)
 #    p.SetLineColor(ROOT.kRed)
 #    p.SetLineWidth(2)
@@ -54,8 +54,8 @@ for year in byyear.keys():
     for i,plot in enumerate(ls[0]):
         h = tf.Get(plot)
         h.SetLineColor(cols[i])
-        h.GetXaxis().SetTitle("True Number of Vtx")
-        h.GetYaxis().SetTitle("NVtx Reco")
+        h.GetYaxis().SetTitle("True Number of Vtx")#
+        h.GetXaxis().SetTitle("NVtx Reco")
         h.SetTitle(year+" transfer functions")
         legs[-1].AddEntry(h,plot.split("_h")[0],"l")
         if i == 0:
@@ -67,7 +67,7 @@ for year in byyear.keys():
 
     av.SetLineColor(ROOT.kRed)
     legs[-1].AddEntry(av,"average relation","l")
-    av.Draw("hist,SAME")
+    av.Draw("SAME")
     legs[-1].Draw()
     av.SetDirectory(0)
     av.SetName("tprofile_allmc_"+year)
@@ -76,9 +76,9 @@ for year in byyear.keys():
     outname = go.makeOutFile("PileUpTransferFunctions_ALL_",year,".png","","","","")
     tcs[-1].SaveAs(outname)
 
-    outrootname = go.makeOutFile("Run2_161718","pileUpTransferFunctions_Averages",".root","","","","")
-    outf = ROOT.TFile(outrootname,"RECREATE")
-    for p in averages:
-        p.Write()
-    outf.Close()
-
+#    outrootname = go.makeOutFile("Run2_161718","pileUpTransferFunctions_Averages",".root","","","","")
+#    outf = ROOT.TFile(outrootname,"RECREATE")
+#    for p in averages:
+#        p.Write()
+#    outf.Close()
+#

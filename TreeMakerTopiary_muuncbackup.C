@@ -1,0 +1,1677 @@
+#define TreeMakerTopiary_cxx
+#include "TreeMakerTopiary.h"
+#include "RestFrames/RestFrames.hh"
+#include "JetCorrectionUncertainty.h"
+#include "JetCorrectorParameters.h"
+#include "XYMETCorrection_withUL17andUL18andUL16.h"
+#include <TLeaf.h>
+#include <TVector.h>
+#include <TH1.h>
+#include <TString.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cmath>
+
+using std::vector;
+using std::string;
+
+RestFrames::RFKey ensure_autoload(1);
+using namespace RestFrames;
+
+float getPDFUncertainty(vector<float>* LHEPdfWeight){
+  // http://nnpdf.mi.infn.it/wp-content/uploads/2019/03/NNPDFfits_Positivity_PhysicalCrossSections_v2.pdf
+  std::sort(LHEPdfWeight->begin(), LHEPdfWeight->begin()+100);
+  float err = (LHEPdfWeight->at(83) - LHEPdfWeight->at(16))/2;
+  return err;
+}
+
+std::pair<float,float> getQCDScaleUpDwn(vector<float>* scales){
+  // [mur=1, muf=1], [mur=1, muf=2], [mur=1, muf=0.5], [mur=2, muf=1], [mur=2, muf=2], [mur=2, muf=0.5], [mur=0.5, muf=1], [mur=0.5, muf=2], [mur=0.5, muf=0.5]
+  //Remove the 0.5 and 2 pairs
+  //Take the highest and lowest as the up and down scale
+  vector<float>* redscale = scales;
+  redscale->erase(std::next(redscale->begin(),5));
+  redscale->erase(std::next(redscale->begin(),6));
+  redscale->erase(redscale->begin());
+
+  //std::cout<<"The new scales"<<std::endl;
+  float max = -99999;
+  float min = 999999;
+  for (std::size_t i = 0; i < redscale->size();++i){
+    //std::cout<<i<<" "<<redscale->at(i)<<std::endl;
+    if (redscale->at(i) > max){
+      max = redscale->at(i);
+    }
+    if (redscale->at(i) < min){
+      min = redscale->at(i);
+    }
+  }
+  
+  std::pair<float,float> updwn(min,max);
+  //std::cout<<"The up/dwn weights"<<std::endl;
+  //std::cout<<updwn.first<<std::endl;
+  //std::cout<<updwn.second<<std::endl;
+  return updwn;
+
+}
+
+			      
+
+TLorentzVector doHEMshiftJet(TLorentzVector jet,bool fid){
+  if ((jet.Eta() < -1.3) && (jet.Eta() > -2.5) && (jet.Phi() > -1.57) && (jet.Phi() < -0.87) && fid) {
+    jet = jet*0.80;//scale down the energy by 20%
+    }
+  if ((jet.Eta() < -2.5) && (jet.Eta() > -3.0) && (jet.Phi() > -1.57) && (jet.Phi() < -0.87) && fid) {
+    jet = jet*0.70;//scale down the energy by 20%
+    }
+  return jet;
+}
+  
+std::pair<double,double> getMETCorrHEM(TLorentzVector ojet, TLorentzVector njet){
+  //double  getMETCorrHEM(TLorentzVector ojet, TLorentzVector njet){
+  double oldphi = ojet.Phi();
+  double newphi = njet.Phi();
+  double oldpt = ojet.Pt();
+  double newpt = njet.Pt();
+  TLorentzVector diff = ojet-njet;
+  double diffx = diff.Pt()*std::cos(newphi);
+  double diffy = diff.Pt()*std::sin(newphi);
+  std::pair<double,double> metshift(diffx,diffy);
+
+  /*
+  std::cout<<"    Original Jet Pt "<<ojet.Pt()<<std::endl;
+  std::cout<<"   Original Jet Phi "<<ojet.Phi()<<std::endl;
+  std::cout<<"        new Jet Pt  "<<njet.Pt()<<std::endl;
+  std::cout<<"        new Jet Phi "<<njet.Phi()<<std::endl;
+  std::cout<<"       diff Jet Pt  "<<diff.Pt()<<std::endl;
+  std::cout<<"       diff Jet Phi "<<diff.Phi()<<std::endl;
+
+  std::cout<<"       diff ptx     "<<metshift.first<<std::endl;
+  std::cout<<"       diff pty     "<<metshift.second<<std::endl;
+  //*/  
+  return metshift;
+}
+  
+
+
+std::vector<double> GetMuonTriggerSF(std::vector<double> sfvec1,std::vector<double> sfvec2,TLorentzVector obj1,TLorentzVector obj2,float highbinedge,TH2 *heff) {
+  std::vector<double> sfvec;
+  double leptonsf  = 1;
+  double lsfup     = 0;
+  double lsfdwn    = 0;
+  int leptonbin1   = -1;
+  int leptonbin2   = -1;
+  double ptcheck1 = obj1.Pt();
+  double ptcheck2 = obj2.Pt();
+  double obj1eff = -1;
+  double obj2eff = -1;
+  if (ptcheck1 >= highbinedge) {
+    ptcheck1 =  highbinedge - 20.0;//safely within last bin, but a hack
+  }
+  if (ptcheck2 >= highbinedge) {
+    ptcheck2 =  highbinedge - 20.0;//safely within last bin, but a hack
+  }
+  leptonbin1 = heff->FindBin(ptcheck1,std::fabs(obj1.Eta()));
+  leptonbin2 = heff->FindBin(ptcheck2,std::fabs(obj2.Eta()));
+  obj1eff = heff->GetBinContent(leptonbin1);
+  obj2eff = heff->GetBinContent(leptonbin2);
+  leptonsf = (1-(1-sfvec1[0]*obj1eff)*(1-sfvec2[0]*obj2eff))/(1-(1-obj1eff)*(1-obj1eff));
+  //The unc will only include the sf unc, as the eff should be small
+  double dsf1 = obj1eff*(1-sfvec2[0]*obj2eff)/(obj2eff+obj1eff-obj2eff*obj1eff);
+  double dsf2 = obj2eff*(1-sfvec1[0]*obj1eff)/(obj2eff+obj1eff-obj2eff*obj1eff);
+  lsfup = sqrt(dsf1*dsf1*sfvec1[1]*sfvec1[1]+dsf2*dsf2*sfvec2[1]*sfvec2[1]);
+  lsfdwn = lsfup;
+  //write the output
+  sfvec.push_back(leptonsf);
+  sfvec.push_back(lsfup);
+  sfvec.push_back(lsfdwn);
+
+  /*
+  std::cout<<"    The scale factor of the leading muon is "<<sfvec1[0]<<std::endl;
+  std::cout<<"    The scale factor of the sleading muon is "<<sfvec2[0]<<std::endl;
+  std::cout<<"    The scale factor of the event  is "<<sfvec[0]<<std::endl;
+  std::cout<<"    The scale unc    of the event  is "<<sfvec[1]<<std::endl;
+  */
+  return sfvec;
+}
+
+std::vector<double> combineTheLeptonSF(std::vector<double> sfvec1,std::vector<double> sfvec2) {
+  std::vector<double> outv;
+  double sf = 1;
+  double upunc = 0;
+  double dnunc = 0;
+  sf = sfvec1[0]*sfvec2[0];
+  outv.push_back(sf);
+  upunc = sf*sqrt(pow(sfvec1[1],2)/sfvec1[0]+pow(sfvec2[1],2)/sfvec2[0]);
+  dnunc = sf*sqrt(pow(sfvec1[2],2)/sfvec1[0]+pow(sfvec2[2],2)/sfvec2[0]);
+  outv.push_back(upunc);
+  outv.push_back(dnunc);
+  //std::cout<<"Value of unc sfvec1:  "<<sfvec1[1]<<std::endl;
+  //std::cout<<"Value of unc sfvec2:  "<<sfvec2[1]<<std::endl;
+  //std::cout<<"combounc val:  "<<upunc<<std::endl;
+  //std::cout<<"Value of second vec sf: "<<sfvec2[0]<<std::endl;
+  //std::cout<<"Value of combined sf:   "<<sf<<std::endl;
+  return outv;
+}
+
+float getMagnitude(std::vector<int> vec){
+  float sum2 = 0;
+  for (std::size_t i = 0;i < vec.size();++i){
+    sum2 += vec[i]*vec[i];
+  }
+  float mag = sqrt(sum2);
+  return mag;
+}
+
+std::vector<double> GetElectronPtEtaSF(int year,TH2 *hist,TLorentzVector obj, bool isTrig) {
+  std::vector<double> sfvec;
+  double leptonsf  = 1;
+  double lsfup  = 0;
+  double lsfdwn = 0;
+  int leptonbin    = -1;
+  double ptcheck = obj.Pt();
+
+  if (isTrig) {
+      if (year == 18  && ptcheck >= 2000.0){
+	ptcheck = 1990.0;
+      }
+      if (year != 18 && ptcheck >= 1000.0){
+	ptcheck == 990.0;
+      }
+    }
+
+  else if (ptcheck >= 500.0) {
+    ptcheck = 400.0;//safely within last bin, but a hack
+  }
+
+  //Gather the electron's scale factors
+  leptonbin = hist->FindBin(obj.Eta(),ptcheck);
+  leptonsf  = hist->GetBinContent(leptonbin);
+  lsfup     = hist->GetBinErrorUp(leptonbin);
+  lsfdwn    = hist->GetBinErrorLow(leptonbin);
+
+  if (isTrig){
+    lsfup = 0.005;
+    lsfdwn = 0.005;
+  }
+  sfvec.push_back(leptonsf);
+  sfvec.push_back(lsfup);
+  sfvec.push_back(lsfdwn);
+  return sfvec;
+}
+
+std::vector<double> GetMuonPtEtaSF(int year,TH2 *hist,TLorentzVector obj,float highbinedge, bool isID) {
+  //std::cout<<"This is the hist "<<hist<<std::endl;
+  std::vector<double> sfvec;
+  double leptonsf  = 1;
+  double lsfup  = 0;
+  double lsfdwn = 0;
+  int leptonbin    = -1;
+  double ptcheck = obj.Pt();
+  if (ptcheck >= highbinedge) {
+    ptcheck =  highbinedge - 20.0;//safely within last bin, but a hack
+  }
+  if (year == 16 && isID) {
+    leptonbin = hist->FindBin(ptcheck,obj.Eta());
+  }
+  else{
+    leptonbin = hist->FindBin(ptcheck,std::abs(obj.Eta()));
+  }
+  leptonsf = hist->GetBinContent(leptonbin);
+  lsfup    = hist->GetBinErrorUp(leptonbin);
+  lsfdwn   = hist->GetBinErrorLow(leptonbin);
+  sfvec.push_back(leptonsf);
+  sfvec.push_back(lsfup);
+  sfvec.push_back(lsfdwn);
+  return sfvec;
+}
+
+void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year,int anchan, TVector metsys)
+//void TreeMakerTopiary::Loop(std::string outputFileName, float totalOriginalEvents, int sampleType,int year, int anchan, std::vector<int>  *metsys)
+{
+   if (fChain == 0) return;
+   Long64_t nentries = fChain->GetEntriesFast();
+   Long64_t nbytes = 0, nb = 0;
+
+   
+
+   fChain->SetBranchStatus("*",0);
+   fChain->SetBranchStatus("RunNum",1);
+   fChain->SetBranchStatus("LumiBlockNum",1);
+   fChain->SetBranchStatus("EvtNum",1);
+   fChain->SetBranchStatus("GenMET",1);
+   fChain->SetBranchStatus("GenMETPhi",1);
+   fChain->SetBranchStatus("TriggerPass",1);
+   fChain->SetBranchStatus("JetsAK8Clean*",1);
+   fChain->SetBranchStatus("Muons*",1);
+   fChain->SetBranchStatus("Electrons*",1);
+   fChain->SetBranchStatus("MET",1);
+   fChain->SetBranchStatus("METPhi",1);
+   fChain->SetBranchStatus("METUp",1);
+   fChain->SetBranchStatus("METPhiUp",1);
+   fChain->SetBranchStatus("METDown",1);
+   fChain->SetBranchStatus("METPhiDown",1);
+   fChain->SetBranchStatus("SelectedMuons",1);
+   fChain->SetBranchStatus("SelectedMuonsTunepMomenErr",1);
+   fChain->SetBranchStatus("ZCandidates*",1);
+   fChain->SetBranchStatus("SelectedElectrons*",1);
+   fChain->SetBranchStatus("eeBadScFilter",1);
+   fChain->SetBranchStatus("ZCandidatesMuMu",1);
+   fChain->SetBranchStatus("ZCandidatesEE",1);
+   fChain->SetBranchStatus("ZCandidatesEU",1);
+   fChain->SetBranchStatus("NVtx",1);
+
+   if (sampleType > 0){
+     fChain->SetBranchStatus("GenParticles*",1);
+     fChain->SetBranchStatus("ScaleWeights",1);
+     fChain->SetBranchStatus("PDFweights",1);
+     
+   }
+
+   if (year == 16 or year == 17 && sampleType > 0){
+     fChain->SetBranchStatus("NonPrefiringProb*",1);
+   }
+
+
+   TFile qcdnnloFile("../DYCorrection/lindert_qcd_nnlo_sf.root","READ");
+   TH1D *hqcdnnlosf  = (TH1D*)qcdnnloFile.Get("eej");
+   hqcdnnlosf->SetDirectory(0);
+   qcdnnloFile.Close();
+   TFile ewknloFile("../DYCorrection/merged_kfactors_zjets.root","READ");
+   TH1F *hewknlosf = (TH1F*)ewknloFile.Get("kfactor_monojet_ewk");
+   hewknlosf->SetDirectory(0);
+   ewknloFile.Close();
+
+
+   //Initialize Stuff
+   TLorentzVector hCandidate;
+   TLorentzVector ZCandidate;
+   double ZCandidate_pt;
+   double ZCandidate_phi;
+   double ZCandidate_eta;
+   double ZCandidate_m;
+   double hCandidate_pt;
+   double hCandidate_phi;
+   double hCandidate_eta;
+   double hCandidate_m;
+   double hCandidate_sd;
+   double hCandidate_dmdhbbvqcd;
+   double hCandidate_dmdzbbvqcd;
+   double hCandidate_dmdzhbbvqcd;
+   double hCandidate_middb;
+   double mEstZp;
+   double mEstND;
+   double mEstNS;
+   double evntwhem;
+   double  evntwkf;
+   double  evntwbtag;
+   double  evntwmusf;
+   double evntwmutrig;
+   double  muiduncup;
+   double  muiduncdwn;
+   double  mutriguncup;
+   double  mutriguncdwn;
+   double  evntweltrig;
+   double  eltriguncup;
+   double  eltriguncdwn;
+   double  evntwelidsf;
+   double  eliduncup;
+   double  eliduncdwn;
+   double  evntwelrecosf;
+   double  elrecouncup;
+   double  elrecouncdwn;
+   double  btaguncup;
+   double  btaguncdwn;
+   TLorentzVector LMuCandidate;
+   double LMuCandidate_pt;
+   double LMuCandidate_phi;
+   double LMuCandidate_eta;
+   double LMuCandidate_m;
+   double LMuCandidate_ptunc;
+   TLorentzVector sLMuCandidate;
+   double sLMuCandidate_pt;
+   double sLMuCandidate_phi;
+   double sLMuCandidate_eta;
+   double sLMuCandidate_m;
+   double sLMuCandidate_ptunc;
+   TLorentzVector LEleCandidate;
+   double LEleCandidate_pt;
+   double LEleCandidate_phi;
+   double LEleCandidate_eta;
+   double LEleCandidate_m;
+   TLorentzVector sLEleCandidate;
+   double sLEleCandidate_pt;
+   double sLEleCandidate_phi;
+   double sLEleCandidate_eta;
+   double sLEleCandidate_m;
+   double ghCandidate_pt;
+   double ghCandidate_phi;
+   double ghCandidate_eta;
+   double ghCandidate_m;
+   double gzCandidate_pt;
+   double gzCandidate_phi;
+   double gzCandidate_eta;
+   double gzCandidate_m;
+   double channelflag;
+   double metusable;
+   double metxycorr;
+   double metxyphicorr;
+   double metphiusable;
+   TLorentzVector eventleade;
+   TLorentzVector eventleadmu;
+   float pdfweightup;
+   float pdfweightdn;
+   float qcdweightup;
+   float qcdweightdn;
+
+   
+   //Define the skimmed skim  output file and tree
+   TFile* trimFile = new TFile(outputFileName.c_str(),"recreate");
+   TTree* trimTree = fChain->CloneTree(0);
+   TH1F*  hnskimed = new TH1F("hnskimed","number of events at skim level",1,0,1);
+   TH1F*  hnorigevnts = new TH1F("hnorigevnts","original number of events, preskim",1,0,1);
+   TH1F*  htrigpass = new TH1F("htrigpass","trigger pass",1,0,1);
+   TH1F*  hZpass = new TH1F("hZpass","Z pass",1,0,1);
+   TH1F*  hHpass = new TH1F("hHpass","h pass",1,0,1);
+   TH1F*  hpass  = new TH1F("hpass","passing all req",1,0,1);
+
+   //Add these horrible plots for efficiency
+   TH1F* hzpasstrig_pt = new TH1F("hzpasstrig_pt","Z pt > 100 and passing triggers",74,60,800);
+   TH1F* hzbuild_pt = new TH1F("hzbuild_pt","Z pt > 100",74,60,800);
+   TH1F* hzpasstrig_eta = new TH1F("hzpasstrig_eta","Z pt > 100 and passing triggers",24,-2.4,2.4);
+   TH1F* hzbuild_eta = new TH1F("hzbuild_eta","Z pt > 100",24,-2.4,2.4);
+   
+   TH1F* hlmupasstrig_pt = new TH1F("hlmupasstrig_pt","Z pt > 100 and passing triggers",74,60,800);
+   TH1F* hlmubuild_pt = new TH1F("hlmubuild_pt","Z pt > 100",74,60,800);
+   TH1F* hlmupasstrig_eta = new TH1F("hlmupasstrig_eta","Z pt > 100and passing triggers",24,-2.4,2.4);
+   TH1F* hlmubuild_eta = new TH1F("hlmubuild_eta","Z pt > 100",24,-2.4,2.4);
+
+   TH1F* hjetpt = new TH1F("hjetpt","All Jet Pt",48,0,1200);
+   TH1F* hjeteta = new TH1F("hjeteta","All Jet eta",30,-2.8,2.8);
+   TH1F* hjetphi = new TH1F("hjetphi","All Jet phi",30,-3.14159,3.14159);
+
+   
+   TBranch *hCand     = trimTree->Branch("hCandidate","TLorentzVector",&hCandidate);
+   TBranch *hCand_pt  = trimTree->Branch("hCandidate_pt",&hCandidate_pt,"hCandidate_pt/D");
+   TBranch *hCand_phi = trimTree->Branch("hCandidate_phi",&hCandidate_phi,"hCandidate_phi/D");
+   TBranch *hCand_eta = trimTree->Branch("hCandidate_eta",&hCandidate_eta,"hCandidate_eta/D");
+   TBranch *hCand_m   = trimTree->Branch("hCandidate_m",&hCandidate_m,"hCandidate_m/D");
+   TBranch *hCand_sd  = trimTree->Branch("hCandidate_sd",&hCandidate_sd,"hCandidate_sd/D");
+   TBranch *hCand_dmdhbbvqcd  = trimTree->Branch("hCandidate_DeepMassDecorrelTagHbbvsQCD",&hCandidate_dmdhbbvqcd,"hCandidate_dmdhbbvqcd/D");
+   TBranch *hCand_dmdzbbvqcd  = trimTree->Branch("hCandidate_DeepMassDecorrelTagZbbvsQCD",&hCandidate_dmdzbbvqcd,"hCandidate_dmdzbbvqcd/D");
+   TBranch *hCand_dmdzhbbvqcd = trimTree->Branch("hCandidate_DeepMassDecorrelTagZHbbvsQCD",&hCandidate_dmdzhbbvqcd,"hCandidate_dmdzhbbvqcd/D");
+   TBranch *hCand_middb       = trimTree->Branch("hCandidate_pfMassIndependentDeepDoubleBvLJetTagsProbHbb",&hCandidate_middb,"hCandidate_middb/D");
+   TBranch *ZCand     = trimTree->Branch("ZCandidate","TLorentzVector",&ZCandidate);
+   TBranch *ZCand_pt  = trimTree->Branch("ZCandidate_pt",&ZCandidate_pt,"ZCandidate_pt/D");
+   TBranch *ZCand_phi = trimTree->Branch("ZCandidate_phi",&ZCandidate_phi,"ZCandidate_phi/D");
+   TBranch *ZCand_eta = trimTree->Branch("ZCandidate_eta",&ZCandidate_eta,"ZCandidate_eta/D");
+   TBranch *ZCand_m   = trimTree->Branch("ZCandidate_m",&ZCandidate_m,"ZCandidate_m/D");
+   TBranch *ZpMest    = trimTree->Branch("ZPrime_mass_est",&mEstZp,"mEstZp/D");
+   TBranch *NDMest    = trimTree->Branch("ND_mass_est",&mEstND,"mEstND/D");
+   TBranch *NSMest    = trimTree->Branch("NS_mass_est",&mEstNS,"mEstNS/D");
+   TBranch *evntweighthem = trimTree->Branch("event_weight_hem",&evntwhem,"evntwhem/D");
+   TBranch *evntweightkf = trimTree->Branch("event_weight_kf",&evntwkf,"evntwkf/D");
+   TBranch *evntweightbtag = trimTree->Branch("event_weight_btag",&evntwbtag,"evntwbtag/D");
+   TBranch *evntbtaguncup = trimTree->Branch("event_weight_btaguncup",&btaguncup,"btaguncup/D");
+   TBranch *evntbtaguncdwn = trimTree->Branch("event_weight_btaguncdwn",&btaguncdwn,"btaguncdwn/D");
+   TBranch *evntweightmuid = trimTree->Branch("event_weight_muid",&evntwmusf,"evntwmusf/D");
+   TBranch *evntweightmutrig = trimTree->Branch("event_weight_mutrig",&evntwmutrig,"evntwmutrig/D");
+   TBranch *evntweighteltrig = trimTree->Branch("event_weight_eltrig",&evntweltrig,"evntweltrig/D");
+   TBranch *evntmuiduncup = trimTree->Branch("event_weight_muiduncup",&muiduncup,"muiduncup/D");
+   TBranch *evntmuiduncdwn = trimTree->Branch("event_weight_muiduncdwn",&muiduncdwn,"muiduncdwn/D");
+   TBranch *evntmutriguncup = trimTree->Branch("event_weight_mutriguncup",&mutriguncup,"mutriguncup/D");
+   TBranch *evntmutriguncdwn = trimTree->Branch("event_weight_mutriguncdwn",&mutriguncdwn,"mutriguncdwn/D");
+   TBranch *evnteltriguncup = trimTree->Branch("event_weight_eltriguncup",&eltriguncup,"eltriguncup/D");
+   TBranch *evnteltriguncdwn = trimTree->Branch("event_weight_eltriguncdwn",&eltriguncdwn,"eltriguncdwn/D");
+   TBranch *evntweightelid = trimTree->Branch("event_weight_elid",&evntwelidsf,"evntwelidsf/D");
+   TBranch *evnteliduncup = trimTree->Branch("event_weight_eliduncup",&eliduncup,"eliduncup/D");
+   TBranch *evnteliduncdwn = trimTree->Branch("event_weight_eliduncdwn",&eliduncdwn,"eliduncdwn/D");
+   TBranch *evntweightelreco = trimTree->Branch("event_weight_elreco",&evntwelrecosf,"evntwelrecosf/D");
+   TBranch *evntelrecouncup = trimTree->Branch("event_weight_elrecouncup",&elrecouncup,"elrecouncup/D");
+   TBranch *evntelrecouncdwn = trimTree->Branch("event_weight_elrecouncdwn",&elrecouncdwn,"elrecouncdwn/D");
+   TBranch *qcdweightsdwn = trimTree->Branch("qcdweight_dwn",&qcdweightdn,"qcdweightdn/F");
+   TBranch *qcdweightsup = trimTree->Branch("qcdweight_up",&qcdweightup,"qcdweightup/F");
+   TBranch *pdfweightsdwn = trimTree->Branch("pdfweight_dwn",&pdfweightdn,"pdfweightdn/F");
+   TBranch *pdfweightsup = trimTree->Branch("pdfweight_up",&pdfweightup,"pdfweightup/F");
+   TBranch *channelf   = trimTree->Branch("channel_flag",&channelflag,"channelflag/D");
+   TBranch *LMuCand     = trimTree->Branch("LMuCandidate","TLorentzVector",&LMuCandidate);
+   TBranch *LMuCand_pt  = trimTree->Branch("LMuCandidate_pt",&LMuCandidate_pt,"LMuCandidate_pt/D");
+   TBranch *LMuCand_ptunc  = trimTree->Branch("LMuCandidate_ptunc",&LMuCandidate_ptunc,"LMuCandidate_ptunc/D");
+   TBranch *LMuCand_phi = trimTree->Branch("LMuCandidate_phi",&LMuCandidate_phi,"LMuCandidate_phi/D");
+   TBranch *LMuCand_eta = trimTree->Branch("LMuCandidate_eta",&LMuCandidate_eta,"LMuCandidate_eta/D");
+   TBranch *sLMuCand     = trimTree->Branch("sLMuCandidate","TLorentzVector",&sLMuCandidate);
+   TBranch *sLMuCand_pt  = trimTree->Branch("sLMuCandidate_pt",&sLMuCandidate_pt,"sLMuCandidate_pt/D");
+   TBranch *sLMuCand_ptunc  = trimTree->Branch("sLMuCandidate_ptunc",&sLMuCandidate_ptunc,"sLMuCandidate_ptunc/D");
+   TBranch *sLMuCand_phi = trimTree->Branch("sLMuCandidate_phi",&sLMuCandidate_phi,"sLMuCandidate_phi/D");
+   TBranch *sLMuCand_eta = trimTree->Branch("sLMuCandidate_eta",&sLMuCandidate_eta,"sLMuCandidate_eta/D");
+   TBranch *LEleCand     = trimTree->Branch("LEleCandidate","TLorentzVector",&LEleCandidate);
+   TBranch *LEleCand_pt  = trimTree->Branch("LEleCandidate_pt",&LEleCandidate_pt,"LEleCandidate_pt/D");
+   TBranch *LEleCand_phi = trimTree->Branch("LEleCandidate_phi",&LEleCandidate_phi,"LEleCandidate_phi/D");
+   TBranch *LEleCand_eta = trimTree->Branch("LEleCandidate_eta",&LEleCandidate_eta,"LEleCandidate_eta/D");
+   TBranch *sLEleCand     = trimTree->Branch("sLEleCandidate","TLorentzVector",&sLEleCandidate);
+   TBranch *sLEleCand_pt  = trimTree->Branch("sLEleCandidate_pt",&sLEleCandidate_pt,"sLEleCandidate_pt/D");
+   TBranch *sLEleCand_phi = trimTree->Branch("sLEleCandidate_phi",&sLEleCandidate_phi,"sLEleCandidate_phi/D");
+   TBranch *sLEleCand_eta = trimTree->Branch("sLEleCandidate_eta",&sLEleCandidate_eta,"sLEleCandidate_eta/D");
+   TBranch *ghCand_pt  = trimTree->Branch("ghCandidate_pt",&ghCandidate_pt,"ghCandidate_pt/D");
+   TBranch *ghCand_phi = trimTree->Branch("ghCandidate_phi",&ghCandidate_phi,"ghCandidate_phi/D");
+   TBranch *ghCand_eta = trimTree->Branch("ghCandidate_eta",&ghCandidate_eta,"ghCandidate_eta/D");
+   TBranch *ghCand_m   = trimTree->Branch("ghCandidate_m",&ghCandidate_m,"ghCandidate_m/D");
+   TBranch *gzCand_pt  = trimTree->Branch("gzCandidate_pt",&gzCandidate_pt,"gzCandidate_pt/D");
+   TBranch *gzCand_phi = trimTree->Branch("gzCandidate_phi",&gzCandidate_phi,"gzCandidate_phi/D");
+   TBranch *gzCand_eta = trimTree->Branch("gzCandidate_eta",&gzCandidate_eta,"gzCandidate_eta/D");
+   TBranch *gzCand_m   = trimTree->Branch("gzCandidate_m",&gzCandidate_m,"gzCandidate_m/D");
+   TBranch *metu       = trimTree->Branch("metsuable",&metusable,"metusable/D");
+   TBranch *metu_phi   = trimTree->Branch("metphiusable",&metphiusable,"metphiusable/D");
+   TBranch *metuxy       = trimTree->Branch("metxycorr",&metxycorr,"metxycorr/D");
+   TBranch *metuxy_phi   = trimTree->Branch("metxyphicorr",&metxyphicorr,"metxyphicorr/D");
+
+   //Uncertainty + Scale Factor Stuff
+   //The index of the nonzero place is the ssytematic explored
+   //The sign of it is up/down
+   int systs = metsys.GetNoElements();
+   int systidx = -999;
+   if (metsys.Norm1() == 1.0) {
+     for (int i = 0;i < systs; ++i) {
+       if (metsys[i] != 0) {
+	 systidx = i;
+	 break;
+       }
+     }
+   std::cout<<"The index for systematics is: "<<systidx<<std::endl;
+   std::cout<<"The value we are applying is: "<<metsys[systidx]<<std::endl;
+   }
+   
+   //
+   int jecsys = metsys[1];//metsys is a 6D vector. JER, JES ...
+   
+   TString uncfile = "badstring";
+   TString btagfile = "badstring";
+   TString muonsffile = "badstring";
+   TString muonsfhname = "badstring";
+   TString muontrigsffile = "badstring";
+   TString muontrigsfhname = "badstring";
+   TString muontrigefhname = "badstring";
+   TString electronsffile = "badstring";
+   TString electronsfhname = "badstring";
+   TString electronIDsffile = "badstring";
+   TString electronIDsfhname = "badstring";
+   TString eltrigsffile = "badstring";
+   TString eltrigsfhname = "badstring";
+   TString yearstr = "badstring";
+
+   TH1F *hbtagsf = 0;
+   TH1F *hbtagsfuncup = 0;
+   TH1F *hbtagsfuncdwn = 0;
+   TH2D *hmuonsf = 0;
+   TH2F *helectronsf = 0;
+   TH2F *helectronIDsf = 0;
+   TH2D *helectronTRIGsf = 0;
+   TH2F *hmuontrigsf = 0;
+   TH2F *hmuontrigef = 0;
+   
+   if (sampleType == 3) {//ttbar
+     btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_ttscalefactors_Zptcut_Hptcut_metcut_btagwp.root";
+   }
+   else {
+     btagfile = "btagsf/DeepAK8MassDecorrelZHbbvQCD_scalefactors_Zptcut_Hptcut_metcut_btagwp.root";
+   }
+
+   TFile btagsf(btagfile,"READ");
+   
+   std::cout<<"Looking at year  "<<year<<std::endl;
+   if (year == 180){
+     std::cout<<"In Run2018RunA"<<std::endl;
+     yearstr = "2018";
+     uncfile = "JEC/Autumn18_RunA_V19_DATA/Autumn18_RunA_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 181){
+     yearstr = "2018";
+     uncfile = "JEC/Autumn18_RunB_V19_DATA/Autumn18_RunB_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 182){
+     yearstr = "2018";
+     uncfile = "JEC/Autumn18_RunC_V19_DATA/Autumn18_RunC_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 183){
+     yearstr = "2018";
+     uncfile = "JEC/Autumn18_RunD_V19_DATA/Autumn18_RunD_V19_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 18) {
+     yearstr = "2018";
+     //JEC
+     std::cout<<"In Autumn18"<<std::endl;
+     uncfile = "JEC/Autumn18_V19_MC_UncertaintySources_AK4PFPuppi.txt";
+     //Muon ID SF
+     muonsffile = "leptonsf/Run2018ABCD_muon_SF_ID.root";
+     muonsfhname = "NUM_TightID_DEN_TrackerMuons_pt_abseta";
+     TFile muonsff(muonsffile,"READ");
+     hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
+     hmuonsf->SetDirectory(0);
+     muonsff.Close();
+     //Muon Trigger SF
+     //std::cout<<"About to try and do the muon trigger sf"<<std::endl;
+     muontrigsffile = "leptonsf/Run2018_muon_SF_TRIGGER.root";
+     muontrigsfhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt";
+     muontrigefhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt_efficiencyMC";
+     TFile muontrigsff(muontrigsffile,"READ");
+     hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigef = new TH2F(*((TH2F*)muontrigsff.Get(muontrigefhname)));
+     hmuontrigsf->SetDirectory(0);
+     hmuontrigef->SetDirectory(0);
+     muontrigsff.Close();
+     //Electron reco SF
+     electronsffile = "leptonsf/Run2018_electron_SF.root";
+     electronsfhname = "EGamma_SF2D";
+     TFile elecsff(electronsffile,"READ");
+     helectronsf = new TH2F(*((TH2F*)elecsff.Get(electronsfhname)));
+     helectronsf->SetDirectory(0);
+     elecsff.Close();
+     //Electron ID SF
+     electronIDsffile = "leptonsf/Run2018_electron_SFID.root";
+     electronIDsfhname = "EGamma_SF2D";
+     TFile elecIDsff(electronIDsffile,"READ");
+     helectronIDsf = new TH2F(*((TH2F*)elecIDsff.Get(electronIDsfhname)));
+     helectronIDsf->SetDirectory(0);
+     elecIDsff.Close();
+     //Electron Tigger SF
+     eltrigsffile = "leptonsf/Ele115orEleIso32orPho200_SF_2018.root";
+     eltrigsfhname = "SF_TH2F";
+     TFile elecTRIGsff(eltrigsffile,"READ");
+     helectronTRIGsf = new TH2D(*((TH2D*)elecTRIGsff.Get(eltrigsfhname)));
+     helectronTRIGsf->SetDirectory(0);
+     elecTRIGsff.Close();
+     //Btag SF
+     hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2018sf")));
+     hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2018uncUp")));
+     hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2018uncDown")));
+     hbtagsfuncup->SetDirectory(0);
+     hbtagsfuncdwn->SetDirectory(0);
+     hbtagsf->SetDirectory(0);
+     btagsf.Close();
+   }
+   if (year == 17) {
+     yearstr = "2017";
+     //JEC
+     uncfile = "JEC/Fall17_17Nov2017_V32_MC.tar-1/Fall17_17Nov2017_V32_MC_UncertaintySources_AK8PFPuppi.txt";
+     //Muon ID SF
+     muonsffile = "leptonsf/Run2017BCDEF_muon_SF_ID.root";
+     muonsfhname = "NUM_TightID_DEN_genTracks_pt_abseta";
+     TFile muonsff(muonsffile,"READ");
+     hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
+     hmuonsf->SetDirectory(0);
+     muonsff.Close();
+     //Muon Trigger SF
+     std::cout<<"About to try and do the muon trigger sf"<<std::endl;
+     muontrigsffile = "leptonsf/Run2017_muon_SF_TRIGGER.root";
+     muontrigsfhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt";
+     muontrigefhname = "NUM_Mu50_TkMu100_DEN_TightID_abseta_pt_efficiencyMC";
+     TFile muontrigsff(muontrigsffile,"READ");
+     hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigef = new TH2F(*((TH2F*)muontrigsff.Get(muontrigefhname)));
+     hmuontrigsf->SetDirectory(0);
+     hmuontrigef->SetDirectory(0);
+     muontrigsff.Close();
+     //Electron reco SF
+     electronsffile = "leptonsf/Run2017BCDEF_electron_SF.root";
+     electronsfhname = "EGamma_SF2D";
+     TFile elecsff(electronsffile,"READ");
+     helectronsf = new TH2F(*((TH2F*)elecsff.Get(electronsfhname)));
+     helectronsf->SetDirectory(0);
+     elecsff.Close();
+     //Electron ID SF
+     electronIDsffile = "leptonsf/Run2017_electron_SFID.root";
+     electronIDsfhname = "EGamma_SF2D";
+     TFile elecIDsff(electronIDsffile,"READ");
+     helectronIDsf = new TH2F(*((TH2F*)elecIDsff.Get(electronIDsfhname)));
+     helectronIDsf->SetDirectory(0);
+     elecIDsff.Close();
+     //Electron Tigger SF
+     eltrigsffile = "leptonsf/Ele115orEleIso35orPho200_SF_2017.root";
+     eltrigsfhname = "SF_TH2F";
+     TFile elecTRIGsff(eltrigsffile,"READ");
+     helectronTRIGsf = new TH2D(*((TH2D*)elecTRIGsff.Get(eltrigsfhname)));
+     helectronTRIGsf->SetDirectory(0);
+     elecTRIGsff.Close();
+     //Btag SF
+     hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2017sf")));
+     hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2017uncUp")));
+     hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2017uncDown")));
+     hbtagsfuncup->SetDirectory(0);
+     hbtagsfuncdwn->SetDirectory(0);
+     hbtagsf->SetDirectory(0);
+     hbtagsf->SetDirectory(0);
+     btagsf.Close();
+   }
+   if (year == 170) {
+     yearstr = "2017";
+     uncfile = "JEC/Fall17_17Nov2017B_V32_DATA/Fall17_17Nov2017B_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+       }
+   if (year == 171) {
+     yearstr = "2017";
+     uncfile = "JEC/Fall17_17Nov2017C_V32_DATA/Fall17_17Nov2017C_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 172) {
+     yearstr = "2017";
+     uncfile = "JEC/Fall17_17Nov2017DE_V32_DATA/Fall17_17Nov2017DE_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 173) {
+     yearstr = "2017";
+     uncfile = "JEC/Fall17_17Nov2017F_V32_DATA/Fall17_17Nov2017F_V32_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 16) {
+     yearstr = "2016";
+     //JEC
+     uncfile = "JEC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK8PFPuppi.txt";
+     //Muon ID SF
+     muonsffile = "leptonsf/Run2016_muon_SF_ID.root";
+     muonsfhname = "hflip";
+     TFile muonsff(muonsffile,"READ");
+     hmuonsf = new TH2D(*((TH2D*)muonsff.Get(muonsfhname)));
+     hmuonsf->SetDirectory(0);
+     muonsff.Close();
+     //Muon Trigger SF
+     std::cout<<"About to try and do the muon trigger sf"<<std::endl;
+     muontrigsffile = "leptonsf/Run2016_muon_SF_TRIGGER.root";
+     muontrigsfhname = "NUM_Mu50_TkMu50_DEN_TightID_abseta_pt";
+     muontrigefhname = "NUM_Mu50_TkMu50_DEN_TightID_abseta_pt_efficiencyMC";
+     TFile muontrigsff(muontrigsffile,"READ");
+     hmuontrigsf = new TH2F(*((TH2F*)muontrigsff.Get(muontrigsfhname)));
+     hmuontrigef = new TH2F(*((TH2F*)muontrigsff.Get(muontrigefhname)));
+     hmuontrigsf->SetDirectory(0);
+     hmuontrigef->SetDirectory(0);
+     muontrigsff.Close();
+     //Electron reco SF
+     electronsffile = "leptonsf/Run2016BCDEFGH_electron_SF.root";
+     electronsfhname = "EGamma_SF2D";
+     TFile elecsff(electronsffile,"READ");
+     helectronsf = new TH2F(*((TH2F*)elecsff.Get(electronsfhname)));
+     helectronsf->SetDirectory(0);
+     elecsff.Close();
+     //Electron ID SF
+     electronIDsffile = "leptonsf/Run2016_electron_SFID.root";
+     electronIDsfhname = "EGamma_SF2D";
+     TFile elecIDsff(electronIDsffile,"READ");
+     helectronIDsf = new TH2F(*((TH2F*)elecIDsff.Get(electronIDsfhname)));
+     helectronIDsf->SetDirectory(0);
+     elecIDsff.Close();
+     //Electron Tigger SF
+     eltrigsffile = "leptonsf/Ele115orEleIso27orPho175_SF_2016.root";
+     eltrigsfhname = "SF_TH2F";
+     TFile elecTRIGsff(eltrigsffile,"READ");
+     helectronTRIGsf = new TH2D(*((TH2D*)elecTRIGsff.Get(eltrigsfhname)));
+     helectronTRIGsf->SetDirectory(0);
+     elecTRIGsff.Close();
+     //Btag SF
+     hbtagsf = new TH1F(*((TH1F*)btagsf.Get("2016sf")));
+     hbtagsfuncup = new TH1F(*((TH1F*)btagsf.Get("2016uncUp")));
+     hbtagsfuncdwn = new TH1F(*((TH1F*)btagsf.Get("2016uncDown")));
+     hbtagsfuncup->SetDirectory(0);
+     hbtagsfuncdwn->SetDirectory(0);
+     hbtagsf->SetDirectory(0);
+     hbtagsf->SetDirectory(0);
+     btagsf.Close();
+   }
+   if (year == 160) {
+     yearstr = "2016";
+     uncfile = "JEC/Summer16_07Aug2017BCD_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 161) {
+     yearstr = "2016";
+     uncfile = "JEC/Summer16_07Aug2017EF_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   if (year == 162) {
+     yearstr = "2016";
+     uncfile = "JEC/Summer16_07Aug2017GH_V11_DATA_UncertaintySources_AK8PFPuppi.txt";
+   }
+   std::cout<<"Using JEC uncertainty file "<<uncfile<<std::endl;
+   std::cout<<"Using btagsf file  "<<btagfile<<std::endl;
+   std::cout<<"Using muon ID sf file  "<<muonsffile<<std::endl;
+   std::cout<<"Using muon trigger sf file  "<<muontrigsffile<<std::endl;
+   std::cout<<"Using electron sf file  "<<electronsffile<<std::endl;
+
+   JetCorrectionUncertainty* jec_unc = new JetCorrectionUncertainty(*(new JetCorrectorParameters(uncfile.Data(),"Total")));
+
+   //bring data era encoding back to normal numbers
+   //Data era added as a digit on the end of the year
+   //dividing by ten makes the year the integer when rounded
+   if (year > 100){
+     year = year/10;
+     year = round(year);
+   }
+
+   //Info and holders
+   hnskimed->SetBinContent(1,nentries);
+   hnorigevnts->SetBinContent(1,totalOriginalEvents);
+   float zmwinlow = 70.;
+   float zmwinhi  = 110.;
+   float hptcut   = 250.;
+
+   ///*
+   //Recursive Jigsaw Part
+   LabRecoFrame         LABcontra("LABcontra","LABcontra");
+   DecayRecoFrame       Zp("Zp","Z'");
+   DecayRecoFrame       ND("ND","N_{D}");
+   DecayRecoFrame       NDbar("NDbar","N_{Dbar}");
+   VisibleRecoFrame     Z("Z","Z");
+   InvisibleRecoFrame   NS("NS","N_{S}");
+   VisibleRecoFrame     h("h","h");
+   InvisibleRecoFrame   NSbar("NSbar","Z_{Sbar}");
+
+   LABcontra.SetChildFrame(Zp);
+   Zp.AddChildFrame(ND);
+   Zp.AddChildFrame(NDbar);
+   ND.AddChildFrame(Z);
+   ND.AddChildFrame(NS);
+   NDbar.AddChildFrame(h);
+   NDbar.AddChildFrame(NSbar);
+
+   LABcontra.InitializeTree();
+   
+   // Invisible Group
+   InvisibleGroup INVcontra("INVcontra","NS NS Jigsaws");
+   INVcontra.AddFrame(NS);
+   INVcontra.AddFrame(NSbar);
+   
+   // Set NS NS~ mass equal to Z h mass
+   SetMassInvJigsaw NSNSM("NSNSM", "M_{NSNS} = m_{Zh}");
+   INVcontra.AddJigsaw(NSNSM);
+   
+   SetRapidityInvJigsaw NSNSR("NSNSR", "#eta_{NSNS} = #eta_{ZH}");
+   INVcontra.AddJigsaw(NSNSR);
+   NSNSR.AddVisibleFrames(LABcontra.GetListVisibleFrames());
+   
+   //MinMassesSqInvJigsaw MinMND("MinMND","min M_{D}, M_{ND}= M_{NDbar}",2);
+   ContraBoostInvJigsaw MinMND("MinMND","min M_{ND}, M_{ND}= M_{NDbar}");
+   INVcontra.AddJigsaw(MinMND);
+   MinMND.AddVisibleFrame(Z, 0);
+   MinMND.AddVisibleFrame(h, 1);
+   MinMND.AddInvisibleFrame(NS, 0);
+   MinMND.AddInvisibleFrame(NSbar, 1);
+
+   LABcontra.InitializeAnalysis();
+   //*/
+
+   //Trigger Stuff
+   string trgtit;
+   string delim  = ",";
+   string ourtrg;
+   std::vector<string> thetrigs;
+   int trgidx    = -1;
+   int trgval;
+   std::vector<int> trgvals;
+   std::vector<int> trgidxs;
+   TFile * fthen = 0;
+   TFile * fnow = 0;
+   //std::vector<string> trig18mu = {"HLT_Mu55_v","HLT_TkMu100_v"};
+   std::vector<string> trig18mu = {"HLT_Mu50_v","HLT_TkMu100_v"};
+   std::vector<string> trig17mu = {"HLT_Mu50_v","HLT_TkMu100_v"};
+   std::vector<string> trig16mu = {"HLT_Mu50_v","HLT_TkMu50_v"};
+   std::vector<string> trig18e = {"HLT_Ele32_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig17e = {"HLT_Ele35_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig16e = {"HLT_Ele27_WPTight_Gsf_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v","HLT_Photon175_v"};
+   std::vector<string> trig18emu = {"HLT_Mu50_v","HLT_TkMu100_v","HLT_Ele32_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig17emu = {"HLT_Mu50_v","HLT_TkMu100_v","HLT_Ele35_WPTight_Gsf_v","HLT_Photon200_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v"};
+   std::vector<string> trig16emu = {"HLT_Mu50_v","HLT_TkMu50_v","HLT_Ele27_WPTight_Gsf_v","HLT_Ele115_CaloIdVT_GsfTrkIdT_v","HLT_Photon175_v"};
+
+
+   std::vector<std::vector<string>> trig18 = {{"no"},trig18emu,trig18e,{"no"},trig18mu};
+   std::vector<std::vector<string>> trig17 = {{"no"},trig17emu,trig17e,{"no"},trig17mu};
+   std::vector<std::vector<string>> trig16 = {{"no"},trig16emu,trig16e,{"no"},trig16mu};
+   std::vector<std::vector<std::vector<string>>> trigs = {trig16,trig17,trig18};
+   
+   //counters
+   int emcounter = 0;
+   int counttrigpass = 0;
+   int countzpass    = 0;
+   int counthpass    = 0;
+   int countmetpass  = 0;
+   int countpass     = 0;
+   int zmumu = 0;
+   int zmumuzee = 0;
+   int zmumuzemu = 0;
+   int zmumuzeezemu = 0;
+   int zee = 0;
+   int zeezemu = 0;
+   int zemu = 0;
+   int znorecfat = 0;
+   int znounrecfat = 0;
+   int znofat = 0;
+   int countzcand = 0;
+   int countfat = 0;
+   int emumulead = 0;
+   int emuelead  = 0;
+
+   //std::cout<<"Number of files that make up the TChain: "<<fChain->GetListOfFiles()->GetSize()<<std::endl;this is weird, does not match files
+
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+      Long64_t ientry = LoadTree(jentry);
+      if (ientry < 0) break;
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+
+      //Define some boos to signal events to write
+      bool passZ    = false;
+      bool passh    = false;
+      bool passMET  = false;
+      bool passTrig = false;
+      bool passFil  = false;
+      bool mumuchan = false;
+      bool killelHEM = false;
+      double channel = -1.0;
+
+      //A counter, for my sanity
+      if (jentry%25000 == 0) {
+      	std::cout<<"    analyzing event "<<jentry<<std::endl;
+      }
+
+      
+      //debug
+      //std::cout<<"    analyzing event "<<jentry<<std::endl;
+      //for (std::size_t i = 0; i < PDFweights->size();++i) {
+      //	std::cout<<PDFweights->at(i)<<std::endl;
+      //}
+      //if (jentry%20 == 0) {
+      //std::cout<<"    analyzing event "<<jentry<<std::endl;
+      //}
+      //if (jentry == 20) {
+      //break;
+      //}
+     
+
+      //Trigger decisions
+      size_t pos = 0;
+      string token;
+      std::vector<int> checktrgidxs;
+      thetrigs = trigs[year-16][anchan];
+	for (std::size_t i = 0; i < thetrigs.size();++i){
+	  ourtrg = thetrigs[i];
+	  trgtit = fChain->GetBranch("TriggerPass")->GetTitle();
+	  fthen = fChain->GetFile();
+	  while ((pos = trgtit.find(delim)) != std::string::npos+1 && token != ourtrg) {
+	    token = trgtit.substr(0,pos);
+	    trgidx += 1;
+	    trgtit.erase(0,pos+delim.length());
+	  }
+	  checktrgidxs.push_back(trgidx);
+	  trgidx = -1;
+	}
+      if (checktrgidxs.size() != 0) {//This keeps the trg indexs in scope
+	trgidxs = checktrgidxs;
+      }
+      trgvals.clear();
+      for (std::size_t i = 0; i < trgidxs.size();++i){
+	trgval = TriggerPass->at(trgidxs[i]);
+	trgvals.push_back(trgval);
+      }
+
+
+      //Do the trigger for non-emu samples
+      if ((trgvals[0] == 1 || trgvals[1] == 1) && anchan != 1) {//if not emu channel !!! Only works for mumu channerl at the moment
+	passTrig = true;
+	counttrigpass += 1;
+      }
+
+      //eeBadScFilter
+      if (sampleType < 0) {
+	if (fChain->GetLeaf("eeBadScFilter")->GetValue() == 1.0) {
+	  passFil = true;
+	}
+      }
+
+      //DY+Jets k-factors+GenParticleInfo
+      float evntwkf_hold = 1.;
+      TLorentzVector theGenZ;
+      TLorentzVector theGenH;
+      std::pair<float,float> qcdupdwn(1.0,1.0);
+      float pdfwup = 1.0;
+      float pdfwdn = 1.0;
+      if (sampleType > 0) {//Not Data
+	int gpid;
+	unsigned long ngen = GenParticles->size();
+	for (unsigned long i = 0; i < ngen; ++i) {
+	  int gpid = GenParticles_PdgId->at(i);
+	  if (gpid == 23) {
+	    theGenZ = GenParticles->at(i);
+	  }
+	  if (gpid == 25) {
+	    theGenH = GenParticles->at(i);
+	  }
+	}
+
+	//Calculate the k-factor
+	float qcdnlosf   = 1;
+	double qcdnnlosf = 1;
+	float ewknlosf   = 1;
+	if (sampleType == 2) {//DY+Jets
+	  qcdnlosf = 1.423*exp(-0.002257*theGenZ.Pt())+0.451;
+	  if (qcdnlosf <= 0.0) {
+	    qcdnlosf = 1.;
+	  }
+	  int zptbinqcd  = hqcdnnlosf->FindBin(theGenZ.Pt());
+	  qcdnnlosf = hqcdnnlosf->GetBinContent(zptbinqcd);
+	  if (qcdnnlosf <= 0.0) {
+	    qcdnnlosf = 1.;
+	  }
+	  int zptbinewk = hewknlosf->FindBin(theGenZ.Pt());
+	  ewknlosf = hewknlosf->GetBinContent(zptbinewk);
+	  if (ewknlosf <= 0.0) {
+	    ewknlosf = 1.;
+	  }
+	  evntwkf_hold = ewknlosf*qcdnnlosf*qcdnlosf;
+	}
+	//Do PDF uncertainty
+	pdfwup = 1.0 + getPDFUncertainty(PDFweights);
+	pdfwdn = 1.0 - getPDFUncertainty(PDFweights);
+	
+	//std::cout<<"PDF Up "<<pdfwup<<std::endl;
+	//std::cout<<"PDF Dn "<<pdfwdn<<std::endl;
+	
+	qcdupdwn = getQCDScaleUpDwn(ScaleWeights);
+      }
+
+
+      //Only deal with exact events
+      unsigned int nmutest = Muons->size();
+      unsigned int neltest = Electrons->size();
+      
+      //Z exploration
+      unsigned int nselmu = SelectedMuons->size();
+      unsigned int nselel = SelectedElectrons->size();
+      unsigned int nZmumu = ZCandidatesMuMu->size();
+      unsigned int nZee = ZCandidatesEE->size();
+      //unsigned int nZeu = 0;  
+      unsigned int nZeu = ZCandidatesEU->size();//Does not work on old DY ntuples
+
+      emcounter += nZeu;
+      
+      TLorentzVector leadmu;
+      TLorentzVector subleadmu;
+      double leadmupt_unc = 0;
+      double subleadmupt_unc = 0;
+      TLorentzVector leade;
+      TLorentzVector subleade;
+      TLorentzVector testmu;
+      TLorentzVector teste;
+      double lptmax = 0;
+      unsigned int nZs = ZCandidates->size();
+      TLorentzVector theZ;
+      double baseZdiff = 99999;
+      int muld = 0;
+      int elld = 0;
+      double evntwhem_hold = 1.0;
+
+      //Channel Flags
+     ///*
+      //std::cout<<"At the part for before the Z"<<std::endl;
+      if (nZmumu > 0 && nZee == 0 && nZeu == 0 && anchan == 4){
+	if (passTrig) countzcand += 1;
+	//in binary 100, 4 in decimal
+	channel = 4.;//4 in decimal
+	mumuchan = true;
+	//zmumu += 1;
+	std::vector<TLorentzVector>::iterator muit;
+	for (muit = SelectedMuons->begin(); muit != SelectedMuons->end();++muit) { //might need to move after Z
+	  if (muit->Pt() > lptmax) {
+	    lptmax = muit->Pt();
+	    leadmu.SetPtEtaPhiM(muit->Pt(),muit->Eta(),muit->Phi(),muit->M());
+	  }
+	  else {
+	    subleadmu.SetPtEtaPhiM(muit->Pt(),muit->Eta(),muit->Phi(),muit->M());;
+	 }
+	}
+
+	//This omitts a check, but the leading muon should always be first
+	std::cout<<"About to check the uncertainty"<<std::endl;
+	leadmupt_unc = *SelectedMuonsTunepMomenErr->begin();
+	subleadmupt_unc = SelectedMuonsTunepMomenErr->back();
+	//std::cout<<"The leading muon's error "<<leadmupt_unc<<std::endl;
+	//std::cout<<"The subleading muon's error "<<subleadmupt_unc<<std::endl;
+	
+	std::vector<TLorentzVector>::iterator zit;
+	for (zit = ZCandidatesMuMu->begin(); zit != ZCandidatesMuMu->end(); ++zit) {
+	  double massZdiff = std::abs(91.1876 - zit->M());
+	  if ((massZdiff < baseZdiff) && (zit->M() >= zmwinlow) && (zit->M() <= zmwinhi)) {
+	    baseZdiff = massZdiff;
+	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
+	    passZ = true;
+	    //if (passTrig){
+	      zmumu += 1;
+	      //}
+
+	  }
+	}
+      }
+      if (nZmumu > 0 && nZee > 0 && nZeu == 0  && anchan == 6) {
+	//110 in binary, 6 in decimal
+	channel = 6.;//
+	//if (passTrig){
+	zmumuzee += 1;
+	//}
+      }
+      if (nZmumu > 0 && nZee == 0 && nZeu > 0 && anchan == 5) {
+	//101 in binary, 5 in decimal
+	channel = 5.;//
+	int matchmu = 0;
+	//if (passTrig) {
+	  std::vector<TLorentzVector>::iterator muit;
+	  std::vector<TLorentzVector>::iterator muit2;
+	  for (muit = SelectedMuons->begin(); muit != SelectedMuons->end();++muit) { //might need to move after Z
+	    for (muit2 = muit+1;muit2 != SelectedMuons->end();++muit2){
+	      if (*muit2 == *muit) {
+		matchmu += 1;}
+	    }
+	    //}
+	  if (matchmu == 0){
+	    zmumuzemu +=1;
+	  }
+	}
+      }
+      if (nZmumu > 0 && nZee > 0 && nZeu > 0  && anchan == 7) {
+	//111 in binary, 7 in decimal
+	channel = 7.;
+	//if (passTrig) {
+	zmumuzeezemu +=1;
+	//}
+      }
+      if (nZmumu == 0 && nZee > 0 && nZeu == 0  && anchan == 2) {
+	//010
+	channel = 2.;
+	//if (passTrig) {
+	zee +=1;
+	//}
+       ///*
+	std::vector<TLorentzVector>::iterator eit;
+	for (eit = SelectedElectrons->begin(); eit != SelectedElectrons->end();++eit) { 
+	  if (eit->Pt() > lptmax) {
+	    lptmax = eit->Pt();
+	    leade.SetPtEtaPhiM(eit->Pt(),eit->Eta(),eit->Phi(),eit->M());
+	  }
+	  else {
+	    subleade.SetPtEtaPhiM(eit->Pt(),eit->Eta(),eit->Phi(),eit->M());;
+	 }
+	}
+	std::vector<TLorentzVector>::iterator zit;
+	for (zit = ZCandidatesEE->begin(); zit != ZCandidatesEE->end(); ++zit) {
+	  double massZdiff = std::abs(91.1876 - zit->M());
+	  if ((massZdiff < baseZdiff) && (zit->M() > zmwinlow) && (zit->M() < zmwinhi)) {
+	    baseZdiff = massZdiff;
+	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
+	    passZ = true;
+	  }
+	}
+	}
+      if (nZmumu == 0 && nZee > 0 && nZeu > 0 && anchan == 3) {
+	//011
+	channel = 3.;
+	//if (passTrig) {
+	zeezemu +=1;
+	//}
+      }
+      //std::cout<<"At the part for before the Z"<<std::endl;
+      if (nZmumu == 0 && nZee == 0 && nZeu > 0  && anchan == 1) {
+	//001
+	//std::cout<<"At least we are in the emu channel part!"<<std::endl;
+	channel = 1.;
+	std::vector<TLorentzVector>::iterator zit;
+	for (zit = ZCandidatesEU->begin(); zit != ZCandidatesEU->end(); ++zit) {
+	  double massZdiff = std::abs(91.1876 - zit->M());
+	  if ((massZdiff < baseZdiff) && (zit->M() > zmwinlow) && (zit->M() < zmwinhi)) {
+	    baseZdiff = massZdiff;
+	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
+	    passZ = true;
+	    zemu += 1;
+	    testmu = SelectedMuons->at(0);
+	    teste = SelectedElectrons->at(0);
+	    //HEM Test
+	    if (teste.Eta() > -3.0 && teste.Eta() < -1.3 && teste.Phi() > -1.57 && teste.Phi() < -0.87 && ((year >= 180) or year == 18)){
+	      killelHEM = true;
+	      evntwhem_hold = 0.36;
+	    }
+	    if (testmu.Pt() > teste.Pt()) {
+	      leadmu = testmu;
+	      subleade = teste;
+	      //std::cout<<"    The muon is leading, the electron is subleading!"<<std::endl;
+	      muld = 1;
+	    }
+	    else {
+	      leade = teste;
+	      subleadmu = testmu;
+	      //std::cout<<"    The electron is leading, the muon is subleading!"<<std::endl;
+	      elld = 1;
+	    }
+	  }
+	}
+      }
+     //*/
+      //Do the emu trigger
+      //emutrig
+      //passTrig = true;
+      bool passmu = false;
+      bool passel = false;
+      if (Electrons->size() > 0){
+	eventleade = Electrons->at(0);
+      }
+      if (Muons->size() > 0){
+	eventleadmu = Muons->at(0);
+      }
+      if (sampleType > 0 && anchan == 1 ) {//if emu channel
+	if (Electrons->size() > 0 && Muons->size() > 0) {
+	  if (eventleade.Pt() > 27 ) {
+	    if (trgvals[2] == 1 || trgvals[3] == 1 || trgvals[4] == 1) {
+	      passTrig = true;
+	      counttrigpass += true;
+	      passel = true;
+	    }
+	  }
+	  if (eventleadmu.Pt() > 50 ) {
+	    if (trgvals[0] == 1 || trgvals[1] == 1) {
+	      passTrig = true;
+	      counttrigpass += true;
+	      passmu = true;
+	    }
+	  }
+	}
+      }
+      //if (passTrig){
+      //std::cout<<"Passed the trigger"<<std::endl;
+      //}
+      //std::cout<<"Magnitude of trig vals "<<getMagnitude(trgvals)<<std::endl;
+      if (sampleType < 0 && anchan == 1 ) {//if emu channel data
+	if (Electrons->size() > 0 && Muons->size() > 0) {
+	  //eventleade = Electrons->at(0);
+	  //eventleadmu = Muons->at(0);
+	  if (getMagnitude(trgvals) > 0.0){
+	    passTrig = true;
+	    counttrigpass += 1;
+	  }
+	}
+
+      }
+      //Z Candidate Build
+      //For old ntuples
+      /*
+	leadmupt_unc = 0;
+	subleadmupt_unc = 0;
+      if (nselmu > 0 && nselel == 0 && anchan == 4) {
+      	mumuchan = true;
+	channel = 4;
+	std::vector<TLorentzVector>::iterator muit;
+	for (muit = SelectedMuons->begin(); muit != SelectedMuons->end();++muit) { //might need to move after Z
+	  if (muit->Pt() > lptmax) {
+	    lptmax = muit->Pt();
+	    leadmu.SetPtEtaPhiM(muit->Pt(),muit->Eta(),muit->Phi(),muit->M());
+	  }
+	  else {
+	    subleadmu.SetPtEtaPhiM(muit->Pt(),muit->Eta(),muit->Phi(),muit->M());;
+	 }
+	}
+      }
+      if (nZs > 0) {
+	std::vector<TLorentzVector>::iterator zit;
+	for (zit = ZCandidates->begin(); zit != ZCandidates->end(); ++zit) {
+	  double massZdiff = std::abs(91.1876 - zit->M());
+	  if ((massZdiff < baseZdiff) && (zit->M() > zmwinlow) && (zit->M() < zmwinhi)) {
+	    baseZdiff = massZdiff;
+	    theZ.SetPtEtaPhiM(zit->Pt(),zit->Eta(),zit->Phi(),zit->M());
+	    passZ = true;
+	  }
+	}
+      }
+      //*/
+
+
+      //Do Lepton SF
+      std::vector<double> muidsfvec = {1,0,0};//total muon weight
+      std::vector<double> elidsfvec = {1,0,0};//total electron ID weight
+      std::vector<double> elrecosfvec = {1,0,0};//total electron Reco weight
+      std::vector<double> muidsfleadv = {1,0,0};//muon channel leadmuon
+      std::vector<double> elidsfleadv = {1,0,0};//electron channel leadelectron
+      std::vector<double> elrecoslleadv = {1,0,0};//electron channel leadelectron
+      std::vector<double> muidsfsublv = {1,0,0};//muon channel subleadmuon
+      std::vector<double> elidsfsublv = {1,0,0};//electron channel subleadelectron
+      std::vector<double> elrecosublv = {1,0,0};//electron channel subleadelectron
+      std::vector<double> mutrigsfvec= {1,0,0};//muon trigger sf
+      std::vector<double> eltrigsfvec= {1,0,0};//electron trigger
+      
+      if (sampleType > 0 && anchan == 4) {//not data, mumuchannel
+	//std::cout<<"Doing Muon ID sf"<<std::endl;
+	muidsfleadv = GetMuonPtEtaSF(year,hmuonsf,leadmu,120.0,true);
+	muidsfsublv = GetMuonPtEtaSF(year,hmuonsf,subleadmu,120.0,true);
+	muidsfvec = combineTheLeptonSF(muidsfleadv,muidsfsublv);
+	//std::cout<<"Doing Muon Trigger sf"<<std::endl;
+	//mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,200.0,false);//old way
+	std::vector<double> lmutrigsfv = GetMuonPtEtaSF(year,hmuontrigsf,leadmu,500.0,false);
+	std::vector<double> slmutrigsfv = GetMuonPtEtaSF(year,hmuontrigsf,subleadmu,500.0,false);
+	mutrigsfvec = GetMuonTriggerSF(lmutrigsfv,slmutrigsfv,leadmu,subleadmu,500.0,hmuontrigef);
+      }
+      else if (sampleType > 0 && anchan == 2) {//not data, ee channel
+	elidsfleadv = GetElectronPtEtaSF(year,helectronIDsf,leade,false);
+	elidsfsublv = GetElectronPtEtaSF(year,helectronIDsf,subleade,false);
+	elrecoslleadv = GetElectronPtEtaSF(year,helectronsf,leade,false);
+	elrecosublv = GetElectronPtEtaSF(year,helectronIDsf,subleade,false);
+	elidsfvec = combineTheLeptonSF(elidsfleadv,elidsfsublv);
+	elrecosfvec = combineTheLeptonSF(elrecoslleadv,elrecosublv);
+      }
+      else if (sampleType > 0 && anchan == 1) {//not data, emu channel
+	//Trigger scale factors should be applied based on the trigger object
+	//Done higher in the code, for maximal confusion.
+	//ID scale factors can be based off of the objects, done here
+	if (muld == 1) {
+	  muidsfvec = GetMuonPtEtaSF(year,hmuonsf,leadmu,120.0,true);
+	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,subleade,false);
+	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,subleade,false);
+	}
+	if (elld == 1) {
+	  elrecosfvec = GetElectronPtEtaSF(year,helectronsf,leade,false);
+	  elidsfvec   = GetElectronPtEtaSF(year,helectronIDsf,leade,false);
+	  muidsfvec   = GetMuonPtEtaSF(year,hmuonsf,subleadmu,120.0,true);
+	}
+	if (passmu && not passel) {
+	  mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,500.0,false);
+	}
+	else if (passel && not passmu){
+	  eltrigsfvec = GetElectronPtEtaSF(year,helectronTRIGsf,eventleade,true);
+	}
+	else {//using this background for the muon channel
+	  mutrigsfvec = GetMuonPtEtaSF(year,hmuontrigsf,eventleadmu,500.0,false);
+	}
+      }
+ 
+      //Higgs Candidate Build
+      //JetBranch = JetsAK8Clean;
+      // unsigned long nfat = JetsAK8->size();
+      //unsigned long nfat = JetBranch->size();
+      unsigned long nfat = JetsAK8Clean->size();
+      TLorentzVector theh;
+      theh.SetPtEtaPhiM(0.0,0.0,0.0,0.0);;
+      TLorentzVector fat;
+      double basehdiff = 99999;
+      double basept = 0;
+      double hsd = 0;
+      double fsd = 0;
+      double hsf = 1.0;
+      double hbtagunup = 0;
+      double hbtagundwn = 0;
+      int    sfidx = 0;
+      double hdmdhbbvqcd = 0;
+      double hdmdzbbvqcd = 0;
+      double hdmdzhbbvqcd = 0;
+      double hmiddb = 0;
+      bool   fid = 0;
+      std::pair<double,double> metshift;
+      bool hemshift = 0;
+      //double metshift = 0;
+
+      /*
+      if (nZs > 0 && nfat == 0){
+	//std::cout<<"Found an event with a Z Candidate but no reclustered fat jets"<<std::endl;
+	znorecfat +=1;
+      }
+
+      if (nZs > 0 && nunfat == 0){
+	//std::cout<<"Found an event with a Z Candidate but no reclustered fat jets"<<std::endl;
+	znounrecfat +=1;
+      }
+
+      if (nZs > 0 && nfat == 0 && nunfat == 0){
+	//std::cout<<"Found an event with a Z Candidate but no reclustered fat jets"<<std::endl;
+	znofat +=1;
+      }
+      */
+
+      ///*
+      //reclustered jets
+      if (nfat > 0) {
+	if (passTrig) countfat += 1;
+	for (unsigned long i =0; i < nfat; ++i) {
+	  fat = JetsAK8Clean->at(i);
+	  fsd = JetsAK8Clean_softDropMass->at(i);
+	  fid = JetsAK8Clean_ID->at(i);
+	  hjetpt->Fill(fat.Pt(),evntwkf_hold);
+	  hjeteta->Fill(fat.Eta(),evntwkf_hold);
+	  hjetphi->Fill(fat.Phi(),evntwkf_hold);
+	  jec_unc->setJetEta(fat.Eta());
+	  jec_unc->setJetPt(fat.Pt());
+	  double unc = 0;
+	  unc = std::abs(jec_unc->getUncertainty(true));
+	  double jecsysfac = 1 + jecsys*unc;
+	  fat = fat*jecsysfac;
+	  /*
+	  TLorentzVector hemfat = doHEMshiftJet(fat,fid);
+	  if (hemfat.M() != fat.M()){
+	    //std::cout<<"Found a shifted jet, need a MET shift"<<std::endl;
+	    //std::cout<<"                   Nominal METx Shift "<<metshift.first<<std::endl;
+	    //std::cout<<"                   Nominal METy Shift "<<metshift.second<<std::endl;
+	    hemshift = 1;
+	    std::pair<double,double> metshiftj = getMETCorrHEM(fat,hemfat);
+	    double metshiftxtot = metshift.first+metshiftj.first;
+	    double metshiftytot = metshift.second+metshiftj.second;
+	    metshift = std::make_pair(metshiftxtot,metshiftytot);
+	    //std::cout<<"                       new METx Shift "<<metshift.first<<std::endl;
+	    //std::cout<<"                       new METy Shift "<<metshift.second<<std::endl;
+	    fat = hemfat;
+	  }
+	  //*/
+	  double masshdiff = std::abs(125.18 - fsd);
+	  if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
+	    basehdiff = masshdiff;
+	    theh = fat;
+	    hsd = fsd;
+	    hdmdhbbvqcd  = JetsAK8Clean_DeepMassDecorrelTagHbbvsQCD->at(i);
+	    hdmdzbbvqcd  = JetsAK8Clean_DeepMassDecorrelTagZbbvsQCD->at(i);
+	    hdmdzhbbvqcd = JetsAK8Clean_DeepMassDecorrelTagZHbbvsQCD->at(i);
+	    hmiddb = JetsAK8Clean_pfMassIndependentDeepDoubleBvLJetTagsProbHbb->at(i);
+	    passh = true;
+	  }
+	}
+      }
+
+      if (sampleType > 0) {
+	sfidx = hbtagsf->FindBin(theh.Pt());
+	if (sfidx > 0) {
+	  hsf = hbtagsf->GetBinContent(sfidx);
+	  hbtagunup = hbtagsfuncup->GetBinContent(sfidx);
+	  hbtagundwn = hbtagsfuncdwn->GetBinContent(sfidx);
+	}
+      }
+      //*/
+      
+      //btag sf debug
+      //if (passh) {
+      //std::cout<<"The jet pT "<<theh.Pt()<<std::endl;
+      //std::cout<<"The sf "<<hsf<<std::endl;	
+      //std::cout<<"The sfidx "<<sfidx<<std::endl;
+      //std::cout<<"The sferrup  "<<hbtagunup<<std::endl;
+      //std::cout<<"The sferrdwn "<<hbtagundwn<<std::endl;
+      //}
+	    
+      //unreclustered jets
+      /*
+      if (nfat > 0) {
+      for (unsigned long i =0; i < nfat; ++i) {
+	fat = JetsAK8->at(i);
+        fsd = JetsAK8_softDropMass->at(i);
+        fid = JetsAK8_ID->at(i);
+        double masshdiff = std::abs(125.18 - fsd);
+        if ((masshdiff < basehdiff) && (fat.Pt() > hptcut) && fid && std::abs(fat.Eta()) < 2.4 && (fsd > 10)) {
+	  basehdiff = masshdiff;
+          theh = fat;
+          hsd = fsd;
+          hdmdhbbvqcd  = JetsAK8_DeepMassDecorrelTagHbbvsQCD->at(i);
+          hdmdzbbvqcd  = JetsAK8_DeepMassDecorrelTagZbbvsQCD->at(i);
+          hdmdzhbbvqcd = JetsAK8_DeepMassDecorrelTagZHbbvsQCD->at(i);
+          hmiddb = JetsAK8_pfMassIndependentDeepDoubleBvLJetTagsProbHbb->at(i);
+          passh = true;
+        }
+      }
+      }
+      //*/
+
+      //MET
+      //double ptmiss     = fChain->GetLeaf("METclean")->GetValue(0);
+      //double ptmiss_phi = fChain->GetLeaf("METPhiclean")->GetValue();
+      double ptmiss     = fChain->GetLeaf("MET")->GetValue(0);
+      double ptmiss_phi = fChain->GetLeaf("METPhi")->GetValue(0);
+
+      //std::cout<<"Original MET "<<ptmiss<<std::endl;
+
+      if (systidx > -1 && sampleType > 0){//if  a met systematic call has been made (otherwise the idx is initiallize to -999)
+	if (metsys[systidx] > 0) {//Checks up or down
+	  ptmiss = METUp->at(systidx);//The index of the corresponding met in the ntuple is the same
+	  ptmiss_phi = METPhiUp->at(systidx);
+	}
+	else if (metsys[systidx] < 0) {
+	  ptmiss = METDown->at(systidx);
+	  ptmiss_phi = METPhiDown->at(systidx);
+	}
+	else {
+	  continue;
+	}
+      }
+
+      //std::cout<<"MET after systematics "<<ptmiss<<std::endl;
+      
+      //HEM15/16 test
+      if (hemshift) {
+	double ptmiss_pxbeta  = ptmiss*std::cos(ptmiss_phi);
+	double ptmiss_pybeta  = ptmiss*std::sin(ptmiss_phi);
+	double smetx = ptmiss_pxbeta+metshift.first;
+	double smety = ptmiss_pybeta+metshift.second;
+	double retmet = std::sqrt(smetx*smetx+smety*smety);
+	TVector2 metv(ptmiss_pxbeta,ptmiss_pybeta);
+	TVector2 metshiftv(metshift.first,metshift.second);
+	TVector2 shiftedmetv = metv+metshiftv;
+	double metshiftphi = shiftedmetv.Phi();
+	if (metshiftphi > M_PI){
+	  metshiftphi = metshiftphi - 2*M_PI;
+	}
+
+	ptmiss = shiftedmetv.Mod();
+	ptmiss_phi = metshiftphi;
+
+	
+	/*
+	std::cout<<"                   Original MET:     "<<ptmiss<<std::endl;
+	std::cout<<"                   Ori_phi  MET:     "<<ptmiss_phi<<std::endl;
+	std::cout<<"      Check of MET nom TVector2, phi "<<metv.Phi()<<std::endl;
+	std::cout<<" Check phi conversion, 2pi + ori phi "<<2*M_PI+ptmiss_phi<<std::endl;
+	std::cout<<" Check phi conversion, back to   val "<<metv.Phi()-2*M_PI<<std::endl;
+	
+	std::cout<<"resummed shifted met:      "<<retmet<<std::endl;
+	std::cout<<"Check of magnitude of shifted met "<<shiftedmetv.Mod()<<std::endl;
+	
+	std::cout<<"Phi of the shifted MET   , phi "<<shiftedmetv.Phi()<<std::endl;
+	std::cout<<"Phi of the shifted MET   , phi "<<metshiftphi<<std::endl;
+	//*/
+      }
+
+
+
+      //Do MET Correction
+      bool isMC = true;
+      if (sampleType < 0) {
+	isMC = false;
+      }
+
+      
+      std::pair<double,double> metxycorrpair = METXYCorr_Met_MetPhi(ptmiss,ptmiss_phi,fChain->GetLeaf("RunNum")->GetValue(0),yearstr,isMC,fChain->GetLeaf("NVtx")->GetValue(0));
+
+      //std::cout<<"MET after xy shift "<<ptmiss<<std::endl;
+      
+      /*
+      std::cout<<"Original MET:     "<<ptmiss<<std::endl;
+      std::cout<<"correct  MET:     "<<metxycorrpair.first<<std::endl;
+      std::cout<<"Ori_phi  MET:     "<<ptmiss_phi<<std::endl;
+      std::cout<<"correct  MET_phi: "<<metxycorrpair.second<<std::endl;
+      //*/
+      double ptmiss_px  = ptmiss*std::cos(ptmiss_phi);
+      double ptmiss_py  = ptmiss*std::sin(ptmiss_phi);
+      TVector3 met3     = TVector3(ptmiss_px,ptmiss_py,0.0);
+      TVector3 met3xy   = TVector3(metxycorrpair.first*std::cos(metxycorrpair.second),metxycorrpair.first*std::sin(metxycorrpair.second),0.0);
+
+      //met jes syst debug
+      //std::cout<<"This is the jec syst multiplier: "<<jecsys<<std::endl;
+      //std::cout<<"This is the value of the nominal MET:       "<<fChain->GetLeaf("MET")->GetValue(0)<<std::endl;
+      //std::cout<<"This is the value of the METUp:             "<<METUp->at(1)<<std::endl;
+      //std::cout<<"This is the value of the METDown:           "<<METDown->at(1)<<std::endl;
+      //std::cout<<"This is the value of the MET you are using: "<<ptmiss<<std::endl;
+      
+      //recursive jigsaw
+      //  /*
+      LABcontra.ClearEvent();
+      //INVcontra.SetLabFrameThreeVector(met3);
+      INVcontra.SetLabFrameThreeVector(met3xy);
+      Z.SetLabFrameFourVector(theZ);
+      h.SetLabFrameFourVector(theh);
+      LABcontra.AnalyzeEvent();
+      mEstZp = Zp.GetMass();
+      mEstND = ND.GetMass();
+      mEstNS = NS.GetMass();
+      //*/
+
+      //Just for the efficiency plots
+      if (passZ && (channel == anchan) && theZ.Pt() > 100.0) {
+	hzbuild_pt->Fill(theZ.Pt());
+	hzbuild_eta->Fill(theZ.Eta());
+	hlmubuild_pt->Fill(leade.Pt());
+	hlmubuild_eta->Fill(leade.Eta());
+      }
+
+      if (passZ && passTrig && (channel == anchan) && theZ.Pt() > 100.0) {
+	countzpass +=1 ;
+	hzpasstrig_pt->Fill(theZ.Pt());
+	hzpasstrig_eta->Fill(theZ.Eta());
+	hlmupasstrig_pt->Fill(leade.Pt());
+	hlmupasstrig_eta->Fill(leade.Eta());
+      }
+
+      //if (passh && passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan
+        if (passZ && passTrig && (channel == anchan)) {//not mucmuchan, but if channel == anchan 
+	//if (passh && passZ ) {//Removed Z Channel Requirement
+	//if (channel == anchan && passZ) {//id'd lepton and gen higgs plots
+	hCandidate = theh;
+	hCandidate_pt  = theh.Pt();
+	hCandidate_phi = theh.Phi();
+	hCandidate_eta = theh.Eta();
+	hCandidate_m   = theh.M();
+	hCandidate_sd  = hsd;
+	hCandidate_dmdhbbvqcd = hdmdhbbvqcd;
+	hCandidate_dmdzbbvqcd = hdmdzbbvqcd;
+	hCandidate_dmdzhbbvqcd = hdmdzhbbvqcd;
+	hCandidate_middb = hmiddb;
+	ZCandidate = theZ;
+	ZCandidate_pt  = theZ.Pt();
+	ZCandidate_phi = theZ.Phi();
+	ZCandidate_eta = theZ.Eta();
+	ZCandidate_m   = theZ.M();
+	//event weight ones
+	evntwhem = evntwhem_hold;
+	evntwkf = evntwkf_hold;
+	evntwbtag = hsf;
+	evntwmusf = muidsfvec[0];
+	evntwmutrig = mutrigsfvec[0];
+	evntweltrig = eltrigsfvec[0];
+	evntwelidsf = elidsfvec[0];
+	evntwelrecosf = elrecosfvec[0];
+	//The scale factor uncertainties
+	btaguncup  = hbtagunup;
+	btaguncdwn = hbtagundwn;
+	muiduncup  = muidsfvec[1];
+	muiduncdwn = muidsfvec[2];
+	mutriguncup  = mutrigsfvec[1];
+	mutriguncdwn = mutrigsfvec[2];
+	eltriguncup  = eltrigsfvec[1];
+	eltriguncdwn = eltrigsfvec[2];
+	eliduncup  = elidsfvec[1];
+	eliduncdwn = elidsfvec[2];
+	elrecouncup = elrecosfvec[1];
+	elrecouncdwn = elrecosfvec[2];
+	//Theory Uncs
+	pdfweightup = pdfwup;
+	pdfweightdn = pdfwdn;
+	qcdweightup = qcdupdwn.second;
+	qcdweightdn = qcdupdwn.first;
+	LMuCandidate = leadmu;
+	LMuCandidate_pt  = leadmu.Pt();
+	LMuCandidate_ptunc  = leadmupt_unc;
+	LMuCandidate_phi = leadmu.Phi();
+	LMuCandidate_eta = leadmu.Eta();
+	LMuCandidate_m   = leadmu.M();
+	sLMuCandidate = subleadmu;
+	sLMuCandidate_pt  = subleadmu.Pt();
+	sLMuCandidate_ptunc  = subleadmupt_unc;
+	sLMuCandidate_phi = subleadmu.Phi();
+	sLMuCandidate_eta = subleadmu.Eta();
+	sLMuCandidate_m   = subleadmu.M();
+	LEleCandidate = leade;
+	LEleCandidate_pt  = leade.Pt();
+	LEleCandidate_phi = leade.Phi();
+	LEleCandidate_eta = leade.Eta();
+	LEleCandidate_m   = leade.M();
+	sLEleCandidate = subleade;
+	sLEleCandidate_pt  = subleade.Pt();
+	sLEleCandidate_phi = subleade.Phi();
+	sLEleCandidate_eta = subleade.Eta();
+	sLEleCandidate_m   = subleade.M();
+	ghCandidate_pt  = theGenH.Pt();
+	ghCandidate_phi = theGenH.Phi();
+	ghCandidate_eta = theGenH.Eta();
+	ghCandidate_m   = theGenH.M();
+	gzCandidate_pt  = theGenZ.Pt();
+	gzCandidate_phi = theGenZ.Phi();
+	gzCandidate_eta = theGenZ.Eta();
+	gzCandidate_m   = theGenZ.M();
+	metusable = ptmiss;
+	metphiusable = ptmiss_phi;
+	metxyphicorr = metxycorrpair.second;
+	metxycorr= metxycorrpair.first;
+	channelflag = channel;
+	counthpass += 1;
+	if (muld > 0) emumulead+=1;
+	if (elld > 0) emuelead+=1; 
+      }
+
+	//std::cout<<"Pass Z "<<passZ<<std::endl;
+	//std::cout<<"Pass trig "<<passTrig<<std::endl;
+      
+      //Fill the Tree
+      if (Cut(ientry) < 0) continue;
+      //if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {//usual
+
+      if (passZ && passh && passTrig && sampleType > 0 && (channel == anchan)) {
+	//if (passZ && passh && sampleType > 0) {//for Zee channel checks
+	//if (passZ && (sampleType > 0) && (channel == anchan)){
+	//std::cout<<"This is where I think I am, in this passing place"<<std::endl;
+	trimTree->Fill();
+	countpass += 1;
+      }
+
+	/////ucomment!!!
+	//else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan)) {
+      else if (passZ && passh && passTrig && sampleType < 0 && passFil && (channel == anchan) && not killelHEM) {
+	//if (passZ && passh && sampleType == 0 && passFil) {//for Zee channel checks
+	trimTree->Fill();
+	countpass += 1;
+      }
+
+   }
+
+   
+   std::cout<<"Passing Trigger req:        "<<counttrigpass<<std::endl;
+   std::cout<<"Passing Z  req, w/ pT cut:  "<<countzpass<<std::endl;
+   std::cout<<"Passing h  req:             "<<counthpass<<std::endl;
+   std::cout<<"Passing    req:             "<<countpass<<std::endl;
+   std::cout<<"Passing number of fat jets: "<<countfat<<std::endl;
+   //std::cout<<"Had a Z candidate:          "<<countzcand<<std::endl;
+   std::cout<<"had a leading muon:         "<<emumulead<<std::endl;
+   std::cout<<"had a leading electron:     "<<emuelead<<std::endl;
+   //std::cout<<"Straight saving of Zemu "<<emcounter<<std::endl;
+   
+
+   ///*
+   std::cout<<"Events with zmumu        "<<zmumu<<std::endl;
+   std::cout<<"Events with zmumuzee     "<<zmumuzee<<std::endl;
+   std::cout<<"Events with zmumuzemu    "<<zmumuzemu<<std::endl;
+   std::cout<<"Events with zmumuzeezemu "<<zmumuzeezemu<<std::endl;
+   std::cout<<"Events with zee          "<<zee<<std::endl;
+   std::cout<<"Events with zeezemu      "<<zeezemu<<std::endl;
+//std::cout<<"Events with zemu         "<<zemu<<std::endl;
+
+   /*
+   std::cout<<"Events with no reclustered fat jets, but a Z "<<znorecfat<<std::endl;
+   std::cout<<"Events with no orignal  fat jets, but a Z    "<<znounrecfat<<std::endl;
+   std::cout<<"Events with no fat jets, but a Z             "<<znofat<<std::endl;
+   */
+   htrigpass->SetBinContent(1,counttrigpass);
+   hZpass->SetBinContent(1,countzpass);
+   hHpass->SetBinContent(1,counthpass);
+   hpass->SetBinContent(1,countpass);
+   
+   trimFile->Write();
+   trimFile->Close();   
+   //std::cout<<"trimmed to "<< passEvents <<" events"<<std::endl;
+   std::cout<<"Completed your topiary garden, hopefully your tastes have not changed."<<std::endl;
+
+   
+}
+

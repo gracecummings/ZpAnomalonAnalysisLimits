@@ -114,10 +114,12 @@ def plotSubtractedDistributions(sbdyhist,sbdatfitfit,shiftedfits,dycolor,addname
     #define the basic plotting styles
     sbdyhist.SetFillColor(dycolor)
     sbdyhist.SetLineColor(dycolor)
-    sbdyhist.GetYaxis().SetRangeUser(0,100)
-    sbdyhist.GetXaxis().SetRangeUser(1500,3000)
+    #sbdyhist.GetYaxis().SetRangeUser(0,100)
+    sbdyhist.GetYaxis().SetRangeUser(0.00001,1000)
+    sbdyhist.GetXaxis().SetRangeUser(1500,10000)
     sbdatfitfit.SetLineColor(ROOT.kBlack)#nominal subtractions
     tcsub = ROOT.TCanvas("tcsub","tcsub",800,800)
+    tcsub.SetLogy()
     leg = ROOT.TLegend(0.6,0.45,0.88,0.80)
     leg.SetBorderSize(0)
     tcsub.Draw()
@@ -136,7 +138,7 @@ def plotSubtractedDistributions(sbdyhist,sbdatfitfit,shiftedfits,dycolor,addname
     sbdatfitfit.Draw("same")
     tcsub.Update()
     #outfile = go.makeOutFile('Run2_'+yearstr,"datasidebandsubtractionmethodcomp",'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-    outfile = go.makeOutFile('Run2_'+yearstr,addname+'_shifted_shapes_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    outfile = go.makeOutFile('Run2_'+yearstr,addname+'_shifted_shapes_10000log_'+systr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tcsub.SaveAs(outfile)
 
 def plotShiftedAlphas(nomalpha,salphas,systr,addname=''):
@@ -626,13 +628,12 @@ if __name__=='__main__':
     subdatafit = ROOT.subtractionFromFitsExpN(sbdatfit,sbttfit,sbvvfit,"subtracteddatasbfit")
     shiftedsubsup = getShiftedSubtractionsExpN(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecoup,ttsbfitsdecoup,vvsbfitsdecoup,"up")
     shiftedsubsdn = getShiftedSubtractionsExpN(subdatafit,sbdatfit,sbttfit,sbvvfit,datsbfitsdecodn,ttsbfitsdecodn,vvsbfitsdecodn,"dwn")
-    print(shiftedsubsdn)
     print("=========doing sb extrapolation fit==================")
     extrap  = ROOT.alphaExtrapolationExpN(hsbdy,hsrdy,sbdatuncsub,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
     extrphist = ROOT.alphaExtrapolationHist(hsbdy,hsrdy,sbdatuncsub,1,dysbxmax,dysbxmin,dysrxmax,dysrxmin,datsbxmax,datsbxmin)
     #alpharver = ROOT.alphaExtrapolationFromFits(subdatafit,alpha,"alphaextrapnohistinput")
-    shiftedextrapsup = getTheShiftedExtrapolations(alpha,subdatafit,alphaups,shiftedsubsup,"up")
-    shiftedextrapsdn = getTheShiftedExtrapolations(alpha,subdatafit,alphadns,shiftedsubsdn,"dwn")
+    shiftedextrapsup = getTheShiftedExtrapolationsExpN(alpha,subdatafit,alphaups,shiftedsubsup,"up")
+    shiftedextrapsdn = getTheShiftedExtrapolationsExpN(alpha,subdatafit,alphadns,shiftedsubsdn,"dwn")
     sextrpuphists = castFitIntoHistogram(empty,shiftedextrapsup)
     sextrpdnhists = castFitIntoHistogram(empty,shiftedextrapsdn)
 
@@ -1218,6 +1219,7 @@ if __name__=='__main__':
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsup,bkgcols[0],"subtractedDataDistsUp",config.get(systname,syststr))
     plotSubtractedDistributions(hsbdy,subdatafit,shiftedsubsdn,bkgcols[0],"subtractedDataDistsDwn",config.get(systname,syststr))
     plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp",config.get(systname,syststr),3000)
+    plotExtrapolations(hsrdy,extrap,shiftedextrapsup,bkgcols[0],"shiftedExtrapsUp",config.get(systname,syststr),10000,isLog=True)
     plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr),3000)
     plotExtrapolations(hsrdy,extrap,shiftedextrapsdn,bkgcols[0],"shiftedExtrapsDwn",config.get(systname,syststr),10000,isLog=True)
     #plotSubtractedDistributionCompMeth(hsbdy,subdatafit,sbdatuncsub,bkgcols[0],"method comparison",config.get(systname,syststr))

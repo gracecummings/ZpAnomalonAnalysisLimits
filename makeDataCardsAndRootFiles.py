@@ -8,11 +8,12 @@ import pandas as pd
 import configparser
 import argparse
 
-def getDeviatedOverNominal(hist,histnom):
-    interest = hist.Integral()
-    intnom = histnom.Integral()
-    devonom = interest/intnom
-    return devonom
+
+#def getDeviatedOverNominal(hist,histnom):
+#    interest = hist.Integral()
+#    intnom = histnom.Integral()
+#    devonom = interest/intnom
+#    return devonom
 
 def applyStatsUncToSignal(hist,errseries,scale):
     #alpha = 1.- 0.682689492
@@ -30,20 +31,20 @@ def applyStatsUncToSignal(hist,errseries,scale):
             
     return hist
 
-def newNameAndStructure(hist,name,rebindiv,limrangelow,limrangehigh):
-    hist.Rebin(rebindiv)
-    nbins = hist.GetNbinsX()
-    binw  = hist.GetBinWidth(1)
-    newbins = [limrangelow+x*binw for x in range(int((limrangehigh-limrangelow)/binw))]
-    nh = ROOT.TH1F(name,name,len(newbins),limrangelow,limrangehigh)
-    for b,le in enumerate(newbins):
-        bnum = hist.FindBin(le)
-        bincontent = hist.GetBinContent(bnum)
-        binerror   = hist.GetBinError(bnum)
-        nh.SetBinContent(b+1,bincontent)
-        nh.SetBinError(b+1,binerror)
+#def newNameAndStructure(hist,name,rebindiv,limrangelow,limrangehigh):
+#    hist.Rebin(rebindiv)
+#    nbins = hist.GetNbinsX()
+#    binw  = hist.GetBinWidth(1)
+#    newbins = [limrangelow+x*binw for x in range(int((limrangehigh-limrangelow)/binw))]
+#    nh = ROOT.TH1F(name,name,len(newbins),limrangelow,limrangehigh)
+#    for b,le in enumerate(newbins):
+#        bnum = hist.FindBin(le)
+#        bincontent = hist.GetBinContent(bnum)
+#        binerror   = hist.GetBinError(bnum)
+#        nh.SetBinContent(b+1,bincontent)
+#        nh.SetBinError(b+1,binerror)#
 
-    return nh
+#    return nh
 
 def gatherEmuStats(stattf,desiredbins,limrangelow,limrangehigh,newedges):
     #this function has to
@@ -68,7 +69,7 @@ def gatherEmuStats(stattf,desiredbins,limrangelow,limrangehigh,newedges):
             #print("Number of bins in the ttstats hist: ",h.GetNbinsX())
             direc = key.split('_TT_TT')[0]
             newname = "TT_TT_StatsUncBin"+str(newbinnum)+direc#new hist name
-            trimmedh = newNameAndStructure(h,newname,1,limrangelow,limrangehigh)#only take bins we care about in hist
+            trimmedh = go.newNameAndStructure(h,newname,1,limrangelow,limrangehigh)#only take bins we care about in hist
             trimmedh = trimmedh.Rebin(len(newbinedges)-1,newname,newbinedges)
             #marking the hists to be saved
             huncs.append(trimmedh)
@@ -139,7 +140,7 @@ def writeDataCard(processes,rootFileName,channel,yearstr,hdat,noratel,noshapel):
     binname = signame+"_"+channel
     namestr = " ".join(processes["processnames"])
     rates   = [str(hist.Integral()) for hist in processes["hists"]]
-    prepCardName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET','datacard_new_alpha_'+chan+'_'+signame,'.txt',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    prepCardName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET','datacard_'+strdescrip+'_'+chan+'_'+signame,'.txt',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     card = open(prepCardName,"w")
 
     #Write the card
@@ -189,17 +190,17 @@ def writeDataCard(processes,rootFileName,channel,yearstr,hdat,noratel,noshapel):
     card.close()
 
 
-def makeBinLowEdges(hist,lastnormbin):
-    #this takes the histogram ou want to rebin, and you just give it the last normal bin
-    nbins = hist.GetNbinsX()
-    binw  = hist.GetBinWidth(1)
-    iniedges = [hist.GetBinLowEdge(i) for i in range(nbins+2)]#+2 for the actual highedge
-    if lastnormbin not in iniedges:
-        print("desired bin edge not possible, try again")
-    newedges = [edg for edg in iniedges if (edg <= lastnormbin)]
-    newedges.append(iniedges[-1])
-    newedges = newedges[1:]
-    return np.array(newedges)
+#def makeBinLowEdges(hist,lastnormbin):
+#    #this takes the histogram ou want to rebin, and you just give it the last normal bin
+#    nbins = hist.GetNbinsX()
+#    binw  = hist.GetBinWidth(1)
+#    iniedges = [hist.GetBinLowEdge(i) for i in range(nbins+2)]#+2 for the actual highedge
+#    if lastnormbin not in iniedges:
+#        print("desired bin edge not possible, try again")
+#    newedges = [edg for edg in iniedges if (edg <= lastnormbin)]
+#    newedges.append(iniedges[-1])
+#    newedges = newedges[1:]
+#    return np.array(newedges)
 
 
 def getBinNumbersOfInterest(hist,rebindiv,limrangelow,limrangehigh):
@@ -217,6 +218,8 @@ def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
     shapeuncdict = {}
     histlist = []
 
+    #print("Dy est uncertainties used, bin edges: ",newbinedges)
+    
     keys = dytf.GetListOfKeys()
     keys = [key.GetName() for key in keys]
     unckeys = [key for key in keys if "extrap_" in key]
@@ -230,8 +233,8 @@ def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
         dnkey = unckeysdn[i]
         upr = dytf.Get(upkey)
         dnr = dytf.Get(dnkey)
-        up = newNameAndStructure(upr,"DY_"+upkey,1,limrangelow,limrangehigh)
-        dn = newNameAndStructure(dnr,"DY_"+dnkey,1,limrangelow,limrangehigh)
+        up = go.newNameAndStructure(upr,"DY_"+upkey,1,limrangelow,limrangehigh)
+        dn = go.newNameAndStructure(dnr,"DY_"+dnkey,1,limrangelow,limrangehigh)
         up = up.Rebin(len(newbinedges)-1,"DY_"+upkey,newbinedges)
         dn = dn.Rebin(len(newbinedges)-1,"DY_"+dnkey,newbinedges)
         
@@ -240,12 +243,12 @@ def gatherAlphaMethodUncs(dytf,nomdy,limrangelow,limrangehigh):
         histlist.append(dn)
 
         #make the rate uncertainties
-        uprate = getDeviatedOverNominal(up,nomdy)
-        dwnrate = getDeviatedOverNominal(dn,nomdy)
+        uprate = go.getDeviatedOverNominal(up,nomdy)
+        dwnrate = go.getDeviatedOverNominal(dn,nomdy)
         genname = upkey.split("Up")[0]
         ratestr = "-"
-        if abs(round(1-uprate,2))-abs(round(1-dwnrate,2)) == 0:
-            ratestr = str(max(round(uprate,2),round(dwnrate,2)))
+        if abs(round(1-uprate,3))-abs(round(1-dwnrate,3)) == 0:
+            ratestr = str(max(round(uprate,3),round(dwnrate,3)))
         #elif "vv" not in genname:
         #     ratestr = str(round(dwnrate,2))+"/"+str(round(uprate,2))
         else:
@@ -275,8 +278,8 @@ def gatherEmuUncs(procname,tf,hnom,limrangelow,limrangehigh,newbinedges):
         dnkey = unckeysdn[i]
         upr = tf.Get(upkey)
         dnr = tf.Get(dnkey)
-        up = newNameAndStructure(upr,procname+"_"+upkey,1,limrangelow,limrangehigh)
-        dn = newNameAndStructure(dnr,procname+"_"+dnkey,1,limrangelow,limrangehigh)
+        up = go.newNameAndStructure(upr,procname+"_"+upkey,1,limrangelow,limrangehigh)
+        dn = go.newNameAndStructure(dnr,procname+"_"+dnkey,1,limrangelow,limrangehigh)
         up = up.Rebin(len(newbinedges)-1,procname+"_"+upkey,newbinedges)
         dn = dn.Rebin(len(newbinedges)-1,procname+"_"+dnkey,newbinedges)
 
@@ -285,8 +288,8 @@ def gatherEmuUncs(procname,tf,hnom,limrangelow,limrangehigh,newbinedges):
         histlist.append(dn)
 
         #make the rate uncertainties
-        uprate = getDeviatedOverNominal(up,hnom)
-        dwnrate = getDeviatedOverNominal(dn,hnom)
+        uprate = go.getDeviatedOverNominal(up,hnom)
+        dwnrate = go.getDeviatedOverNominal(dn,hnom)
         genname = upkey.split("Up")[0]
         ratestr = "-"
         if abs(round(1-uprate,2))-abs(round(1-dwnrate,2)) == 0:
@@ -304,8 +307,8 @@ def gatherEmuUncs(procname,tf,hnom,limrangelow,limrangehigh,newbinedges):
 
 
 def makeDeviatedTPave(histup,hist,histdwn,name):
-    updiv  = getDeviatedOverNominal(histup,hist)
-    dwndiv = getDeviatedOverNominal(histdwn,hist)
+    updiv  = go.getDeviatedOverNominal(histup,hist)
+    dwndiv = go.getDeviatedOverNominal(histdwn,hist)
     updiv = "up deviated over nominal: "+str(round(updiv,3))
     dwndiv = "dwn deviated over nominal: "+str(round(dwndiv,3))
     lab = ROOT.TPaveText(.2,.5,.55,.65,"NBNDC")
@@ -375,6 +378,8 @@ if __name__=='__main__':
     parser.add_argument("-z","--zptcut", type=float,help = "zpt cut of samples")
     parser.add_argument("-j","--hptcut", type=float,help = "hpt cut of samples")
     parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
+    parser.add_argument("-unblind","--unblind",type=bool,help = "override unblinding protections and unblind")
+    parser.add_argument("-o","--outstrng",type=str,help = "outstring")
     args = parser.parse_args()
     
     zptcut  = str(args.zptcut)#'150.0'
@@ -388,8 +393,9 @@ if __name__=='__main__':
     sigxs   = 1.0
     rebindiv = 2
 
-    limrangelow = 1400
-    limrangehigh = 5000
+    limrangelow = 1800
+    limrangehigh = 10000
+    strdescrip = args.outstrng
 
     config = configparser.RawConfigParser()
     config.optionxform = str
@@ -399,11 +405,17 @@ if __name__=='__main__':
 
     ####load in the files with the nominal distributions
     bkgs = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
-    sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
-    dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationalphat_'+config.get('nominal','strnom')+'__Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
+    #sig  = go.signal(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
+    signal_run2  = go.signal_run2(config.get('nominal','pathsignom'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get('nominal','strnom'))
+    run2_data = go.run2(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strnom'))
+    
+    #dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationalphat_'+config.get('nominal','strnom')+'__Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
-    #print("hardcoded the DY files!!!!!!")
-    #dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom__Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.root')
+    print("hardcoded the DY files!!!!!!")
+    #dyEst = ROOT.TFile('analysis_output_ZpAnomalon/2023-01-20/alpha_method_1900_5500_sroffset_fulldata/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    #dyEst = ROOT.TFile('analysis_output_ZpAnomalon/2023-01-23/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    dyEst = ROOT.TFile('analysis_output_ZpAnomalon/2023-05-09/alpha_method_ttbar_likli/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    #dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
     #dyEst = ROOT.TFile(config.get('nominal','pathnom')+'/backup_before_flip_Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
     
     ttEst = ROOT.TFile(config.get('nominal','pathemu')+'/Run2_161718_emu_extrapolation_'+config.get('nominal','stremu')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
@@ -422,36 +434,44 @@ if __name__=='__main__':
     htt    = ttEst.Get("TT_scalenominal").Clone()
     #htt = bkgs.getAddedHist(empty1,"TT","sr","h_zp_jigm")#mc way
     hzz  = bkgs.getAddedHist(empty2,"ZZTo2L2Q","sr","h_zp_jigm")
+    #print('ZZ integral: ',hzz.Integral())
     hwz  = bkgs.getAddedHist(empty3,"WZTo2L2Q","sr","h_zp_jigm")
     hvv  = hzz.Clone()
     hvv.Add(hwz)
 
     ####Rename and restucture
     desibins = getBinNumbersOfInterest(empty.Clone(),2,limrangelow,limrangehigh)
-    #htt = newNameAndStructure(htt,"TT",rebindiv,limrangelow,limrangehigh)#mc way
-    htt = newNameAndStructure(htt,"TT",1,limrangelow,limrangehigh)
-    hdy = newNameAndStructure(hdy,"DY",1,limrangelow,limrangehigh)
-    hvv = newNameAndStructure(hvv,"VV",rebindiv,limrangelow,limrangehigh)
-
+    #htt = go.newNameAndStructure(htt,"TT",rebindiv,limrangelow,limrangehigh)#mc way
+    htt = go.newNameAndStructure(htt,"TT",1,limrangelow,limrangehigh)
+    hdy = go.newNameAndStructure(hdy,"DY",1,limrangelow,limrangehigh)
+    hvv = go.newNameAndStructure(hvv,"VV",rebindiv,limrangelow,limrangehigh)
     ####Rebin with the new edges
-    newbinedges = makeBinLowEdges(hvv,2800)#3000 is last bin we want to be normal
-    print(newbinedges)
+    newbinedges = go.makeBinLowEdges(hvv,2800)#3000 is last bin we want to be normal
+    #print(newbinedges)
     #newbinedges  = 
     hvv = hvv.Rebin(len(newbinedges)-1,"VV",newbinedges)
     htt = htt.Rebin(len(newbinedges)-1,"TT",newbinedges)
     hdy = hdy.Rebin(len(newbinedges)-1,"DY",newbinedges)
 
     ####Make data obs hist - GoF test
-    #tfd = ROOT.TFile(config.get('nominal','pathnom')+"/Run2_161718_gofplots_"+config.get('nominal','strnom')+'_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
-    #hdat = tfd.Get("h_zp_jigm").Clone()
-    #hdat = newNameAndStructure(hdat,"data_obs",1,limrangelow,limrangehigh)
+    #if not args.unblind:
+    #tfd = ROOT.TFile("analysis_output_ZpAnomalon/2023-05-12/Run2_161718_gofplots_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root")
+    #hdat = tfd.Get("data_obs").Clone()
+    #hdat = go.newNameAndStructure(hdat,"data_obs",1,limrangelow,limrangehigh)
     #hdat = hdat.Rebin(len(newbinedges)-1,"data_obs",newbinedges)
     
     #Old way of making data hist
-    hdat = hdy.Clone()
-    hdat.SetName("data_obs")
-    hdat.Add(htt)
-    hdat.Add(hvv)
+    if not args.unblind:
+        hdat = hdy.Clone()
+        hdat.SetName("data_obs")
+        hdat.Add(htt)
+        hdat.Add(hvv)
+
+    else:
+        hdat = run2_data.getAddedHistPoissonErrors(empty.Clone(),"sr","h_zp_jigm")
+        hdat = go.newNameAndStructure(hdat,"data_obs",rebindiv,limrangelow,limrangehigh)
+        hdat = hdat.Rebin(len(newbinedges)-1,"data_obs",newbinedges)
+        
 
     ####Do bkg stats unc explicitly
     #httstatsunc,httuncdict = doStatsUncertainty(htt)
@@ -465,37 +485,40 @@ if __name__=='__main__':
     emuunchists,emushapedict,emuratedict = gatherEmuUncs("TT",ttEst,htt,limrangelow,limrangehigh,newbinedges)
 
     ####For Each signal, make a datacard, and a root file with all systematics
-    siginfo = sig.getPreppedSig('sr',sigxs)
-    signom = makeSignalInfoDict(sig,'sr',sigxs)
-    sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
-    nomsigs = [s["name"] for s in siginfo]
-    for s in nomsigs:
-        name = signom[s]["name"]
+    #old
+    #siginfo = sig.getPreppedSig('sr',sigxs)
+    #signom = makeSignalInfoDict(sig,'sr',sigxs)
+    #sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
+    #nomsigs = [s["name"] for s in siginfo]
+
+    #new
+    signalsamps = signal_run2.sigsbyname
+    for signalname in signalsamps.keys():
         signame = "holder"
-        if "Tune" in name:
-            strippedname = name.split("_Tune")[0]
-            signame = strippedname.replace("-","")
-        else:
-            signame = name.replace("-","")
+        signame = signalname.replace("-","")
+
         print("------- Looking at signal sample ",signame)
 
-        #if "Zp4000ND800NS200" not in signame:
-        #    continue
-        if "NS1" in signame:
+        if "Zp5500ND1800NS200" not in signame:
             continue
+        #if "NS200" in signame:
+        #    continue
 
         ####Make Files
-        prepRootName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET','new_alpha_'+chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        prepRootName = go.makeOutFile('Run2_'+yearstr+'_ZllHbbMET',strdescrip+'_'+chan+'_'+signame,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         prepRootFile = ROOT.TFile(prepRootName,"recreate")
 
         ####Nominal Signal
-        hsigori = signom[s]["tfile"].Get("h_zp_jigm")
-        #hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
+        #new
+        hsigori = signal_run2.getAddedHist(signalname,1.0,empty.Clone(),"sr","h_zp_jigm")
+        #old
+        #hsigori = signom[s]["tfile"].Get("h_zp_jigm")
+        ##hsigori.Sumw2(ROOT.kTRUE)#Throws a warning that it is already created
         hsig = hsigori.Clone()
-        hsig.Scale(signom[s]["scale"])
-        hsig = applyStatsUncToSignal(hsig,signom[s]["errdf"]["h_zp_jigm"]*signom[s]["scale"],signom[s]["scale"])
+        #hsig.Scale(signom[s]["scale"])
+        #hsig = applyStatsUncToSignal(hsig,signom[s]["errdf"]["h_zp_jigm"#]*signom[s]["scale"],signom[s]["scale"])
 
-        hsig = newNameAndStructure(hsig,signame,rebindiv,limrangelow,limrangehigh)
+        hsig = go.newNameAndStructure(hsig,signame,rebindiv,limrangelow,limrangehigh)
         hsig = hsig.Rebin(len(newbinedges)-1,signame,newbinedges)
         print("hSig bin {0}, content {1}, err up {2},err dwn {3}".format(9,hsig.GetBinContent(9),hsig.GetBinErrorUp(9),hsig.GetBinErrorLow(9)))
         prepRootFile.cd()
@@ -520,7 +543,7 @@ if __name__=='__main__':
         ###Write bkg stats files
         print("about to do the stats uncs and this is the range  tt: ",len(httstatsunc))
         print("about to do the stats uncs and this is the range  vv: ",len(hvvstatsunc))
-        print("about to do the stats uncs and this is the range sig: ",len(hsigstatsunc))
+        #print("about to do the stats uncs and this is the range sig: ",len(hsigstatsunc))
         
         for h in range(len(hvvstatsunc)):#need to use vv or sig, since tt has all bins
             #print("!!!!!!!!artificially scaling the nominal background stats unc!!!!")
@@ -533,7 +556,7 @@ if __name__=='__main__':
             
         #####Gather Systematics
         systdictrate = {"lumi_13TeV":{"type":"lnN","unc":1.016,"proc":["1.016","1.016","1.016","1.016"]},
-                        "prefire":{"type":"lnN","unc":1.05,"proc":["1.05","-","-","-"]}
+                        "vvrateunc":{"type":"lnN","unc":1.05,"proc":["-","1.005","-","1.06"]}
                     }
         systdictshape = {}
 
@@ -561,14 +584,54 @@ if __name__=='__main__':
             #continue
             if syst == 'nominal':
                 continue
+            #if syst == 'qcdscale':
+            #    continue
+
+            if syst == "pileup":
+                print("        Looking at systematic ",syst)
+                dyEstup     = ROOT.TFile('analysis_output_ZpAnomalon/pumapupwithnorm/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_puwup_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+                dyEstdwn     = ROOT.TFile('analysis_output_ZpAnomalon/pumapdwnwithnorm/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco_puwdwn_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+                appcode = config.get(syst,'applist').split(',')
+                ratenums = config.get(syst,'rate').split(',')
+                ratelist = ratenums
+
+                if (len(appcode) > 1):#If the shape systematic never gets applied
+                    applist = [float(x) for x in appcode]
+                    systdictshape[syst] = {"type":config.get(syst,'type'),"unc":1.0,"proc":applist}
+                    systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
+                else:
+                    systdictrate[syst]  = {"type":config.get(syst,'typerate'),"proc":ratelist}
+
+                hdyup  = dyEstup.Get("extrphistnoerrs").Clone()
+                hdyup.SetDirectory(0)
+                hdyup.SetName("dyup")
+                hdydwn = dyEstdwn.Get("extrphistnoerrs").Clone()
+                hdydwn.SetDirectory(0)
+                hdydwn.SetName("dydwn")
+                #print(hdyup.Integral())
+                #print(hdydwn.Integral())
+                hdyup  = go.newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
+                hdydwn = go.newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
+                hdyup = hdyup.Rebin(len(newbinedges)-1,"DY_"+syst+"Up",newbinedges)
+                hdydwn = hdydwn.Rebin(len(newbinedges)-1,"DY_"+syst+"Down",newbinedges)
+                prepRootFile.cd()
+                print("        Writing the up/dwn histograms")
+                hdydwn.Write()
+                hdyup.Write()
+                continue
+
             print("        Looking at systematic ",syst)
 
             
             systbkgsup  = go.backgrounds(config.get(syst,'pathup'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strup'))
             systbkgsdwn = go.backgrounds(config.get(syst,'pathdwn'),zptcut,hptcut,metcut,btagwp,config.get(syst,'strdwn'))
-            systsigup   = go.signal(config.get(syst,'pathsigup'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strup'))
-            systsigdwn  = go.signal(config.get(syst,'pathsigdwn'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strdwn'))
+            #systsigup   = go.signal(config.get(syst,'pathsigup'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strup'))
+            #systsigdwn  = go.signal(config.get(syst,'pathsigdwn'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strdwn'))
+            systsigup   = go.signal_run2(config.get(syst,'pathsigup'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strup'))
+            systsigdwn  = go.signal_run2(config.get(syst,'pathsigdwn'),zptcut,hptcut,metcut,btagwp,sigxs,[16,17,18],config.get(syst,'strdwn'))
 
+            #print(systsigup.sigs)
+            
             if len(systbkgsup.bkgs["WZTo2L2Q"][18]["sr"][0]) < 1:
                 print("        There are no WZ entires for this systematic.")
                 print("        moving on. This systematic will not included.")
@@ -589,10 +652,9 @@ if __name__=='__main__':
                 dyEstdwn    = ROOT.TFile(config.get(syst,'pathdwn')+'/Run2_161718_dy_extraploationalphat_'+config.get(syst,'strdwn')+'__Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.root')
 
             ####Make it useful
-            #sigup  = systsigup.getPreppedSig('sr',sigxs)#systsigup.prepsigsr
-            #sigupdict = {}
-            sigup = makeSignalInfoDict(systsigup,'sr',sigxs)
-            sigdwn = makeSignalInfoDict(systsigdwn,'sr',sigxs)
+            #old way
+            #sigup = makeSignalInfoDict(systsigup,'sr',sigxs)
+            #sigdwn = makeSignalInfoDict(systsigdwn,'sr',sigxs)
 
             #Some sort of debug
             #keyup = sigup[s]["tfile"].GetListOfKeys()
@@ -608,48 +670,79 @@ if __name__=='__main__':
             #    print(" Up bins: ",sigup[s]["tfile"].Get(key).GetNbinsX())
             #    print("Dwn bins: ",sigdwn[s]["tfile"].Get(key).GetNbinsX())
 
+            #New signal way
+            hsigupori = systsigup.getAddedHist(signalname,1.0,empty.Clone(),"sr","h_zp_jigm")
+            hsigdwnori = systsigdwn.getAddedHist(signalname,1.0,empty.Clone(),"sr","h_zp_jigm")
+            hsigup = hsigupori.Clone()
+            hsigdwn = hsigdwnori.Clone()
+            hsigup.SetDirectory(0)
+            hsigdwn.SetDirectory(0)
+            
+            hsigdwn = go.newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            hsigup = go.newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+            hsigup  = hsigup.Rebin(len(newbinedges)-1,signame+"_"+syst+"Up",newbinedges)
+            hsigdwn = hsigdwn.Rebin(len(newbinedges)-1,signame+"_"+syst+"Down",newbinedges)
+
+            #print("h sig    int: ",hsig.Integral())
+            #print("h sig up int: ",hsigup.Integral())
+            #print("h sig dn int: ",hsigdwn.Integral())
+            
+            
+            
             ####Check is the keys exist
+            #old way
             sigsystshists = []
-            if (s in sigup) and (s in sigdwn): #Checks that the syst key exist for SIGNAl
-                #Signal
-                hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
-                hsigup = hsigupori.Clone()
-                hsigup.SetDirectory(0)
-                sigup[s]["tfile"].Close()
-                hsigup.Scale(sigup[s]["scale"])
-                hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
-                hsigdwn = hsigdwnori.Clone()
-                hsigdwn.SetDirectory(0)
-                sigdwn[s]["tfile"].Close()
-                hsigdwn.Scale(sigdwn[s]["scale"])
+            #if (s in sigup) and (s in sigdwn): #Checks that the syst key exist for SIGNAl
+            #    #Signal
+            #    hsigupori = sigup[s]["tfile"].Get("h_zp_jigm")
+            #    hsigup = hsigupori.Clone()
+            #    hsigup.SetDirectory(0)
+            #    sigup[s]["tfile"].Close()
+            #    hsigup.Scale(sigup[s]["scale"])
+            #    hsigdwnori = sigdwn[s]["tfile"].Get("h_zp_jigm")
+            #    hsigdwn = hsigdwnori.Clone()
+            #    hsigdwn.SetDirectory(0)
+            #    sigdwn[s]["tfile"].Close()
+            #    hsigdwn.Scale(sigdwn[s]["scale"])
 
-                hsigup = applyStatsUncToSignal(hsigup,sigup[s]["errdf"]["h_zp_jigm"]*sigup[s]["scale"],sigup[s]["scale"])
-                hsigdwn = applyStatsUncToSignal(hsigdwn,sigdwn[s]["errdf"]["h_zp_jigm"]*sigdwn[s]["scale"],sigdwn[s]["scale"])
+            #    hsigup = applyStatsUncToSignal(hsigup,sigup[s]["errdf"]["h_zp_jigm"]*sigup[s]["scale"],sigup[s]["scale"])
+            #     hsigdwn = applyStatsUncToSignal(hsigdwn,sigdwn[s]["errdf"]["h_zp_jigm"]*sigdwn[s]["scale"],sigdwn[s]["scale"])
+            
+            #     #Rename and Restructure
+            #     hsigdwn = go.newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            #print('Down signal integral after rebin1 ',hsigdwn.Integral())
+            #     hsigup = go.newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+            #     hsigup  = hsigup.Rebin(len(newbinedges)-1,signame+"_"+syst+"Up",newbinedges)
+            #     hsigdwn = hsigdwn.Rebin(len(newbinedges)-1,signame+"_"+syst+"Down",newbinedges)
 
-                #Rename and Restructure
-                hsigdwn = newNameAndStructure(hsigdwn,signame+"_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-                #print('Down signal integral after rebin1 ',hsigdwn.Integral())
-                hsigup = newNameAndStructure(hsigup,signame+"_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
-                hsigup  = hsigup.Rebin(len(newbinedges)-1,signame+"_"+syst+"Up",newbinedges)
-                hsigdwn = hsigdwn.Rebin(len(newbinedges)-1,signame+"_"+syst+"Down",newbinedges)
-
-                #Get the proper signal rate systematics
-                siguprate = getDeviatedOverNominal(hsigup,hsig)
-                sigdwnrate = getDeviatedOverNominal(hsigdwn,hsig)
-                sigratestr = str(round(sigdwnrate,4))+"/"+str(round(siguprate,4))
-                if (round(sigdwnrate,4) == 1.0) and (round(siguprate,4) == 1.0):
-                    sigratestr = "-"
-                if (round(sigdwnrate,4) == 1.0):
+            #Get the proper signal rate systematics
+            siguprate = go.getDeviatedOverNominal(hsigup,hsig)
+            #print("sig up rate: ",siguprate)
+            sigdwnrate = go.getDeviatedOverNominal(hsigdwn,hsig)
+            #print("sig dn rate: ",sigdwnrate)
+            sigratestr = str(round(sigdwnrate,3))+"/"+str(round(siguprate,3))
+            #print(sigratestr)
+            if (round(sigdwnrate,3) == 1.0) and (round(siguprate,3) == 1.0):
+                sigratestr = "-"
+            if (round(sigdwnrate,3) == 1.0):
+                sigratestr = str(round(siguprate,3))
+            if (round(siguprate,3) == 1.0):
+                sigratestr = str(round(sigdwnrate,3))
+            if syst == "qcdscale":
+                val = round(siguprate,4)
+                if val < 1.0:
+                    sigratestr = str(round(siguprate,4)+1)
+                if val > 1.0:
                     sigratestr = str(round(siguprate,4))
-                if (round(siguprate,4) == 1.0):
-                    sigratestr = str(round(sigdwnrate,4))
-                ratelist[0] = sigratestr
-
-                #CollectSignal Hists
-                sigsystshists.append(hsigup)
-                sigsystshists.append(hsigdwn)
-            else:
-                print("****************{0} Does not have {1} systematic for signal".format(s,syst))
+                else:
+                    sigratestr = "-"
+            ratelist[0] = sigratestr
+            #print(sigratestr)
+            #CollectSignal Hists
+            sigsystshists.append(hsigup)
+            sigsystshists.append(hsigdwn)
+            #else:
+            #    print("****************{0} Does not have {1} systematic for signal".format(s,syst))
 
                 
             ####Prepping holders####
@@ -675,14 +768,16 @@ if __name__=='__main__':
             hdyup  = dyEstup.Get("extrphistnoerrs").Clone()
             hdydwn = dyEstdwn.Get("extrphistnoerrs").Clone()
 
-            
+
+            #print(hdyup.Integral())
+            #print(hdydwn.Integral())
             ####Rename and Restructure
-            #httup = newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
-            #httdwn = newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-            hvvup = newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh) 
-            hvvdwn = newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
-            hdyup  = newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
-            hdydwn = newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
+            #httup = go.newNameAndStructure(httup,"TT_"+syst+"Up",rebindiv,limrangelow,limrangehigh)
+            #httdwn = go.newNameAndStructure(httdwn,"TT_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            hvvup = go.newNameAndStructure(hvvup,"VV_"+syst+"Up",rebindiv,limrangelow,limrangehigh) 
+            hvvdwn = go.newNameAndStructure(hvvdwn,"VV_"+syst+"Down",rebindiv,limrangelow,limrangehigh)
+            hdyup  = go.newNameAndStructure(hdyup,"DY_"+syst+"Up",1,limrangelow,limrangehigh)
+            hdydwn = go.newNameAndStructure(hdydwn,"DY_"+syst+"Down",1,limrangelow,limrangehigh)
             hvvup = hvvup.Rebin(len(newbinedges)-1,"VV_"+syst+"Up",newbinedges)
             hvvdwn = hvvdwn.Rebin(len(newbinedges)-1,"VV_"+syst+"Down",newbinedges)
             hdyup = hdyup.Rebin(len(newbinedges)-1,"DY_"+syst+"Up",newbinedges)
@@ -704,7 +799,7 @@ if __name__=='__main__':
             #bkghists = [httup,hvvup,hdyup,httdwn,hvvdwn,hdydwn]
             bkghists = [hvvup,hdyup,hvvdwn,hdydwn]
             histstosave = sigsystshists+bkghists
-            print("!!!!!!!!!!!!put back in ttbar up/downs!!!!!!!!!!!!!!!!!!!!!!!")
+            #print("!!!!!!!!!!!!put back in ttbar up/downs!!!!!!!!!!!!!!!!!!!!!!!")
             #print("!!!!!!!!artificially scaling the up/dwn backgrounds!!!!")
             #for hist in bkghists:
             #    hist.Scale(10)
@@ -734,7 +829,7 @@ if __name__=='__main__':
         #ignorerates = ["extrap_subdatasb_vvfit_par1","extrap_subdatasb_vvfit_par0","extrap_subdatasb_ttfit_par0"]
         #ignoreshapes = ["extrap_subdatasb_vvfit_par1","extrap_subdatasb_vvfit_par0","extrap_subdatasb_ttfit_par1","extrap_subdatasb_ttfit_par0","extrap_alpha_DY_sr_par0","extrap_alpha_DY_sb_par1","extrap_alpha_DY_sb_par0","muonid","TT_scale"]
         ignorerates = []
-        ignoreshapes = ["muonid","TT_scale"]
+        ignoreshapes = ["muonid","TT_scale","jec","unclmet","btag","muontrig","pdfscale","prefire","qcdscale"]
         writeDataCard(procdict,prepRootName,chan,yearstr,hdat,ignorerates,ignoreshapes)
         print("        About to close the root file")
         prepRootFile.Close()

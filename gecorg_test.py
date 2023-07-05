@@ -7,6 +7,39 @@ import pandas as pd
 import numpy as np
 from datetime import date
 
+def getDeviatedOverNominal(hist,histnom):
+    interest = hist.Integral()
+    intnom = histnom.Integral()
+    devonom = interest/intnom
+    return devonom
+
+def newNameAndStructure(hist,name,rebindiv,limrangelow,limrangehigh):
+    hist.Rebin(rebindiv)
+    nbins = hist.GetNbinsX()
+    binw  = hist.GetBinWidth(1)
+    newbins = [limrangelow+x*binw for x in range(int((limrangehigh-limrangelow)/binw))]
+    nh = ROOT.TH1F(name,name,len(newbins),limrangelow,limrangehigh)
+    for b,le in enumerate(newbins):
+        bnum = hist.FindBin(le)
+        bincontent = hist.GetBinContent(bnum)
+        binerror   = hist.GetBinError(bnum)
+        nh.SetBinContent(b+1,bincontent)
+        nh.SetBinError(b+1,binerror)#
+
+    return nh
+
+def makeBinLowEdges(hist,lastnormbin):
+    #this takes the histogram ou want to rebin, and you just give it the last normal bin
+    nbins = hist.GetNbinsX()
+    binw  = hist.GetBinWidth(1)
+    iniedges = [hist.GetBinLowEdge(i) for i in range(nbins+2)]#+2 for the actual highedge
+    if lastnormbin not in iniedges:
+        print("desired bin edge not possible, try again")
+    newedges = [edg for edg in iniedges if (edg <= lastnormbin)]
+    newedges.append(iniedges[-1])
+    newedges = newedges[1:]
+    return np.array(newedges)
+
 def makeSignalErrorDictionary(flist):
     sigsrerrsdict = {}
     for sig in flist:
@@ -563,26 +596,86 @@ class backgrounds:
         #print("    integral added hist: ",hist.Integral())
         return hist
 
-    #Add something that does this nicely within this class
-    #no craziness
-    #def getStackofBkgs(self,hstk,region,hname,legend,years = [17,18]):
-    #    bkgfiles17 = [self.bkgs["DYJetsToLL"][17][region][0],
-    #                  self.bkgs["TT"][17][region][0],
-    #                  self.bkgs["WZTo2L2Q"][17][region][0],
-    #                  self.bkgs["ZZTo2L2Q"][17][region][0]
-    #                  ]
-    #    bkgfiles18 = [self.bkgs["DYJetsToLL"][18][region][0],
-    #                  self.bkgs["TT"][18][region][0],
-    #                  self.bkgs["WZTo2L2Q"][18][region][0],
-    #                  self.bkgs["ZZTo2L2Q"][18][region][0]
-    #                  ]
-    #    bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
-    #    bkgcols  = colsFromPalette(bkgnames,ROOT.kLake)
+    def getAddedHistXSErr(self,hist,samp,region,hname,xserradddir,years = [16,17,18]):
+        bkg = self.bkgs[samp]
+        xspairs = self.config.items(samp)
+        xsuncpairs = self.config.items(samp+'_unc')
+        bkgdfs  = []
+        scales = []
+        for year in years:
+            if year == 16:
+                lumi = 36.31
+            if year == 17:
+                lumi = 41.53
+            if year == 18:
+                lumi = 59.74
+                
+            files = bkg[year][region][0]
+            errs  = bkg[year][region][1]
+            if "DYJetsToLL" in samp:
+                files.sort(key = orderDY)
+                errs.sort(key = orderDY)
+            if "TT" in samp:
+                files.sort()
+                errs.sort()
 
-    #    info17 = prepBkg(bkgfiles17,bkgnames,bkgcols,"xsects_2017.ini",41.53)
-    #    info18 = prepBkg(bkgfiles18,bkgnames,bkgcols,"xsects_2017.ini",59.74)
-    #    stackBkgMultiYear(info17,info18,hname,hstk,legend,18,0)
+            #print(files)
+            for i,f in enumerate(files):
+                fparts = f.split("/")
+                name = fparts[-1]
+                #print("The MC sample in question: ",name)
+                tf = ROOT.TFile(f)
+                numevents = float(str(tf.Get('hnevents').GetString()))
+                #print("The number of miniAOD events processed: ",numevents)
+                #xsunc = float(xsuncpairs[i][1].split()[0])*1000#Into Femtobarn#the uncertainty in the database
+                xsunc  = float(xspairs[i][1].split()[0])*1000*0.06#6% uncertainty
+                xs = float(xspairs[i][1].split()[0])*1000+xserradddir*xsunc#Into Femtobarn
+                #print("The cross section read from ini file, in femtobarns: ",xs)
+                scale = findScale(numevents,xs,lumi)
+                scales.append(scale)
+                #print("The scaling applied: ",scale)
+                h = tf.Get(hname)
+                hscaled = h.Clone()
+                hscaled.Scale(scale)
+                #print("The unscaled contribution: ",h.Integral())
+                #print("The   scaled contribution: ",hscaled.Integral())
+                hist.Add(hscaled)
+                
+                #calc hist errors
+                df = pd.read_pickle(errs[i])
+                sdf = df*scale
+                sqrddf = sdf**2
+                bkgdfs.append(sqrddf)
 
+                debugstring = name+" "+str(xs)+" "+str(scale)
+                #print(debugstring)
+                #print("   integral of unscaled histogram: ",h.Integral())
+                #print("                            scale: ",scale)
+                #print("      intgral of scaled histogram: ",hscaled.Integral())
+
+        uncsqdDYJetsdf = sum(bkgdfs)
+        uncDYJetsdf    = uncsqdDYJetsdf**(1/2)
+
+        #alpha = 1.- 0.682689492
+        for ibin in range(hist.GetNbinsX()+1):
+            if ibin == 0:
+                continue
+            else:
+            #elif hist.GetBinContent(ibin) > 0:
+                binerr = uncDYJetsdf[hname][ibin-1]
+                hist.SetBinError(ibin,binerr)
+            #for garwood interavls    
+            #else:
+                #binerrbase = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                #errs = [binerrbase*scale for scale in scales]
+                #erssq = [err*err for err in errs]
+                #sumer = sum(erssq)
+                #binerr = (sumer)**(1/2)
+                #hist.SetBinError(ibin,binerr)
+                
+
+        #print("    integral added hist: ",hist.Integral())
+        return hist
 
 class run2:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr=""):
@@ -808,6 +901,10 @@ class signal_run2:
         not1618 = set(self.signames18) - int1816
         neither1617 = not1718.union(not1618)
         allthreeyearssig = list(set(self.signames18) - neither1617)
+        #print(self.signames18)
+        #print(self.signames17)
+        #print(self.signames16)
+        #print(allthreeyearssig)
 
         self.sigs ={18:
                     {"sb":[self.sig18sb,self.sig18sberrs],
@@ -836,6 +933,8 @@ class signal_run2:
 
         self.sigsbyname = {}
         for i,name in enumerate(sorted(allthreeyearssig)):
+            #print(i)
+            #print(name)
             self.sigsbyname[name] = {'sb':
                                      {18:[[],[]],
                                       17:[[],[]],
@@ -853,18 +952,26 @@ class signal_run2:
                                       },
             }
             for year in lumidict.keys():
+                #print(year)
                 for region in self.sigs[year].keys():
+                    #print(region)
                     for group in self.sigs[year][region]:
+                        #print(group)
                         groupidx = self.sigs[year][region].index(group)
                         if len(group) > 0:
-                            if name in group[i]:
-                                self.sigsbyname[name][region][year][groupidx].append(group[i])
+                            for fstr in group:
+                                if name in fstr:
+                                    self.sigsbyname[name][region][year][groupidx].append(fstr)
+                        #    print(group[i])
+                        #    if name in group[i]:
+                        #        self.sigsbyname[name][region][year][groupidx].append(group[i])
     #DIeally that whole shenaniga would hae just been a dataframe...
                         
 
         
     def getAddedHist(self,signalname,xs,hist,region,hname,years = [16,17,18]):
         sig = self.sigsbyname[signalname]
+        #print(sig)
         sigdfs  = []
         scales = []
         for year in years:

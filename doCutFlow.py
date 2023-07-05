@@ -38,12 +38,12 @@ if __name__=='__main__':
     reg           = args.region
 
 
-    bkgupout17 = go.gatherBkg('pfMETNominal_CorrCounting_Optimization','upout_'+reg,zptcut,hptcut,metcut,btagwp,17)
-    bkgupout17sr = go.gatherBkg('pfMETNominal_CorrCounting_Optimization','upout_signalr',zptcut,hptcut,metcut,btagwp,17)
-    bkgtopia17 = go.gatherBkg('pfMETNominal_CorrCounting_Optimization','topiary',0.0,250.0,0.0,0.0,17)
-    bkgupout18 = go.gatherBkg('pfMETNominal_CorrCounting_Optimization','upout_'+reg,zptcut,hptcut,metcut,btagwp,18)
-    bkgupout18sr = go.gatherBkg('pfMETNominal_CorrCounting_Optimization','upout_signalr',zptcut,hptcut,metcut,btagwp,18)
-    bkgtopia18 = go.gatherBkg('pfMETNominal_CorrCounting_Optimization','topiary',0.0,250.0,0.0,0.0,18)
+    bkgupout17 = go.gatherBkg('mumu_2022-03-31_ProperREOIDSF','upout_'+reg,zptcut,hptcut,metcut,btagwp,17)
+    bkgupout17sr = go.gatherBkg('mumu_2022-03-31_ProperREOIDSF','upout_signalr',zptcut,hptcut,metcut,btagwp,17)
+    bkgtopia17 = go.gatherBkg('mumu_2022-03-31_ProperREOIDSF','topiary',0.0,250.0,0.0,0.0,17)
+    bkgupout18 = go.gatherBkg('mumu_2022-03-31_ProperREOIDSF','upout_'+reg,zptcut,hptcut,metcut,btagwp,18)
+    bkgupout18sr = go.gatherBkg('mumu_2022-03-31_ProperREOIDSF','upout_signalr',zptcut,hptcut,metcut,btagwp,18)
+    bkgtopia18 = go.gatherBkg('mumu_2022-03-31_ProperREOIDSF','topiary',0.0,250.0,0.0,0.0,18)
     #bkguncs  = np.load('pfMETNominal'+'/Fall17.AllZpAnomalonBkgs_unc_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npz')
 
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]

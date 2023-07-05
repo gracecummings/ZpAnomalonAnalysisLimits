@@ -1,4 +1,3 @@
-
 import ROOT
 import glob
 import argparse
@@ -84,9 +83,10 @@ if __name__=="__main__":
         inChain = ROOT.TChain("PreSelection")
         #inputs  = glob.glob("../dataHandling/"+year+"/"+samp+"*.root")
         #inputs  = glob.glob("../dataHandling/"+year+"_new/"+samp+"*.root")
-        #inputs  = glob.glob("../dataHandling/"+year+"_newee/"+samp+"*.root")
+        inputs  = glob.glob("../dataHandling/"+year+"_newee/"+samp+"*.root")
         #inputs  = glob.glob("../dataHandling/"+year+"_newee/Autumn18_DYJetsToLL_2022-06-17/"+samp+"*.root")o
-        inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
+        #inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
+        #inputs  = glob.glob("../dataHandling/"+year+"_newpu/"+samp+"*.root")
         for f in inputs:
             #print(f)
             inChain.Add(f)
@@ -103,13 +103,16 @@ if __name__=="__main__":
         inChain = ROOT.TChain("TreeMaker2/PreSelection")
         inChain.Add(samp)
     elif samptype == 1 and ".root" not in samp:
-       # inChain = ROOT.TChain("TreeMaker2/PreSelection")
-        inChain = ROOT.TChain("PreSelection")
         if "2018" not in year:
+            inChain = ROOT.TChain("PreSelection")
             inputs  = glob.glob("../dataHandling/"+year+"_newee/"+samp+"*.root")
         else:
+            inChain = ROOT.TChain("TreeMaker2/PreSelection")
             inputs  = glob.glob("../dataHandling/"+year+"_old/"+samp+"*.root")
         #inputs   = glob.glob("../dataHandling/2018_data_muonunc/Autumn18_ZpAnomalonHZ_2023-01-26/"+samp+"*.root")
+        #PU debug
+        #inChain = ROOT.TChain("PreSelection")
+        #inputs  = glob.glob("../dataHandling/"+year+"_newpu/"+samp+"*.root")
         #
         #print(inputs)
         for f in inputs:
@@ -156,15 +159,23 @@ if __name__=="__main__":
     if sysvec.Norm1() > 1.0:
         print("Too many systematic flags at one time, stopping this maddness")
         exit()
-
+        
 
     if (origevnts < 1):
-        print('      ***Could not get events from the trims, getting Processed events from name')
-        checkevnts = 0
-        for f in inputs:
-            nproc = int((f.split("MiniAOD")[0]).split('skim_')[-1])
-            checkevnts +=nproc
-        origevnts = checkevnts
+        print('      ***Could not get events from the trims')
+        checkevnts = 0        
+        if "MiniAOD" in inputs[0]:
+            print('      ***  getting number from file name, borked skim')
+            for f in inputs:
+                nproc = int((f.split("MiniAOD")[0]).split('skim_')[-1])
+                checkevnts +=nproc
+            origevnts = checkevnts
+        elif "RA" in inputs[0]:
+            print('      ***  getting number from tree, it is the ntuple')
+            origevnts = inChain.GetEntries()
+        else:
+            "cannot figure out what went wrong with the counting, so something is wrong"
+            
         
     #outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','No','Req','On','Reco')#Needs to become dynamic with cuts
     outFile = go.makeOutFile(samp,'topiary_'+args.channel+'_'+syststring,'.root','0.0','250.0','0.0','0.0')#normal name

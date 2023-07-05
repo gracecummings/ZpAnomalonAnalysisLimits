@@ -119,6 +119,9 @@ if __name__=='__main__':
         "h_dr_lmuh":"\Delta R(lmu,H)",
         "h_dr_slmuh":"\Delta R(slmu,H)",
         "h_dr_slmulmu":"\Delta R(slmu,lmu)",
+        "h_LMu_pt":
+        "h_LMu_phi":
+        "h_LMu_eta"
     }
 
 

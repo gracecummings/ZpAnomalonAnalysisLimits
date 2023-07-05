@@ -1,5 +1,19 @@
 import ROOT
 import gecorg_test as go
+import numpy as np
+
+def makeBinLowEdges(hist,lastnormbin):
+    #this takes the histogram ou want to rebin, and you just give it the last normal bin
+    nbins = hist.GetNbinsX()
+    binw  = hist.GetBinWidth(1)
+    iniedges = [hist.GetBinLowEdge(i) for i in range(nbins+2)]#+2 for the actual highedge
+    if lastnormbin not in iniedges:
+        print("desired bin edge not possible, try again")
+    newedges = [edg for edg in iniedges if (edg <= lastnormbin)]
+    newedges.append(iniedges[-1])
+    newedges = newedges[1:]
+    return np.array(newedges)
+
 
 def getDeviatedOverNominal(hist,histnom):
     interest = hist.Integral()
@@ -42,20 +56,29 @@ def makeDeviatedTPave(histup,hist,histdwn,name):
 
 if __name__=='__main__':
 
-    limrangelow = 1400
-    limrangehigh = 3000
+    limrangelow = 1800
+    limrangehigh = 10000
 
-    dytf = ROOT.TFile('analysis_output_ZpAnomalon/2022-06-23/Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom__Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.root')
+    #dytf = ROOT.TFile('analysis_output_ZpAnomalon/2022-06-23/Run2_161718_dy_extraploationsystnominal_kfnom_btagnom_muidnom_elidnom_elreconom__Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.root')
+    #dytf = ROOT.TFile('mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    #dytf = ROOT.TFile('analysis_output_ZpAnomalon/2023-01-23/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    #dytf = ROOT.TFile('analysis_output_ZpAnomalon/2023-05-08/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    dytf = ROOT.TFile('analysis_output_ZpAnomalon/2023-05-09/alpha_method_ttbar_likli/Run2_161718_dy_extraploationalphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco__Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
     keys = dytf.GetListOfKeys()
     keys = [key.GetName() for key in keys]
     unckeys = [key for key in keys if "extrap_" in key]
+    #print(unckeys)
     unckeysup = [key for key in unckeys if "Up" in key]
     unckeysdn = [key for key in unckeys if "Down" in key]
     unckeysup = sorted(unckeysup)
     unckeysdn = sorted(unckeysdn)
     
-    nomdyr = dytf.Get('extrphist')
+    nomdyr = dytf.Get('extrap')
     nomdy = newNameAndStructure(nomdyr,"DY",1,limrangelow,limrangehigh)
+    newb = makeBinLowEdges(nomdy,2800)
+
+    #print("The bin edges: ",newb)
+    nomdy = nomdy.Rebin(len(newb)-1,"DY",newb)
     #nomdy.SetLineColor(ROOT.kBlack)
     #nomdy.GetYaxis().SetRangeUser(0,6)
     #nomdy.SetStats(0)
@@ -67,11 +90,15 @@ if __name__=='__main__':
     for i in range(len(unckeysup)):
         applist = [0,1.0,0,0]#Setup to only apply to DY
         upkey = unckeysup[i]
+        print(upkey)
         dnkey = unckeysdn[i]
         upr = dytf.Get(upkey)
         dnr = dytf.Get(dnkey)
         up = newNameAndStructure(upr,"DY_"+upkey,1,limrangelow,limrangehigh)
         dn = newNameAndStructure(dnr,"DY_"+dnkey,1,limrangelow,limrangehigh)
+        up = up.Rebin(len(newb)-1,"DY_"+upkey,newb)
+        dn = dn.Rebin(len(newb)-1,"DY_"+dnkey,newb)
+        
         uprate = getDeviatedOverNominal(up,nomdy)
         dwnrate = getDeviatedOverNominal(dn,nomdy)
         genname = upkey.split("Up")[0]
