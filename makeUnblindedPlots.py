@@ -2,6 +2,17 @@ import ROOT
 import tdrstyle
 import CMS_lumi
 import gecorg_test as go
+import numpy as np
+
+def convertToPhysicalHist(hemp,hbad):
+    h = hemp.Clone()
+    if hemp.GetNbinsX() == hbad.GetNbinsX():
+        for i in range(hbad.GetNbinsX()+1):
+            h.SetBinContent(i,hbad.GetBinContent(i))
+            h.SetBinError(i,hbad.GetBinError(i))
+    else:
+        print("Bad histograms, needs attention")
+    return h
 
 def regionFormatter(regionstr):
     regdict = {'sideband':'sb','signalr':'sr','totalr':'tr'}
@@ -36,25 +47,30 @@ if __name__=='__main__':
     postfit = False
     isLog   = False
 
-    signame = "Zp2000ND400NS200"
+    signame = "Zp5500ND1800NS200"
     f = ROOT.TFile('unblindedDatacardHolder/fitDiagnosticsRun2_161718_ZllHbbMET_datacard_unblind_mumu_'+signame+'.root')
+    f2 = ROOT.TFile('unblindedDatacardHolder/Run2_161718_ZllHbbMET_unblind_mumu_'+signame+'_Zptcut100.0_Hptcut300.0_metcut75.0_btagwp0.8.root')
+    htest = f2.Get("TT")
+    empty = htest.Clone()
+    empty.SetDirectory(0)
+    f2.Close()
+    empty.Reset('ICESM')
 
-
-    hprett = f.Get('shapes_prefit/'+signame+'_mumu/TT')
-    hprevv = f.Get('shapes_prefit/'+signame+'_mumu/VV')
-    hpredy = f.Get('shapes_prefit/'+signame+'_mumu/DY')
-    hpretot = f.Get('shapes_prefit/total_background')
+    hprett = convertToPhysicalHist(empty,f.Get('shapes_prefit/'+signame+'_mumu/TT'))
+    hprevv = convertToPhysicalHist(empty,f.Get('shapes_prefit/'+signame+'_mumu/VV'))
+    hpredy = convertToPhysicalHist(empty,f.Get('shapes_prefit/'+signame+'_mumu/DY'))
+    hpretot = convertToPhysicalHist(empty,f.Get('shapes_prefit/total_background'))
     gdat = f.Get('shapes_prefit/total_data')
 
-    hposttt = f.Get('shapes_fit_s/'+signame+'_mumu/TT')
-    hpostvv = f.Get('shapes_fit_s/'+signame+'_mumu/VV')
-    hpostdy = f.Get('shapes_fit_s/'+signame+'_mumu/DY')
-    hposttot = f.Get('shapes_fit_s/total_background')
+    hposttt = convertToPhysicalHist(empty,f.Get('shapes_fit_s/'+signame+'_mumu/TT'))
+    hpostvv = convertToPhysicalHist(empty,f.Get('shapes_fit_s/'+signame+'_mumu/VV'))
+    hpostdy = convertToPhysicalHist(empty,f.Get('shapes_fit_s/'+signame+'_mumu/DY'))
+    hposttot = convertToPhysicalHist(empty,f.Get('shapes_fit_s/total_background'))
 
-    hpost0sigtt = f.Get('shapes_fit_b/'+signame+'_mumu/TT')
-    hpost0sigvv = f.Get('shapes_fit_b/'+signame+'_mumu/VV')
-    hpost0sigdy = f.Get('shapes_fit_b/'+signame+'_mumu/DY')
-    hpost0sigtot = f.Get('shapes_fit_b/total_background')
+    hpost0sigtt = convertToPhysicalHist(empty,f.Get('shapes_fit_b/'+signame+'_mumu/TT'))
+    hpost0sigvv = convertToPhysicalHist(empty,f.Get('shapes_fit_b/'+signame+'_mumu/VV'))
+    hpost0sigdy = convertToPhysicalHist(empty,f.Get('shapes_fit_b/'+signame+'_mumu/DY'))
+    hpost0sigtot = convertToPhysicalHist(empty,f.Get('shapes_fit_b/total_background'))
 
     bkgs = {"prefit":[hpredy,hprett,hprevv,hpretot],
             "postfit":[hpostdy,hposttt,hpostvv,hposttot],
@@ -63,6 +79,13 @@ if __name__=='__main__':
 
     #Print some debug info
     #ROOT.gROOT.SetBatch(True)
+    #for i in range(hpost0sigtot.GetNbinsX()+1):
+    #    print("Comparing bin ",i)
+    #    print("  combine bin low edge: ",hpost0sigtot.GetBinLowEdge(i))
+    #    print("   manual bin low edge: ",empty.GetBinLowEdge(i))
+    #    print("     combine bin width: ",hpost0sigtot.GetBinWidth(i))
+    #    print("      manual bin width: ",empty.GetBinWidth(i))
+
     #make an hdat
     hdat = hpost0sigtot.Clone()
     hdat.Reset("ICESM")
@@ -70,20 +93,42 @@ if __name__=='__main__':
     hdat.SetMarkerSize(0.7)
     hdat.SetMarkerColor(ROOT.kBlack)
 
+    datx = ROOT.TVector(gdat.GetN())
+    daty = ROOT.TVector(gdat.GetN())
+    daterrxl = ROOT.TVector(gdat.GetN())
+    daterrxh = ROOT.TVector(gdat.GetN())
+    daterryl = ROOT.TVector(gdat.GetN())
+    daterryh = ROOT.TVector(gdat.GetN())
     for i in range(gdat.GetN()):
         gx = gdat.GetPointX(i)
         gy = gdat.GetPointY(i)
         hdat.SetBinContent(i+1,gy)
+        daty[i] = gy
+        daterrxl[i] = gdat.GetErrorXlow(i)
+        daterrxh[i] = gdat.GetErrorXhigh(i)
+        daterryl[i] = gdat.GetErrorYlow(i)
+        daterryh[i] = gdat.GetErrorYhigh(i)
+        datx[i] = hdat.GetBinCenter(i+1)
 
+    #print(datx)
+    #print(daty)
+    #print(daterryl)
+    #print(daterryh)
+
+    gdat2 = ROOT.TGraphAsymmErrors(datx,daty,daterrxl,daterrxh,daterryl,daterryh)
+        
     #Make the plots
     #general setup
     bkgcols = go.colsFromPalette(bkgs.keys(),ROOT.kLake)
     tdrstyle.setTDRStyle()
     CMS_lumi.lumi_13TeV = lumiFormatter(years)
     CMS_lumi.writeExtraText = 1
-
     for key in bkgs.keys():
         CMS_lumi.extraText = "Internal, "+key+" bkg"
+        if key == "postfit":
+            CMS_lumi.extraText = "Internal, "+signame+" "+key+" bkg"
+        if "bkg" in key:
+            CMS_lumi.extraText = "Internal, bkg only postfit"
         stkpadydims = [0.3,1.]
         ratpadydims = [0.0,0.3]
         #tcanvasdims = [600,560]#no ratio pad
@@ -107,9 +152,9 @@ if __name__=='__main__':
 
         #for when this was a graph
         #hdat.SetBinErrorOption(1)
-        gdat.SetMarkerStyle(8)
-        gdat.SetMarkerSize(0.7)
-        gdat.SetMarkerColor(ROOT.kBlack)
+        gdat2.SetMarkerStyle(8)
+        gdat2.SetMarkerSize(0.7)
+        gdat2.SetMarkerColor(ROOT.kBlack)
 
         #Bkg Stack for Plotting
         hsbkg = ROOT.THStack("hsbkg","")
@@ -128,7 +173,7 @@ if __name__=='__main__':
         leg.AddEntry(bkgs[key][0],"DYJetsToLL","f")
         leg.AddEntry(bkgs[key][1],"TT","f")
         leg.AddEntry(bkgs[key][2],"VV","f")
-        leg.AddEntry(gdat,"Data")
+        leg.AddEntry(gdat2,"Data")
 
         #Label
         #lab = ROOT.TPaveText(.15,.80,.4,.90,"NBNDC")
@@ -165,7 +210,7 @@ if __name__=='__main__':
         CMS_lumi.CMS_lumi(p1,4,13)
         ROOT.gStyle.SetErrorX(0.5)#binwidth for the weird combine stuff
         bkgs[key][3].Draw("same,E2")
-        gdat.Draw('P')
+        gdat2.Draw('P')
         leg.Draw()
         #lab.Draw()
         p1.Update()
@@ -192,7 +237,7 @@ if __name__=='__main__':
         ratline.Draw()
         tc.cd()
 
-        pngname = go.makeOutFile("Run2_ZllHbbMET_"+key,'unblinded_'+yearstr,'.png',"100","300","75","8E-10")
+        pngname = go.makeOutFile("Run2_ZllHbbMET_"+key,signame+'_unblinded_'+yearstr,'.png',"100","300","75","8E-10")
         tc.SaveAs(pngname)
 
 
