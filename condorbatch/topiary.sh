@@ -21,7 +21,7 @@ echo ${RESTFRAMESSYS}
 
 #Running topiary 
 echo "Making topiary"
-python runTopiary.py -s $2 -c $4 -l $3 $5
+python runTopiary.py -s $2 -c $4 -l $3 -syst $5
 
 for FILE in ./*.root
 do
