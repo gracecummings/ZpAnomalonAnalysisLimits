@@ -20,7 +20,8 @@ if __name__=='__main__':
     parser.add_argument("-j","--sampleJson",help=".json file with the topiaries to do selections on")
     parser.add_argument("-s","--sample",type=str,help="specific sample")
     parser.add_argument("-c","--channel",type=str,help="channel: mumu,ee,emu")
-    parser.add_argument("-syst","--syststr",nargs="*",help="the systematic flag you want to do. Can be specifc up/downs, or general, like 'jec' if you want both")
+    parser.add_argument("-syst","--syststr",nargs="*",help="the systematic flag you want to do. Can be specifc up/downs (for topiary level), or general, like 'jec' if you want both")
+    parser.add_argument("-r","--region_config",type=str,help="special region to be considerd, ie 'unblind', 'alpha-basic','alpha-validation'")
     args = parser.parse_args()
 
     #inputsraw = args.syststr.strip("[]").split(",")
@@ -80,6 +81,7 @@ if __name__=='__main__':
     #Submit the jobs
     #Get list grouped by sample
     jobcnt = 0
+    syst_config = ""
     if len(fsjson.keys()) > 0:
         sampgrouped = {}
         for samp in gensets:
@@ -97,8 +99,9 @@ if __name__=='__main__':
                         #print([f for f in sampgrouped if syst in f])
                         topstoanalyze += [f for f in sampgrouped if syst in f] 
                     else:
-                        #print("systematics string not a toiary level syst, be careful about input .json")
+                        print("systematics string not a topiary level syst, make sure to use nominal topiary json")
                         topstoanalyze = sampgrouped
+                        syst_config = syst
             else:
                 topstoanalyze = sampgrouped
 
@@ -113,7 +116,7 @@ if __name__=='__main__':
             print("Running over {0} topiaries in this job.".format(len(topstoanalyze)))
             
             #Args to pass
-            argu = "Arguments = {0} {1} {2}\n".format(eosForOutput,samplistasstr,args.channel)
+            argu = "Arguments = {0} {1} {2} {3} {4}\n".format(eosForOutput,samplistasstr,args.channel,args.region_config,syst_config)
             
             #Make the jdl for each sample
             #jdlName = "selections_"+sampleName+"_"+syststr+"_"+str(date.today())+".jdl"

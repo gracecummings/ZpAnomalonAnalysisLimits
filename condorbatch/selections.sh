@@ -18,10 +18,11 @@ source $NAME/bin/activate
 #2 - the topiaries
 #3 - the channel 
 #4 - the special scenario
+#5 - the event weight systematic (command line options to selector)
 
 #Running the selection maker
 echo "Beginning analysis"
-python runSelections.py -s $2 -c $3 -conf $4
+python runSelections.py -s $2 -c $3 -conf $4 -evntwsyst $5
 
 for FILE in analysis_output_ZpAnomalon/*/*.root
 do
