@@ -1,5 +1,4 @@
-import uproot as up4
-#import uproot3 as up3
+import uproot3 as up3
 import pandas as pd
 import numpy as np
 import boost_histogram as bh
@@ -163,7 +162,8 @@ if __name__=='__main__':
 
     print(sampname)
     print(channel)
-    inputfiles = ["root://cmseos.fnal.gov//store/group/lpcboostres/topiaries_systematics-dwnjer_2023-10-18/Autumn18.TTTo2L2Nu_TuneCP5_topiary_mumu_systjerdwn_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0.root"]
+    inputfiles = [sampname]
+    #inputfiles = ["root://cmseos.fnal.gov//store/group/lpcboostres/topiaries_systematics-dwnjer_2023-10-18/Autumn18.TTTo2L2Nu_TuneCP5_topiary_mumu_systjerdwn_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0.root"]
     #inputfiles = glob.glob(topdir+'/'+sampname+'*_topiary_'+channel+'*.root')
     #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-14/noLeadingReq/Run2016H-17Jul2018-v1.SingleElectron_topiary_emu_systnominal_elecTrigNoLeadingRequirement_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
     #inputfiles = glob.glob('analysis_output_ZpAnomalon/2022-03-28/Autumn18.TTToSemiLeptonic_TuneCP5_13TV-powheg-pythia8_topiary_mumu_systnominal_Zptcut0.0_Hptcut250.0_metcut0.0_btagwp0.0*')
@@ -244,11 +244,13 @@ if __name__=='__main__':
             print("    ",muf[0],euf[0])
             print("    ",sampname)
             
-            upfmu = up4.open(muf[0])
+            upfmu = up3.open(muf[0])
+            #upfmu = open(muf[0])
             dictupmu = dict(upf)
             mtree = dictupmu['PreSelection;1']
             mevents = mtree.pandas.df(branches=branches)
-            upfe = up4.open(euf[0])
+            upfe = up3.open(euf[0])
+            #upfe = open(euf[0])
             dictupe = dict(upfe)
             etree = dictupe['PreSelection;1']
             eevents = etree.pandas.df(branches=branches)
@@ -271,7 +273,7 @@ if __name__=='__main__':
             print("    ",inputfiles[:1])
             print("    ",samp)
             #events = up3.pandas.iterate(inputfiles[:1],'PreSelection;1',branches=branches)
-            upf = up4.open(inputfiles[0])
+            upf = up3.open(inputfiles[0])
             dictup = dict(upf)
             tree = upf['PreSelection;1']
             events = tree.pandas.df(branches=branches)
@@ -550,21 +552,21 @@ if __name__=='__main__':
         else:
             print("This is not 2016 or 2017 MC, does not need prefire weights")
 
-        #pile-up weights
-        if stype > 0 and args.pileup:
-            print("    Applying pileup weights!")
-            eventweights = eventweights*fdf["puWeight"]
-        elif stype > 0 and args.pileupup:
-            print("    Applying pileup weights - up!")
-            eventweights = eventweights*fdf["puSysUp"]
-        elif stype > 0 and args.pileupdwn:
-            print("    Applying pileup weights - down!")
-            eventweights = eventweights*fdf["puSysDown"]
-        else:
-            print("This is not MC or you do not want to apply pileup weights")
+        #pile-up weights - real ones -- only in a few files
+        #if stype > 0 and args.pileup:
+        #    print("    Applying pileup weights!")
+        #    eventweights = eventweights*fdf["puWeight"]
+        #elif stype > 0 and args.pileupup:
+        #    print("    Applying pileup weights - up!")
+        #    eventweights = eventweights*fdf["puSysUp"]
+        #elif stype > 0 and args.pileupdwn:
+        #    print("    Applying pileup weights - down!")
+        #    eventweights = eventweights*fdf["puSysDown"]
+        #else:
+        #    print("This is not MC or you do not want to apply pileup weights")
 
         #mapped pile-up weights
-        f= dict(up4.open(inputfiles[0]))
+        f= dict(up3.open(inputfiles[0]))
         if stype > 0 and args.pileupmap:
             print("    Applying pileup weights from mapping!")
             skimtot     = f[b'hnskimed;1'].values[0]
@@ -596,7 +598,7 @@ if __name__=='__main__':
 
 
 
-        f = dict(up4.open(inputfiles[0]))
+        f = dict(up3.open(inputfiles[0]))
         if stype > 0 and args.qcddwn:
             print("    Applying dwn qcd weights!")
             skimqcddown = f[b'hnskimeddwn;1'].values[0]
@@ -633,7 +635,7 @@ if __name__=='__main__':
         print("Saving file as ",rootfilename)
         npfilename    = go.makeOutFile(goodname,'totalevents_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         pklfilename   = go.makeOutFile(goodname,'selected_errors_'+region+'_'+jectype+'_'+systname+'_'+btaggr,'.pkl',str(zptcut),str(hptcut),str(metcut),str(btagwp))
-        rootOutFile   = up4.recreate(rootfilename,compression = None)
+        rootOutFile   = up3.recreate(rootfilename,compression = None)
         npOutFile     = open(npfilename,'wb')
 
         rootOutFile["h_z_pt"]       = np.histogram(fdf['ZCandidate_pt'],bins=80,range=(0,800),weights=eventweights)
