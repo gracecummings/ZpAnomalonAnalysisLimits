@@ -21,7 +21,10 @@ if __name__=="__main__":
     for path in paths:
         print("Checking ............................. ",path)
         fs = subprocess.check_output("eos root://cmseos.fnal.gov ls "+path,shell=True).decode(sys.stdout.encoding).split()
-        fnames = [f.split('pythia')[0] for f in fs]
+        if "Run20" not in path:
+            fnames = [f.split('pythia')[0] for f in fs]
+        else:
+            fnames = [f.split('_')[0] for f in fs]
         fnamesclean = list(set(fnames))
         samps = {}
         for name in fnamesclean:

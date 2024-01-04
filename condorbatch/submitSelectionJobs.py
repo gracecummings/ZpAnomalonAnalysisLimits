@@ -22,6 +22,7 @@ if __name__=='__main__':
     parser.add_argument("-c","--channel",type=str,help="channel: mumu,ee,emu")
     parser.add_argument("-syst","--syststr",nargs="*",help="the systematic flag you want to do. Can be specifc up/downs (for topiary level), or general, like 'jec' if you want both")
     parser.add_argument("-r","--region_config",type=str,help="special region to be considerd, ie 'unblind', 'alpham-basic','alpham-validation'")
+    parser.add_argument("-k","--killsubmission",type=bool,default=False,help="removes jdl creation and job submission, meant for printing a command to pass for interactive running")
     args = parser.parse_args()
 
     #Check json
@@ -118,27 +119,31 @@ if __name__=='__main__':
             
             #Args to pass
             argu = "Arguments = {0} {1} {2} {3} {4}\n".format(eosForOutput,samplistasstr,args.channel,args.region_config,systlistasstr)
-            #print(argu)
             
-            #Make the jdl for each sample
-            jdlName = "selections_"+sampleName+"_"+syststr+"_"+str(date.today())+".jdl"
-            jdl = open(jdlName,"w")
-            jdl.write("universe = vanilla\n")
-            jdl.write("Should_Transfer_Files = YES\n")
-            jdl.write("WhenToTransferOutput = ON_EXIT\n")
-            jdl.write("Transfer_Input_Files = "+tarballName+"\n")
-            jdl.write("Output = condorMonitoringOutput/{0}/{1}_out.stdout\n".format(str(date.today()),sampleName+"_"+syststr))
-            jdl.write("Error = condorMonitoringOutput/{0}/{1}_err.stder\n".format(str(date.today()),sampleName+"_"+syststr))
-            jdl.write("Log = condorMonitoringOutput/{0}/{1}_log.log\n".format(str(date.today()),sampleName+"_"+syststr))
-            jdl.write("Executable = selections.sh\n")
-            jdl.write(argu)
-            jdl.write('+DESIRED_Sites="T3_US_Baylor,T2_US_Caltech,T3_US_Colorado,T3_US_Cornell,T3_US_FIT,T3_US_FNALLPC,T3_US_Omaha,T3_US_JHU,T3_US_Kansas,T2_US_MIT,T3_US_NotreDame,T2_US_Nebraska,T3_US_NU,T3_US_OSU,T3_US_Princeton_ICSE,T2_US_Purdue,T3_US_Rice,T3_US_Rutgers,T3_US_MIT,T3_US_NERSC,T3_US_SDSC,T3_US_FIU,T3_US_FSU,T3_US_OSG,T3_US_TAMU,T3_US_TTU,T3_US_UCD,T3_US_UCSB,T2_US_UCSD,T3_US_UMD,T3_US_UMiss,T2_US_Vanderbilt,T2_US_Wisconsin"')
-            jdl.write("\n")
-            jdl.write("Queue 1\n")#Not sure about this one
-            jdl.close()
+            if not args.killsubmission:
+                #Make the jdl for each sample
+                jdlName = "selections_"+sampleName+"_"+syststr+"_"+str(date.today())+".jdl"
+                jdl = open(jdlName,"w")
+                jdl.write("universe = vanilla\n")
+                jdl.write("Should_Transfer_Files = YES\n")
+                jdl.write("WhenToTransferOutput = ON_EXIT\n")
+                jdl.write("Transfer_Input_Files = "+tarballName+"\n")
+                jdl.write("Output = condorMonitoringOutput/{0}/{1}_out.stdout\n".format(str(date.today()),sampleName+"_"+syststr))
+                jdl.write("Error = condorMonitoringOutput/{0}/{1}_err.stder\n".format(str(date.today()),sampleName+"_"+syststr))
+                jdl.write("Log = condorMonitoringOutput/{0}/{1}_log.log\n".format(str(date.today()),sampleName+"_"+syststr))
+                jdl.write("Executable = selections.sh\n")
+                jdl.write(argu)
+                jdl.write('+DESIRED_Sites="T3_US_Baylor,T2_US_Caltech,T3_US_Colorado,T3_US_Cornell,T3_US_FIT,T3_US_FNALLPC,T3_US_Omaha,T3_US_JHU,T3_US_Kansas,T2_US_MIT,T3_US_NotreDame,T2_US_Nebraska,T3_US_NU,T3_US_OSU,T3_US_Princeton_ICSE,T2_US_Purdue,T3_US_Rice,T3_US_Rutgers,T3_US_MIT,T3_US_NERSC,T3_US_SDSC,T3_US_FIU,T3_US_FSU,T3_US_OSG,T3_US_TAMU,T3_US_TTU,T3_US_UCD,T3_US_UCSB,T2_US_UCSD,T3_US_UMD,T3_US_UMiss,T2_US_Vanderbilt,T2_US_Wisconsin"')
+                jdl.write("\n")
+                jdl.write("Queue 1\n")#Not sure about this one
+                jdl.close()
             
-            #submit the jobs
-            os.system("condor_submit {0}".format(jdlName))
+                #submit the jobs
+                os.system("condor_submit {0}".format(jdlName))
 
-            jobcnt += 1
+                jobcnt += 1
+
+            else:
+                print("Not submitting jobs, printing passed arguments")
+                print(argu)
     print("Submitted {} jobs".format(jobcnt))
