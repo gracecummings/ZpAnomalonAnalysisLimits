@@ -26,7 +26,7 @@ echo $PYTHONPATH
 echo "Beginning analysis"
 python runSelections.py -s $2 -c $3 -conf $4 -evntwsyst $5
 
-for FILE in analysis_output_ZpAnomalon/*/*.root
+for FILE in analysis_output_ZpAnomalon/*/*
 do
     echo ${FILE}
     echo "copying ${FILE} to eos $1"
