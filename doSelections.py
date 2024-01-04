@@ -567,7 +567,7 @@ if __name__=='__main__':
 
         #mapped pile-up weights
         f= dict(up3.open(inputfiles[0]))
-        if stype > 0 and args.pileupmap:
+        if stype > 0 and args.pileupmap and not args.pileupupder and not args.pileupdwnder and not args.pileupupmap and not args.pileupdwnmap:
             print("    Applying pileup weights from mapping!")
             skimtot     = f[b'hnskimed;1'].values[0]
             skimpu      = f[b'hnpu;1'].values[0]
@@ -577,21 +577,25 @@ if __name__=='__main__':
             skimpuup    = f[b'hnpuup;1'].values[0]
             print("    Applying pileup weights - up! from mapped value")
             eventweights = eventweights*fdf["puweight_up"]*(skimtot/skimpuup)
+            systname = systname+"_puwup"
         elif stype > 0 and args.pileupdwnder:
             skimtot     = f[b'hnskimed;1'].values[0]
             skimpudn    = f[b'hnpudwn;1'].values[0]
             print("    Applying pileup weights - down! from mapped value")
             eventweights = eventweights*fdf["puweight_dwn"]*(skimtot/skimpudn)
+            systname = systname+"_puwdwn"
         elif stype > 0 and args.pileupupmap:
             skimtot     = f[b'hnskimed;1'].values[0]
             skimpumapup    = f[b'hnpunumup;1'].values[0]
             print("    Applying pileup weights from up shifted map value")
+            systname = systname+"_punumup"
             eventweights = eventweights*fdf["puweightvtx_up"]*(skimtot/skimpumapup)
         elif stype > 0 and args.pileupdwnmap:
             skimtot     = f[b'hnskimed;1'].values[0]
             skimpumapdn    = f[b'hnpunumdwn;1'].values[0]
             print("    Applying pileup weights from down shifted map value")
             eventweights = eventweights*fdf["puweightvtx_dwn"]*(skimtot/skimpumapdn)
+            systname = systname+"_punumdwn"
         else:
             print("This is not MC or you do not want to apply pileup weights")
 
