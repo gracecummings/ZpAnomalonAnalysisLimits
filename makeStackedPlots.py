@@ -37,7 +37,7 @@ def yearFormatter(yearlist):
         yearstr = yearstr+str(year)
     return yearstr
     
-
+ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
 if __name__=='__main__':
     #build module objects
@@ -54,6 +54,7 @@ if __name__=='__main__':
     parser.add_argument("-y","--year", type=float,help = "year of samples eg. 2017 -> 17")
     parser.add_argument("-s","--syst",type=str,help="systematic string")
     parser.add_argument("-d","--data", type=bool,help = "plotting data?")
+    parser.add_argument("-sig","--signalplot", type=bool,help = "plotting signal?")
     args = parser.parse_args()
 
     #Get command line parameters
@@ -68,6 +69,7 @@ if __name__=='__main__':
     pathplots = args.directory
     systr     = args.syst
     plot_data = args.data
+    plot_signal = args.signalplot
     sigdivsor = 5
     valid = False
     islog = False
@@ -85,8 +87,9 @@ if __name__=='__main__':
         
     #Gather Input
     bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
-    data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,'systnominal_btagnom_muidnom')
-    sigs =  go.signal(pathplots,zptcut,hptcut,metcut,btagwp,sig_xsec,years,systr)
+    
+    if plot_data:
+        data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,'systnominal_btagnom_muidnom')
     datareg = 'sb'
     if valid:
         #dynorm = np.load('analysis_output_ZpAnomalon/2022-05-17/Run2_161718_dynormalization_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
@@ -95,10 +98,12 @@ if __name__=='__main__':
         datareg = 'vr'
 
     dynorm = 1
-    if len(years) == 2:#dynorms only matter for composite years
-        dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
-    elif len(years) == 3:
-            dynorm = np.load(pathplots+'/Run2_161718_dynormalization_alphat_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
+    
+    print("Commented out DY normalization for debug")
+    #if len(years) == 2:#dynorms only matter for composite years
+    #    dynorm = np.load(pathplots+'/Run2_2017_2018_dynormalization_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
+    #elif len(years) == 3:
+    #        dynorm = np.load(pathplots+'/Run2_161718_dynormalization_alphat_'+systr+'_signalblind_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)+'.npy')[0]
 
     #Colors, Naming, general style
     bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
@@ -114,51 +119,15 @@ if __name__=='__main__':
     #Gather plots
     testyear = years[0]#picks first year in list, so desired year if only one
     testfile = bkgs.bkgs["DYJetsToLL"][testyear][reg][0][0]#stacked plots should always have DY
-    testtfile = ROOT.TFile(testfile)
+    testtfile = ROOT.TFile.Open(testfile)
     keys = testtfile.GetListOfKeys()
-    siginfo = sigs.getPreppedSig(reg,sig_xsec,years)
-    sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
-    siginfo = sorted(siginfo,key = lambda sig: (sig["mzp"],sig["mnd"])) 
 
-    #names and param. To Do: expand to include plot limits for linear scale
-    #titles = {
-    #    "h_z_pt":["Z p_{T} (GeV)",0,40,1],
-    #    "h_z_eta":["\eta_{Z}",0,100,1],
-    #    "h_z_phi":["\phi_{Z}",0,90,2],
-    #    "h_z_phiw":["\phi_{Z}",0,90,2],
-    #    "h_z_m":["m_{Z} (GeV)",0,60,1],
-    #    "h_h_pt":["Higgs p_{T} (GeV)",0,60,1],
-    #    "h_h_eta":["\eta_{Higss}",0,130,1],
-    #    "h_h_phi":["\phi_{Higgs}",0,70,2],
-    #    "h_h_phiw":["\phi_{Higgs}",0,70,2],
-    #    "h_h_m":["m_{h} (GeV)",0,50,1],
-    #    "h_h_sd":["Higgs Soft Drop Mass (GeV)",0,75,1],#45 normally max
-    #    "h_met":["p_{T}^{miss} (GeV)",0,100,1],
-    #    "h_met_phi":["\phi p_{T}^{miss}",0,80,2],
-    #    "h_met_phiw":["\phi p_{T}^{miss}",0,80,2],
-    #    "h_zp_jigm":["Jigsaw Mass Estimator Z'",0,60,2],
-    #    "h_nd_jigm":["Jigsaw Mass Estimator ND",0,60,1],
-    #    "h_ns_jigm":["Jigsaw Mass Estimator NS",0,100,1],
-    #    "h_btag":["btag operating point",0,70,1],
-    #    "h_dphi_zh":["\Delta\phi_{ZH}",0,80,2],
-    #    "h_dphi_zmet":["\Delta\phi_{ZMET}",0,60,2],
-    #    "h_dphi_hmet":["\Delta\phi_{HMET}",0,60,2],
-    #    "h_dr_zh":["\Delta R(ZH)",0,170,1],
-    #    "h_dr_lmuh":["\Delta R(lmu,H)",0,200,1],
-    #    "h_dr_slmuh":["\Delta R(slmu,H)",0,200,1],
-    #    "h_dr_slmulmu":["\Delta R(slmu,lmu)",0,60,1],
-    #    "h_dr_gz_gh":["\Delta R(genZ,genH)",0,250,1],
-    #    "h_dr_lmu_gh":["\Delta R(lmu,genH)",0,250,1],
-    #    "h_dr_slmu_gh":["\Delta R(slmu,genH)",0,250,1],
-    #    "h_LMu_pt":["leading \mu p_{T} (GeV)",0,40,1],
-    #    "h_LMu_phi":["\phi_{leading \mu}",0,100,2],
-    #    "h_LMu_eta":["\eta_{leading \mu} ",0,100,1],
-    #    "h_sLMu_pt":["subleading \mu p_{T} (GeV)",0,40,1],
-    #    "h_sLMu_phi":["\phi_{subleading \mu}",0,100,2],
-    #    "h_sLMu_eta":["\eta_{subleading \mu}",0,100,1],
-    #}
+    if plot_signal:
+        sigs =  go.signal(pathplots,zptcut,hptcut,metcut,btagwp,sig_xsec,years,systr)
+        siginfo = sigs.getPreppedSig(reg,sig_xsec,years)
+        sigcolors = go.colsFromPalette(siginfo,ROOT.kCMYK)
+        siginfo = sorted(siginfo,key = lambda sig: (sig["mzp"],sig["mnd"])) 
 
-    #For antibtagged alpha method region
     titles = {
         "h_z_pt":["Z p_{T} (GeV)",0,40,2],
         "h_z_eta":["\eta_{Z}",0,100,1],
@@ -221,6 +190,8 @@ if __name__=='__main__':
         h = testtfile.Get(hname)
         if (not isinstance(h,ROOT.TH1)) or ('h_weights' in hname):
             continue
+
+        #h.SetDirectory(0)
         empty = h.Clone()
         empty.Reset("ICESM")#creates an empty hist with same structure
         empty1 = empty.Clone()
@@ -347,38 +318,39 @@ if __name__=='__main__':
         print("The total background is: ",hbkg.Integral())
         
         #Draw the Signal
-        for s,sig in enumerate(siginfo):
-            print(sig["name"])
-            if s % 5 != 0:
-                continue
-            if "Zp5500-ND1800-NS200_TuneCP5_13TeV-madgraph-pythia8" not in sig["name"]:
-                continue
-            name = sig["name"]
-            signame = 'holder'
-            if "Tune" in name:
-                strippedname = name.split("_Tune")[0]
-                signame = strippedname.replace("-","")
-            else:
-                signame = name.replace("-","")
+        if plot_signal:
+            for s,sig in enumerate(siginfo):
+                print(sig["name"])
+                if s % 5 != 0:
+                    continue
+                if "Zp5500-ND1800-NS200_TuneCP5_13TeV-madgraph-pythia8" not in sig["name"]:
+                    continue
+                name = sig["name"]
+                signame = 'holder'
+                if "Tune" in name:
+                    strippedname = name.split("_Tune")[0]
+                    signame = strippedname.replace("-","")
+                else:
+                    signame = name.replace("-","")
 
-            hsig = sig["tfile"].Get(hname)
-            hsig.Rebin(titles[hname][3])
-            hsig.Scale(sig['scale'])
-            hsig.SetLineColor(sigcolors[s])
-            hsig.SetStats(0)
-            print("The total signal for {0} is: {1}".format(signame,hsig.Integral()))
+                hsig = sig["tfile"].Get(hname)
+                hsig.Rebin(titles[hname][3])
+                hsig.Scale(sig['scale'])
+                hsig.SetLineColor(sigcolors[s])
+                hsig.SetStats(0)
+                print("The total signal for {0} is: {1}".format(signame,hsig.Integral()))
 
 
         
-            if s == 0:
-                hsig.Draw("histsame")
-                leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
-            elif s % sigdivsor == 0:
-                hsig.Draw("histsame")
-                leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
-            #hsig.Draw("histsame")
-            #leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
-            p1.cd()
+                if s == 0:
+                    hsig.Draw("histsame")
+                    leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
+                elif s % sigdivsor == 0:
+                    hsig.Draw("histsame")
+                    leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
+                    #hsig.Draw("histsame")
+                    #leg.AddEntry(hsig,signame+" "+str(sig_xsec/1000)+" pb","l")
+                p1.cd()
 
         leg.Draw()
         p1.Update()
@@ -413,3 +385,5 @@ if __name__=='__main__':
         tc.SaveAs(pngname)
 
 
+    testtfile.Close()
+            
