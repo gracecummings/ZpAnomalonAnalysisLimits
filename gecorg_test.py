@@ -207,7 +207,7 @@ def prepSig(sigfiles,sig_colors,sig_xsec,lumi,sigerrs):
     print("          Fix your hack for ntuple signal counting, setting sample size to 35000")
     for s,sig in enumerate(sigfiles):
         sig_dict = {}
-        sig_dict["tfile"] = ROOT.TFile(sig,"read")
+        sig_dict["tfile"] = ROOT.TFile.Open(sig,"read")
         sig_samplesize    = 0.0#str(sig_dict["tfile"].Get('hnevents').GetString())
         if float(sig_samplesize) == 0.0:
             sig_samplesize = "35000.0"###HACK
@@ -265,7 +265,7 @@ def prepBkg(bkgfiles,bkgnames,bkg_colors,ini_file,lumi,flag="yes"):
             #print(bkgbin)
             bkgbin_dict["binname"] = bkgbin_xs_pairs[s][0]
             #print(bkgbin_dict["binname"])
-            bkgbin_dict["tfile"]   = ROOT.TFile(bkgbin)
+            bkgbin_dict["tfile"]   = ROOT.TFile.Open(bkgbin)
             bkgbin_sampsize        = str(bkgbin_dict["tfile"].Get('hnevents').GetString())
             bkgbin_xs              = float(bkgbin_xs_pairs[s][1].split()[0])*1000#Into Femtobarn
             #print(bkgbin_sampsize)
@@ -355,7 +355,7 @@ def saveNpUncertainties(uncdf,filename):
              h_btag    = uncdf['h_btag'].values
              )
 
-class backgrounds:
+class backgrounds_local:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr=""):
         self.path = path
         self.zptcut = zptcut
@@ -545,7 +545,7 @@ class backgrounds:
                 fparts = f.split("/")
                 name = fparts[-1]
                 #print("The MC sample in question: ",name)
-                tf = ROOT.TFile(f)
+                tf = ROOT.TFile.Open(f)
                 numevents = float(str(tf.Get('hnevents').GetString()))
                 #print("The number of miniAOD events processed: ",numevents)
                 xs = float(xspairs[i][1].split()[0])*1000#Into Femtobarn
@@ -624,7 +624,7 @@ class backgrounds:
                 fparts = f.split("/")
                 name = fparts[-1]
                 #print("The MC sample in question: ",name)
-                tf = ROOT.TFile(f)
+                tf = ROOT.TFile.Open(f)
                 numevents = float(str(tf.Get('hnevents').GetString()))
                 #print("The number of miniAOD events processed: ",numevents)
                 #xsunc = float(xsuncpairs[i][1].split()[0])*1000#Into Femtobarn#the uncertainty in the database
@@ -677,7 +677,7 @@ class backgrounds:
         #print("    integral added hist: ",hist.Integral())
         return hist
 
-class run2:
+class run2_local:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr=""):
         self.path = path
         self.zptcut = zptcut
@@ -734,7 +734,7 @@ class run2:
             files.sort()
             errs.sort()
             for i,f in enumerate(files):
-                tf = ROOT.TFile(f)
+                tf = ROOT.TFile.Open(f)
                 h = tf.Get(hname)
                 #print(h.Integral())
                 hist.Add(h)
@@ -766,7 +766,7 @@ class run2:
             files.sort()
             errs.sort()
             for i,f in enumerate(files):
-                tf = ROOT.TFile(f)
+                tf = ROOT.TFile.Open(f)
                 h = tf.Get(hname)
                 #print(h.Integral())
                 hist.Add(h)
@@ -785,7 +785,7 @@ class run2:
         return hist
 
 
-class signal:
+class signal_local:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp,xs,years = [16,17,18],systr=""):
         self.path = path
         self.zptcut = zptcut
@@ -845,7 +845,7 @@ class signal:
         preppedsig = prepSig(signal,sig_colors,xs,l,signalerrs)
         return preppedsig
 
-class signal_run2:
+class signal_run2_local:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp,xs,years = [16,17,18],systr=""):
         self.path = path
         self.zptcut = zptcut
@@ -986,7 +986,7 @@ class signal_run2:
             errs  = sig[region][year][1][0]
             fparts = f.split("/")
             name = fparts[-1]
-            tf = ROOT.TFile(f)
+            tf = ROOT.TFile.Open(f)
             numevents = float(str(tf.Get('hnevents').GetString()))
             scale = findScale(numevents,xs,lumi)
             scales.append(scale)
@@ -1038,7 +1038,7 @@ class signal_run2:
 
     
 
-class validation:
+class validation_local:
     def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr):
         self.path = path
         self.zptcut = zptcut
@@ -1215,7 +1215,7 @@ class validation:
             for i,f in enumerate(files):
                 fparts = f.split("/")
                 name = fparts[-1]
-                tf = ROOT.TFile(f)
+                tf = ROOT.TFile.Open(f)
                 numevents = float(str(tf.Get('hnevents').GetString()))
                 xs = float(xspairs[i][1].split()[0])*1000#Into Femtobarn
                 scale = findScale(numevents,xs,lumi)
@@ -1253,7 +1253,7 @@ class validation:
             files.sort()
             errs.sort()
             for i,f in enumerate(files):
-                tf = ROOT.TFile(f)
+                tf = ROOT.TFile.Open(f)
                 h = tf.Get(hname)
                 hist.Add(h)
                 
@@ -1272,4 +1272,377 @@ class validation:
                 binerr = uncdf[hname][ibin-1]
                 hist.SetBinError(ibin,binerr)
                 
+        return hist
+
+sampnames_dy2018 = ['Autumn18.DYJetsToLL_M-50_HT-100to200_TuneCP5_PSweights',
+                    'Autumn18.DYJetsToLL_M-50_HT-1200to2500_TuneCP5_PSweights',
+                    'Autumn18.DYJetsToLL_M-50_HT-200to400_TuneCP5_PSweights',
+                    'Autumn18.DYJetsToLL_M-50_HT-2500toInf_TuneCP5_PSweights',
+                    'Autumn18.DYJetsToLL_M-50_HT-400to600_TuneCP5_PSweights',
+                    'Autumn18.DYJetsToLL_M-50_HT-600to800_TuneCP5_PSweights',
+                    'Autumn18.DYJetsToLL_M-50_HT-800to1200_TuneCP5_PSweights'
+                ]
+sampnames_tt2018 = ['Autumn18.TTTo2L2Nu_TuneCP5',
+                   'Autumn18.TTToHadronic_TuneCP5',
+                   'Autumn18.TTToSemiLeptonic_TuneCP5'
+               ]
+
+sampnames_wz2018 = ['Autumn18.WZTo2L2Q']
+
+sampnames_zz2018 = ['Autumn18.ZZTo2L2Q']
+
+sampnames_dy2017 = ['Fall17.DYJetsToLL_M-50_HT-100to200_TuneCP5',
+                    'Fall17.DYJetsToLL_M-50_HT-1200to2500_TuneCP5',
+                    'Fall17.DYJetsToLL_M-50_HT-200to400_TuneCP5',
+                    'Fall17.DYJetsToLL_M-50_HT-2500toInf_TuneCP5',
+                    'Fall17.DYJetsToLL_M-50_HT-400to600_TuneCP5',
+                    'Fall17.DYJetsToLL_M-50_HT-600to800_TuneCP5',
+                    'Fall17.DYJetsToLL_M-50_HT-800to1200_TuneCP5'
+                ]
+
+sampnames_tt2017 = ['Fall17.TTTo2L2Nu_TuneCP5_PSweights',
+                    'Fall17.TTToHadronic_TuneCP5',
+                    'Fall17.TTToSemiLeptonic_TuneCP5',
+                ]
+
+sampnames_wz2017 = ['Fall17.WZTo2L2Q']
+
+sampnames_zz2017 = ['Fall17.ZZTo2L2Q']
+
+sampnames_dy2016 = ['Summer16v3.DYJetsToLL_M-50_HT-100to200_TuneCUETP8M1',
+                    'Summer16v3.DYJetsToLL_M-50_HT-1200to2500_TuneCUETP8M1',
+                    'Summer16v3.DYJetsToLL_M-50_HT-200to400_TuneCUETP8M1',
+                    'Summer16v3.DYJetsToLL_M-50_HT-2500toInf_TuneCUETP8M1',
+                    'Summer16v3.DYJetsToLL_M-50_HT-400to600_TuneCUETP8M1',
+                    'Summer16v3.DYJetsToLL_M-50_HT-600to800_TuneCUETP8M1',
+                    'Summer16v3.DYJetsToLL_M-50_HT-800to1200_TuneCUETP8M1'
+                ]
+
+sampnames_tt2016 = ['Summer16v3.TTTo2L2Nu_TuneCP5_PSweights',
+                    'Summer16v3.TTToHadronic_TuneCP5_PSweights',
+                    'Summer16v3.TTToSemiLeptonic_TuneCP5_PSweights'
+                ]
+
+sampnames_wz2016 = ['Summer16v3.WZTo2L2Q']
+
+sampnames_zz2016 = ['Summer16v3.ZZTo2L2Q']
+
+
+class backgrounds:
+    def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr=""):
+        self.path = path
+        self.zptcut = zptcut
+        self.hptcut = hptcut
+        self.metcut = metcut
+        self.btagwp = btagwp
+        self.systr = systr
+        self.ftype   = 'upout'
+        self.cutstring = 'DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)
+
+        #gather background MC files
+        #2017
+        self.f17dyjetsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2017]
+        self.f17dyjetsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2017]
+        self.f17dyjettr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2017]
+        self.f17ttsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2017]
+        self.f17ttsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2017]
+        self.f17tttr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2017]
+        self.f17wzsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2017]
+        self.f17wzsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2017]
+        self.f17wztr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2017]
+        self.f17zzsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2017]
+        self.f17zzsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2017]
+        self.f17zztr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2017]
+
+        #2018
+        self.a18dyjetsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2018]
+        self.a18dyjetsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2018]
+        self.a18dyjettr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2018]
+        self.a18ttsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2018]
+        self.a18ttsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2018]
+        self.a18tttr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2018]
+        self.a18wzsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2018]
+        self.a18wzsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2018]
+        self.a18wztr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2018]
+        self.a18zzsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2018]
+        self.a18zzsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2018]
+        self.a18zztr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2018]
+
+        #2016
+        self.s16dyjetsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2016]
+        self.s16dyjetsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2016]
+        self.s16dyjettr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_dy2016]
+        self.s16ttsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2016]
+        self.s16ttsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2016]
+        self.s16tttr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_tt2016]
+        self.s16wzsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2016]
+        self.s16wzsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2016]
+        self.s16wztr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_wz2016]
+        self.s16zzsb = [path+s+"_"+self.ftype+"_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2016]
+        self.s16zzsr = [path+s+"_"+self.ftype+"_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2016]
+        self.s16zztr = [path+s+"_"+self.ftype+"_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_zz2016]
+
+        #gather errors
+        self.f17dyjetsberrs = [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2017]
+        self.f17dyjetsrerrs = [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2017]
+        self.f17dyjettrerrs = [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2017]
+        self.f17ttsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2017]
+        self.f17ttsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2017]
+        self.f17tttrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2017]
+        self.f17wzsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2017]
+        self.f17wzsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2017]
+        self.f17wztrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2017]
+        self.f17zzsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2017]
+        self.f17zzsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2017]
+        self.f17zztrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2017]
+
+        self.a18dyjetsberrs = [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2018]
+        self.a18dyjetsrerrs = [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2018]
+        self.a18dyjettrerrs = [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2018]
+        self.a18ttsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2018]
+        self.a18ttsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2018]
+        self.a18tttrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2018]
+        self.a18wzsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2018]
+        self.a18wzsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2018]
+        self.a18wztrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2018]
+        self.a18zzsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2018]
+        self.a18zzsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2018]
+        self.a18zztrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2018]  
+        
+        self.s16dyjetsberrs = [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2016]
+        self.s16dyjetsrerrs = [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2016] 
+        self.s16dyjettrerrs = [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_dy2016]  
+        self.s16ttsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2016]
+        self.s16ttsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2016] 
+        self.s16tttrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_tt2016]  
+        self.s16wzsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2016]
+        self.s16wzsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2016] 
+        self.s16wztrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_wz2016]  
+        self.s16zzsberrs =    [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2016]
+        self.s16zzsrerrs =    [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2016] 
+        self.s16zztrerrs =    [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_zz2016]  
+
+
+        self.bkgs = {"DYJetsToLL":
+                {18:
+                 {"sb":[self.a18dyjetsb,self.a18dyjetsberrs],
+                  "sr":[self.a18dyjetsr,self.a18dyjetsrerrs],
+                  "tr":[self.a18dyjettr,self.a18dyjettrerrs]},
+                 17:
+                 {"sb":[self.f17dyjetsb,self.f17dyjetsberrs],
+                  "sr":[self.f17dyjetsr,self.f17dyjetsrerrs],
+                  "tr":[self.f17dyjettr,self.f17dyjettrerrs]},
+                 16:
+                 {"sb":[self.s16dyjetsb,self.s16dyjetsberrs],
+                  "sr":[self.s16dyjetsr,self.s16dyjetsrerrs],
+                  "tr":[self.s16dyjettr,self.s16dyjettrerrs]},
+                },
+                "TT":
+                {18:
+                 {"sb":[self.a18ttsb,self.a18ttsberrs],
+                  "sr":[self.a18ttsr,self.a18ttsrerrs],
+                  "tr":[self.a18tttr,self.a18tttrerrs]},
+                 17:
+                 {"sb":[self.f17ttsb,self.f17ttsberrs],
+                  "sr":[self.f17ttsr,self.f17ttsrerrs],
+                  "tr":[self.f17tttr,self.f17tttrerrs]},
+                 16:
+                 {"sb":[self.s16ttsb,self.s16ttsberrs],
+                  "sr":[self.s16ttsr,self.s16ttsrerrs],
+                  "tr":[self.s16tttr,self.s16tttrerrs]},
+                },
+                "WZTo2L2Q":
+                {18:
+                 {"sb":[self.a18wzsb,self.a18wzsberrs],
+                  "sr":[self.a18wzsr,self.a18wzsrerrs],
+                  "tr":[self.a18wztr,self.a18wztrerrs]},
+                 17:
+                 {"sb":[self.f17wzsb,self.f17wzsberrs],
+                  "sr":[self.f17wzsr,self.f17wzsrerrs],
+                  "tr":[self.f17wztr,self.f17wztrerrs]},
+                 16:
+                 {"sb":[self.s16wzsb,self.s16wzsberrs],
+                  "sr":[self.s16wzsr,self.s16wzsrerrs],
+                  "tr":[self.s16wztr,self.s16wztrerrs]},
+                },
+                "ZZTo2L2Q":
+                {18:
+                 {"sb":[self.a18zzsb,self.a18zzsberrs],
+                  "sr":[self.a18zzsr,self.a18zzsrerrs],
+                  "tr":[self.a18zztr,self.a18zztrerrs]},
+                 17:
+                 {"sb":[self.f17zzsb,self.f17zzsberrs],
+                  "sr":[self.f17zzsr,self.f17zzsrerrs],
+                  "tr":[self.f17zztr,self.f17zztrerrs]},
+                 16:
+                 {"sb":[self.s16zzsb,self.s16zzsberrs],
+                  "sr":[self.s16zzsr,self.s16zzsrerrs],
+                  "tr":[self.s16zztr,self.s16zztrerrs]},
+                }
+        }
+
+        self.config = configparser.RawConfigParser()
+        self.config.optionxform = str
+        fp = open('xsects_2017.ini')#2017 and 2018dy+jets xs same
+        self.config.read_file(fp)
+
+        
+    def getAddedHist(self,hist,samp,region,hname,years = [16,17,18]):
+        bkg = self.bkgs[samp]
+        xspairs = self.config.items(samp)
+        #print(xspairs)
+        bkgdfs  = []
+        scales = []
+        for year in years:
+            if year == 16:
+                lumi = 36.31
+            if year == 17:
+                lumi = 41.53
+            if year == 18:
+                lumi = 59.74
+                
+            files = bkg[year][region][0]
+            errs  = bkg[year][region][1]
+            if "DYJetsToLL" in samp:
+                files.sort(key = orderDY)
+                errs.sort(key = orderDY)
+            if "TT" in samp:
+                files.sort()
+                errs.sort()
+
+            #print(files)
+            for i,f in enumerate(files):
+                fparts = f.split("/")
+                name = fparts[-1]
+                #print("The MC sample in question: ",name)
+                tf = ROOT.TFile.Open(f)
+                numevents = float(str(tf.Get('hnevents').GetString()))
+                #print("The number of miniAOD events processed: ",numevents)
+                xs = float(xspairs[i][1].split()[0])*1000#Into Femtobarn
+                #print("The cross section read from ini file, in femtobarns: ",xs)
+                scale = findScale(numevents,xs,lumi)
+                scales.append(scale)
+                #print("The scaling applied: ",scale)
+                h = tf.Get(hname)
+                hscaled = h.Clone()
+                hscaled.Scale(scale)
+                #print("The unscaled contribution: ",h.Integral())
+                #print("The   scaled contribution: ",hscaled.Integral())
+                hist.Add(hscaled)
+                
+                #calc hist errors
+                df = pd.read_pickle(errs[i])
+                sdf = df*scale
+                sqrddf = sdf**2
+                bkgdfs.append(sqrddf)
+
+                debugstring = name+" "+str(xs)+" "+str(scale)
+                #print(debugstring)
+                #print("   integral of unscaled histogram: ",h.Integral())
+                #print("                            scale: ",scale)
+                #print("      intgral of scaled histogram: ",hscaled.Integral())
+
+        uncsqdDYJetsdf = sum(bkgdfs)
+        uncDYJetsdf    = uncsqdDYJetsdf**(1/2)
+
+        #alpha = 1.- 0.682689492
+        for ibin in range(hist.GetNbinsX()+1):
+            if ibin == 0:
+                continue
+            else:
+            #elif hist.GetBinContent(ibin) > 0:
+                binerr = uncDYJetsdf[hname][ibin-1]
+                hist.SetBinError(ibin,binerr)
+            #for garwood interavls    
+            #else:
+                #binerrbase = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                #errs = [binerrbase*scale for scale in scales]
+                #erssq = [err*err for err in errs]
+                #sumer = sum(erssq)
+                #binerr = (sumer)**(1/2)
+                #hist.SetBinError(ibin,binerr)
+                
+
+        #print("    integral added hist: ",hist.Integral())
+        return hist
+
+    def getAddedHistXSErr(self,hist,samp,region,hname,xserradddir,years = [16,17,18]):
+        bkg = self.bkgs[samp]
+        xspairs = self.config.items(samp)
+        xsuncpairs = self.config.items(samp+'_unc')
+        bkgdfs  = []
+        scales = []
+        for year in years:
+            if year == 16:
+                lumi = 36.31
+            if year == 17:
+                lumi = 41.53
+            if year == 18:
+                lumi = 59.74
+                
+            files = bkg[year][region][0]
+            errs  = bkg[year][region][1]
+            if "DYJetsToLL" in samp:
+                files.sort(key = orderDY)
+                errs.sort(key = orderDY)
+            if "TT" in samp:
+                files.sort()
+                errs.sort()
+
+            #print(files)
+            for i,f in enumerate(files):
+                fparts = f.split("/")
+                name = fparts[-1]
+                #print("The MC sample in question: ",name)
+                tf = ROOT.TFile.Open(f)
+                numevents = float(str(tf.Get('hnevents').GetString()))
+                #print("The number of miniAOD events processed: ",numevents)
+                #xsunc = float(xsuncpairs[i][1].split()[0])*1000#Into Femtobarn#the uncertainty in the database
+                xsunc  = float(xspairs[i][1].split()[0])*1000*0.06#6% uncertainty
+                xs = float(xspairs[i][1].split()[0])*1000+xserradddir*xsunc#Into Femtobarn
+                #print("The cross section read from ini file, in femtobarns: ",xs)
+                scale = findScale(numevents,xs,lumi)
+                scales.append(scale)
+                #print("The scaling applied: ",scale)
+                h = tf.Get(hname)
+                hscaled = h.Clone()
+                hscaled.Scale(scale)
+                #print("The unscaled contribution: ",h.Integral())
+                #print("The   scaled contribution: ",hscaled.Integral())
+                hist.Add(hscaled)
+                
+                #calc hist errors
+                df = pd.read_pickle(errs[i])
+                sdf = df*scale
+                sqrddf = sdf**2
+                bkgdfs.append(sqrddf)
+
+                debugstring = name+" "+str(xs)+" "+str(scale)
+                #print(debugstring)
+                #print("   integral of unscaled histogram: ",h.Integral())
+                #print("                            scale: ",scale)
+                #print("      intgral of scaled histogram: ",hscaled.Integral())
+
+        uncsqdDYJetsdf = sum(bkgdfs)
+        uncDYJetsdf    = uncsqdDYJetsdf**(1/2)
+
+        #alpha = 1.- 0.682689492
+        for ibin in range(hist.GetNbinsX()+1):
+            if ibin == 0:
+                continue
+            else:
+            #elif hist.GetBinContent(ibin) > 0:
+                binerr = uncDYJetsdf[hname][ibin-1]
+                hist.SetBinError(ibin,binerr)
+            #for garwood interavls    
+            #else:
+                #binerrbase = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                #errs = [binerrbase*scale for scale in scales]
+                #erssq = [err*err for err in errs]
+                #sumer = sum(erssq)
+                #binerr = (sumer)**(1/2)
+                #hist.SetBinError(ibin,binerr)
+                
+
+        #print("    integral added hist: ",hist.Integral())
         return hist
