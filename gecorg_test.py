@@ -1524,11 +1524,13 @@ class backgrounds:
                 scales.append(scale)
                 #print("The scaling applied: ",scale)
                 h = tf.Get(hname)
+                h.SetDirectory(0)
                 hscaled = h.Clone()
                 hscaled.Scale(scale)
                 #print("The unscaled contribution: ",h.Integral())
                 #print("The   scaled contribution: ",hscaled.Integral())
                 hist.Add(hscaled)
+                tf.Close()
                 
                 #calc hist errors
                 df = pd.read_pickle(errs[i])
