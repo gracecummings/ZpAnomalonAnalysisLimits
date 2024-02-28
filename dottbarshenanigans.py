@@ -16,7 +16,7 @@ tcanvasdims = [600,800]
 bkgnames = ["DYJetsToLL","TT","WZTo2L2Q","ZZTo2L2Q"]
 bkgcols = go.colsFromPalette(bkgnames,ROOT.kLake)
 
-def castFitIntoHistogram(empty,dicfits):
+def castFitIntoHistogram(empty,dicfits,fitlow):
     histlist = []
     for key in dicfits.keys():
         name = key
@@ -29,8 +29,11 @@ def castFitIntoHistogram(empty,dicfits):
         hnew.SetTitle(name)
         fit = dicfits[key]
         for b in range(hnew.GetNbinsX()+1):
-            hnew.SetBinContent(b,fit.Eval(hnew.GetBinCenter(b)))
-            hnew.SetBinError(b,0.0)
+            if hnew.GetBinCenter(b) < fitlow:
+                hnew.SetBinContent(b,-999.0)
+            else:
+                hnew.SetBinContent(b,fit.Eval(hnew.GetBinCenter(b)))
+                hnew.SetBinError(b,0.0)
         histlist.append(hnew)
     return histlist
 
@@ -51,7 +54,12 @@ def makeTPadOfFitGOF(fit,normfits = False):
     fitlabel.SetFillColor(0)
     return chi2,ndof,fitlabel
 
-def makePlotandPng(hmc,hdata,name,*args):
+def makePlotandPng(hmc,hdata,name,**kwargs):
+    fitdict = kwargs.get('fitdict',None)
+    empty = hdata.Clone()
+    empty.SetDirectory(0)
+    empty.Reset("ICESM")
+
     #Plotting sytle
     tdrstyle.setTDRStyle()
     CMS_lumi.lumi_13TeV = go.lumiFormatter(years)
@@ -71,7 +79,7 @@ def makePlotandPng(hmc,hdata,name,*args):
     hdiv.Divide(hmc)
     ratline = ROOT.TLine(hdiv.GetBinLowEdge(1),1,hdiv.GetBinLowEdge(hdiv.GetNbinsX())+hdiv.GetBinWidth(hdiv.GetNbinsX()),1)
     
-    leg = ROOT.TLegend(0.5,0.45,0.95,0.80)
+    leg = ROOT.TLegend(0.5,0.45,0.92,0.80)
     leg.SetBorderSize(0)
     leg.AddEntry(hmc,"ttbar MC in SR","f")
     leg.AddEntry(hdata,"data-driven estimation")
@@ -103,37 +111,112 @@ def makePlotandPng(hmc,hdata,name,*args):
     hmc.GetYaxis().SetLabelSize(0.04)
     CMS_lumi.CMS_lumi(p1,4,13)
     hdata.Draw("histsame,pe")
-    leg.Draw()
     p1.Update()
 
-    if args:#should be the fits
-        for ar in args:
-            ar.Draw("same")
-            chi2,ndof,fitinfo = makeTPadOfFitGOF(ar)
+    if fitdict:#should be the fits
+        legfit = ROOT.TLegend(0.25,0.6,0.55,0.92)
+        legfit.SetBorderSize(0)
+        if "Par" in fitdict["name"]:
+            #make new forms of stuff
+            hshifts = castFitIntoHistogram(empty,{"h"+fitdict["name"]+"up":fitdict["up"],"h"+fitdict["name"]+"dwn":fitdict["dwn"],"hnominal":fitdict["nom"]},1300)
+            hshiftsdvs = []
+            for h in hshifts:
+                hshiftsdvs.append(h.Clone())
+                hshiftsdvs[-1].Divide(hshifts[-1])
+
+            #plot
+            fitdict["nom"].SetLineColor(ROOT.kBlack)
+            fitdict["up"].SetLineColor(2)
+            fitdict["dwn"].SetLineColor(4)
+            fitdict["nom"].Draw("same")
+            fitdict["up"].Draw("same")
+            fitdict["dwn"].Draw("same")
+
+            leg.AddEntry(fitdict["nom"],"Nominal Exp Fit")
+            leg.AddEntry(fitdict["up"],fitdict["name"]+" up")
+            leg.AddEntry(fitdict["dwn"],fitdict["name"]+" dwn")
+            leg.Draw()
+
+            p1.Update()
+            tc.cd()
+            p2.Draw()
+            p2.cd()
+
+            hshiftsdvs[-1].SetLineColor(ROOT.kBlack)
+            hshiftsdvs[-1].Draw()
+            hshiftsdvs[-1].GetXaxis().SetTitle("bin center")
+            hshiftsdvs[-1].GetXaxis().SetTitleSize(0.11)
+            hshiftsdvs[-1].GetXaxis().SetTitleOffset(0.65)
+            hshiftsdvs[-1].GetXaxis().SetLabelSize(0.075)
+            hshiftsdvs[-1].GetYaxis().SetTitle("syst/fit")
+            hshiftsdvs[-1].GetYaxis().SetTitleSize(0.11)
+            hshiftsdvs[-1].GetYaxis().SetTitleOffset(.45)
+            hshiftsdvs[-1].GetYaxis().SetLabelSize(0.08)
+            hshiftsdvs[-1].GetYaxis().SetLabelOffset(0.02)
+            hshiftsdvs[-1].GetYaxis().SetNdivisions(503)
+            hshiftsdvs[-1].SetMinimum(-0.5)
+            hshiftsdvs[-1].SetMaximum(5.)
+            hshiftsdvs[0].SetLineColor(2)
+            hshiftsdvs[1].SetLineColor(4)
+            hshiftsdvs[0].Draw("same")
+            hshiftsdvs[1].Draw("same")
+            hshiftsdvs[-1].Draw("same")
+
+            legfit.AddEntry(hshiftsdvs[-1],"Nominal Fit Value","l")
+            legfit.AddEntry(hshiftsdvs[0],fitdict["name"]+" up","l")
+            legfit.AddEntry(hshiftsdvs[1],fitdict["name"]+" dwn","l")
+            legfit.Draw()
+            tc.cd()
+
+        else:
+            fitdict["nom"].SetLineColor(ROOT.kBlack)
+            fitdict["nom"].Draw("same")
+            leg.AddEntry(fitdict["nom"],"Nominal Exp Fit")
+            chi2,ndof,fitinfo = makeTPadOfFitGOF(fitdict["nom"])
             fitinfo.Draw()
-    
+            leg.Draw()
+            p1.Update()
+            tc.cd()
+            p2.Draw()
+            p2.cd()
 
-    p1.Update()
-    tc.cd()
-    p2.Draw()
-    p2.cd()
-    hdiv.Draw("pe")
-    hdiv.GetXaxis().SetTitle("bin center")
-    hdiv.GetXaxis().SetTitleSize(0.11)
-    hdiv.GetXaxis().SetTitleOffset(0.65)
-    hdiv.GetXaxis().SetLabelSize(0.075)
-    hdiv.GetYaxis().SetTitle("est/MC")
-    hdiv.GetYaxis().SetTitleSize(0.11)
-    hdiv.GetYaxis().SetTitleOffset(.45)
-    hdiv.GetYaxis().SetLabelSize(0.08)
-    hdiv.GetYaxis().SetLabelOffset(0.02)
-    hdiv.GetYaxis().SetNdivisions(503)
-    hdiv.SetMinimum(0.)
-    hdiv.SetMaximum(2.)
-    ratline.Draw()
-    tc.cd()
+    else:
+        leg.Draw()
+        p1.Update()
+        tc.cd()
+        p2.Draw()
+        p2.cd()
+        hdiv.Draw("pe")
+        hdiv.GetXaxis().SetTitle("bin center")
+        hdiv.GetXaxis().SetTitleSize(0.11)
+        hdiv.GetXaxis().SetTitleOffset(0.65)
+        hdiv.GetXaxis().SetLabelSize(0.075)
+        hdiv.GetYaxis().SetTitle("est/MC")
+        hdiv.GetYaxis().SetTitleSize(0.11)
+        hdiv.GetYaxis().SetTitleOffset(.45)
+        hdiv.GetYaxis().SetLabelSize(0.08)
+        hdiv.GetYaxis().SetLabelOffset(0.02)
+        hdiv.GetYaxis().SetNdivisions(503)
+        hdiv.SetMinimum(0.)
+        hdiv.SetMaximum(2.)
+        ratline.Draw()
+        tc.cd()
+
     pngname = go.makeOutFile('ttbar_'+name,'ratio_161718_signalr','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(pngname)
+
+def doExpShifts(nomfit,parnum,name,lowr,highr,shiftedparamsin = ROOT.TVector()):
+    #print("doing the shifted fits!")
+    fitpars = []
+    fiterrs = []
+    shiftedfits = []
+    for i in range(parnum):
+        parvecedit = ROOT.TVector(parnum)
+        for j in range(parnum):
+            parvecedit[j] = shiftedparamsin[i][j]
+        fit = ROOT.expFitSetParsAndErrs(name+"par"+str(i),parvecedit,lowr,highr)
+        shiftedfits.append(fit)
+    return fitpars,fiterrs,shiftedfits
 
 if __name__=='__main__':
     #Years
@@ -174,7 +257,8 @@ if __name__=='__main__':
     hsrttori.SetDirectory(0)
     hsrtt = go.newNameAndStructure(hsrttori.Clone(),"TTmc",rebindiv,limrangelow,limrangehigh)
     newbinedges = go.makeBinLowEdges(hsrtt,2800)#last normal bin
-    print(newbinedges)
+    print("Getting bin edges for what is passed to Combine")
+    print("    the edges: ",newbinedges)
     hsrtt = hsrtt.Rebin(len(newbinedges)-1,"TTmcLimitRange",newbinedges)#The 6 bin that go to combine
 
     hsrtt6TeV = go.newNameAndStructure(hsrttori.Clone(),"TTmc6TeV",2,0,6000)
@@ -189,17 +273,30 @@ if __name__=='__main__':
     hemufull = estf.Get('TT_scalenominal')
     hemu6TeV = go.newNameAndStructure(hemufull.Clone(),"TTdata6TeV",1,0,6000)
 
-    #Lets do some fits
+    #Lets do some nominal fits
     print("Compiling fits")
     ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
     ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
-    emuexpfit = ROOT.expFitTH1F(hemu6TeV,"emuexp","LRE0+",1300,4000)
-    hemuexp = castFitIntoHistogram(empty.Clone(),{"hemuexp":emuexpfit})[0]
-    
+    print("=================       Doing base fit        =================")
+    emuexpfit = ROOT.expFitTH1F(hemu6TeV,"emuexp","LQRE0+",1300,4000)
+    hemuexp = castFitIntoHistogram(empty.Clone(),{"hemuexp":emuexpfit},1300)[0]
 
+    #Doing the systematic shifted fits
+    print("================= Doing fits to gather errors =================")
+    emuexpfitparamsup = ROOT.expFitTH1DecorrParamsShiftedUp(hemu6TeV,"emushiftup","LQRE0+",1300,4000)
+    emuexpfitparamsdn = ROOT.expFitTH1DecorrParamsShiftedDown(hemu6TeV,"emushiftdn","LQRE0+",1300,4000)
+    print("=================     Getting Shifted Fits    =================")
+    emuupparams,emuuperrs,emuupfits = doExpShifts(emuexpfit,2,"ttup",1300,4000,emuexpfitparamsup)
+    emudnparams,emudnerrs,emudnfits = doExpShifts(emuexpfit,2,"ttdwn",1300,4000,emuexpfitparamsdn)
+    par0_syst = {"nom":emuexpfit,"up":emuupfits[0],"dwn":emudnfits[0],"name":"Par0"}
+    par1_syst = {"nom":emuexpfit,"up":emuupfits[1],"dwn":emudnfits[1],"name":"Par1"}
+    
+    #Make Plots
     makePlotandPng(hsrtt,hesttt,"estimation_over_mc")
     makePlotandPng(hsrttori.Rebin(2),hemufull,"fullemuregion_mccomp")
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_mccomp",emuexpfit)
+    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_mccomp",fitdict = {"nom":emuexpfit,"name":"nominal exp"})
+    makePlotandPng(hsrtt6TeV,hemu6TeV,"6Tevemu_par0syst",fitdict = par0_syst)
+    makePlotandPng(hsrtt6TeV,hemu6TeV,"6Tevemu_par1syst",fitdict = par1_syst)
 
     outname = go.makeOutFile('ttbar_shenanigan_fits_to_data','ratio_161718_signalr','.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootout = ROOT.TFile(outname,'recreate')
