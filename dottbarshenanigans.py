@@ -114,8 +114,6 @@ def makePlotandPng(hmc,hdata,name,**kwargs):
     p1.Update()
 
     if fitdict:#should be the fits
-        legfit = ROOT.TLegend(0.25,0.6,0.55,0.92)
-        legfit.SetBorderSize(0)
         if "Par" in fitdict["name"]:
             #make new forms of stuff
             hshifts = castFitIntoHistogram(empty,{"h"+fitdict["name"]+"up":fitdict["up"],"h"+fitdict["name"]+"dwn":fitdict["dwn"],"hnominal":fitdict["nom"]},1300)
@@ -162,6 +160,8 @@ def makePlotandPng(hmc,hdata,name,**kwargs):
             hshiftsdvs[1].Draw("same")
             hshiftsdvs[-1].Draw("same")
 
+            legfit = ROOT.TLegend(0.25,0.6,0.55,0.92)
+            legfit.SetBorderSize(0)
             legfit.AddEntry(hshiftsdvs[-1],"Nominal Fit Value","l")
             legfit.AddEntry(hshiftsdvs[0],fitdict["name"]+" up","l")
             legfit.AddEntry(hshiftsdvs[1],fitdict["name"]+" dwn","l")
@@ -169,6 +169,7 @@ def makePlotandPng(hmc,hdata,name,**kwargs):
             tc.cd()
 
         else:
+            #divisions
             fitdict["nom"].SetLineColor(ROOT.kBlack)
             fitdict["nom"].Draw("same")
             leg.AddEntry(fitdict["nom"],"Nominal Exp Fit")
@@ -179,6 +180,21 @@ def makePlotandPng(hmc,hdata,name,**kwargs):
             tc.cd()
             p2.Draw()
             p2.cd()
+            hdiv.Draw("pe")
+            hdiv.GetXaxis().SetTitle("bin center")
+            hdiv.GetXaxis().SetTitleSize(0.11)
+            hdiv.GetXaxis().SetTitleOffset(0.65)
+            hdiv.GetXaxis().SetLabelSize(0.075)
+            hdiv.GetYaxis().SetTitle("est/MC")
+            hdiv.GetYaxis().SetTitleSize(0.11)
+            hdiv.GetYaxis().SetTitleOffset(.45)
+            hdiv.GetYaxis().SetLabelSize(0.08)
+            hdiv.GetYaxis().SetLabelOffset(0.02)
+            hdiv.GetYaxis().SetNdivisions(503)
+            hdiv.SetMinimum(-0.5)
+            hdiv.SetMaximum(2.5)
+            ratline.Draw()
+            tc.cd()
 
     else:
         leg.Draw()
@@ -204,6 +220,138 @@ def makePlotandPng(hmc,hdata,name,**kwargs):
 
     pngname = go.makeOutFile('ttbar_'+name,'ratio_161718_signalr','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(pngname)
+
+def makeCombineHistandPng(hdata,hfitnom,hfitup,hfitdn,name):
+    #can only take un-rebinned plots
+    empty = hdata.Clone()
+    empty.SetDirectory(0)
+    empty.Reset("ICESM")
+
+    #Rebin the emu data 
+    hemu = hdata.Clone()
+    hemu = go.newNameAndStructure(hemu,"TT_emu_data",1,limrangelow,limrangehigh)
+    hemu = hemu.Rebin(len(newbinedges)-1,"TT_emu_data",newbinedges)#The 6 bin that go to combine
+    int_emu = hemu.Integral()
+
+    #gather the fits, make them hists, and rebin
+    fitnames = ["TT_"+name+"_up","TT_"+name+"_dwn","TT_nom_fit"]
+    hfits = []
+    hfits.append(castFitIntoHistogram(empty,{fitnames[0]:hfitup},1300)[0])
+    hfits.append(castFitIntoHistogram(empty,{fitnames[1]:hfitdn},1300)[0])  
+    hfits.append(castFitIntoHistogram(empty,{fitnames[2]:hfitnom},1300)[0])
+    hfits_use = []
+    
+    for i,hfit in enumerate(hfits):
+        hfits_use.append(go.newNameAndStructure(hfit,fitnames[i],1,limrangelow,limrangehigh))
+        hfits_use[-1] = hfits_use[-1].Rebin(len(newbinedges)-1,fitnames[i],newbinedges)
+
+    int_nom = hfits_use[-1].Integral()
+    int_up  = hfits_use[0].Integral()
+    int_dwn  = hfits_use[1].Integral()
+
+    rat_up = int_up/int_nom
+    rat_dwn = int_dwn/int_nom
+
+    #make divs of the fits -- dividing each by nominal fit hist
+    hshiftsdvs = []
+    for h in hfits_use:
+        hshiftsdvs.append(h.Clone())
+        hshiftsdvs[-1].Divide(hfits_use[-1])
+
+    #Plotting sytle
+    tdrstyle.setTDRStyle()
+    CMS_lumi.lumi_13TeV = go.lumiFormatter(years)
+    CMS_lumi.writeExtraText = 1
+    CMS_lumi.extraText = "Internal"
+
+    #Do some settings, make some plots
+    hdata.SetBinErrorOption(1)
+    hdata.SetMarkerStyle(8)
+    hdata.SetMarkerSize(0.7)
+    hdata.SetMarkerColor(ROOT.kBlack)
+    hfits_use[-1].SetLineColor(ROOT.kBlack)
+    hfits_use[0].SetLineColor(2)
+    hfits_use[1].SetLineColor(4)
+
+    leg = ROOT.TLegend(0.5,0.45,0.92,0.80)
+    leg.SetBorderSize(0)
+    leg.AddEntry(hdata,"data-driven estimation")
+    leg.AddEntry(hfits_use[-1],"Nominal Exp Fit")
+    leg.AddEntry(hfits_use[0],fitnames[0])
+    leg.AddEntry(hfits_use[1],fitnames[1])
+
+    fitlabel = ROOT.TPaveText(0.55,0.3,0.9,0.45,"NBNDC")
+    fitlabel.AddText("emu yield: "+str(round(int_emu,4)))
+    fitlabel.AddText("fit yield: "+str(round(int_nom,4)))
+    fitlabel.AddText(name+" up effect: "+str(round(rat_up,4)))
+    fitlabel.AddText(name+" dwn effect: "+str(round(rat_dwn,4)))
+    fitlabel.SetFillColor(0)
+
+    #Plotting itself
+    tc = ROOT.TCanvas("tc","tc",tcanvasdims[0],tcanvasdims[1])
+    p1 = ROOT.TPad("p1","ttbar_comparison",0,stkpadydims[0],1.0,stkpadydims[1])
+    p1.SetLeftMargin(0.15)
+    p1.SetRightMargin(0.05)
+    p2 = ROOT.TPad("p2","ttbar_estimation_ratio",0,ratpadydims[0],1.0,ratpadydims[1])
+    p2.SetRightMargin(.05)
+    p2.SetLeftMargin(0.15)
+    p2.SetBottomMargin(0.25)
+    p2.SetTopMargin(0.05)
+
+    #Prepare first pad for stack
+    p1.Draw()
+    p1.cd()
+    hfits_use[0].Draw("hist")
+    hfits_use[0].GetXaxis().SetTitle("RJR Estimator")
+    hfits_use[0].GetXaxis().SetTitleSize(0.05)
+    hfits_use[0].GetXaxis().SetTitleOffset(1.1)
+    hfits_use[0].GetXaxis().SetLabelSize(0.04)
+    hfits_use[0].GetYaxis().SetTitle("Events")
+    hfits_use[0].GetYaxis().SetTitleSize(0.05)
+    hfits_use[0].GetYaxis().SetLabelSize(0.04)
+    CMS_lumi.CMS_lumi(p1,4,13)
+    hfits_use[1].Draw("hist,same")
+    hfits_use[-1].Draw("hist,same")
+    hdata.Draw("histsame,pe")
+    leg.Draw()
+    fitlabel.Draw()
+    p1.Update()
+    tc.cd()
+
+
+    p2.Draw()
+    p2.cd()
+    hshiftsdvs[-1].SetLineColor(ROOT.kBlack)
+    hshiftsdvs[-1].Draw()
+    hshiftsdvs[-1].GetXaxis().SetTitle("bin center")
+    hshiftsdvs[-1].GetXaxis().SetTitleSize(0.11)
+    hshiftsdvs[-1].GetXaxis().SetTitleOffset(0.65)
+    hshiftsdvs[-1].GetXaxis().SetLabelSize(0.075)
+    hshiftsdvs[-1].GetYaxis().SetTitle("syst/fit")
+    hshiftsdvs[-1].GetYaxis().SetTitleSize(0.11)
+    hshiftsdvs[-1].GetYaxis().SetTitleOffset(.45)
+    hshiftsdvs[-1].GetYaxis().SetLabelSize(0.08)
+    hshiftsdvs[-1].GetYaxis().SetLabelOffset(0.02)
+    hshiftsdvs[-1].GetYaxis().SetNdivisions(503)
+    hshiftsdvs[-1].SetMinimum(-0.5)
+    hshiftsdvs[-1].SetMaximum(5.)
+    hshiftsdvs[0].SetLineColor(2)
+    hshiftsdvs[1].SetLineColor(4)
+    hshiftsdvs[0].Draw("same")
+    hshiftsdvs[1].Draw("same")
+    hshiftsdvs[-1].Draw("same")
+    
+    legfit = ROOT.TLegend(0.25,0.6,0.55,0.92)
+    legfit.SetBorderSize(0)
+    legfit.AddEntry(hshiftsdvs[-1],"Nominal Fit Value","l")
+    legfit.AddEntry(hshiftsdvs[0],fitnames[0],"l")
+    legfit.AddEntry(hshiftsdvs[1],fitnames[1],"l")
+    legfit.Draw()
+    tc.cd()
+
+    pngname = go.makeOutFile('ttbar_'+name,'ratio_161718_combineplots','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    tc.SaveAs(pngname)
+
 
 def doExpShifts(nomfit,parnum,name,lowr,highr,shiftedparamsin = ROOT.TVector()):
     #print("doing the shifted fits!")
@@ -297,6 +445,18 @@ if __name__=='__main__':
     makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_mccomp",fitdict = {"nom":emuexpfit,"name":"nominal exp"})
     makePlotandPng(hsrtt6TeV,hemu6TeV,"6Tevemu_par0syst",fitdict = par0_syst)
     makePlotandPng(hsrtt6TeV,hemu6TeV,"6Tevemu_par1syst",fitdict = par1_syst)
+    makePlotandPng(hsrttori,hemufull,"fullemuregion_par0syst",fitdict = par0_syst)
+    makePlotandPng(hsrttori,hemufull,"fullemuregion_par1syst",fitdict = par1_syst)
+
+    #Do Combine Plots 
+    #do check of recovered ttbar file and combine submission dists
+    hemufromfullspec = hemufull.Clone()
+    hemufromfullspec.SetDirectory(0)
+    hemufromfullspec = go.newNameAndStructure(hemufromfullspec,"TTemuFromFullinLimitRange",1,limrangelow,limrangehigh)
+    hemufromfullspec = hemufromfullspec.Rebin(len(newbinedges)-1,"TTemuFromFullinLimitRange",newbinedges)#The 6 bin that go to combine
+    makePlotandPng(hemufromfullspec,hesttt,"combineest_over_estfromrecovdredfile")
+    makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuupfits[0],emudnfits[0],"Par0")
+    makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuupfits[1],emudnfits[1],"Par1")
 
     outname = go.makeOutFile('ttbar_shenanigan_fits_to_data','ratio_161718_signalr','.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootout = ROOT.TFile(outname,'recreate')
