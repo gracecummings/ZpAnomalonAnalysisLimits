@@ -20,6 +20,7 @@ def castFitIntoHistogram(empty,dicfits,fitlow):
     histlist = []
     for key in dicfits.keys():
         name = key
+        #print("****************************",key)
         if "up" in key:
             name = key.replace("up","Up")
         if "dwn" in key:
@@ -33,12 +34,17 @@ def castFitIntoHistogram(empty,dicfits,fitlow):
                 hnew.SetBinContent(b,-999.0)
             else:
                 if ((hnew.GetBinCenter(b-1) >= fitlow) and (fit.Eval(hnew.GetBinCenter(b-1)) < fit.Eval(hnew.GetBinCenter(b)))):
-                    print("fit turned over - bin ",b)
-                    print("   b-1",fit.Eval(hnew.GetBinCenter(b-1)))
-                    print("   b",fit.Eval(hnew.GetBinCenter(b)))
+                    #print("fit turned over - bin ",b)
+                    #print("   b-1 fit val  ",fit.Eval(hnew.GetBinCenter(b-1)))
+                    #print("   b-1 bin cont ",hnew.GetBinContent(b-1))
+                    #print("   b   fit val  ",fit.Eval(hnew.GetBinCenter(b)))
+                    
                     hnew.SetBinContent(b,hnew.GetBinContent(b-1))
                     hnew.SetBinError(b,0.0)
+                    #print("   b bin after set ",hnew.GetBinContent(b))
                 else:
+                    #print("Filiing bin with center: ",hnew.GetBinCenter(b))
+                    #print("  Filling with: ",fit.Eval(hnew.GetBinCenter(b)))
                     hnew.SetBinContent(b,fit.Eval(hnew.GetBinCenter(b)))
                     hnew.SetBinError(b,0.0)
         histlist.append(hnew)
@@ -253,9 +259,15 @@ def makeCombineHistandPng(hdata,hfitnom,hfitup,hfitdn,name):
         hfits_use.append(go.newNameAndStructure(hfit,fitnames[i],1,limrangelow,limrangehigh))
         hfits_use[-1] = hfits_use[-1].Rebin(len(newbinedges)-1,fitnames[i],newbinedges)
 
+    print("Checking Yields")
+    print("    ",name)
     int_nom = hfits_use[-1].Integral()
     int_up  = hfits_use[0].Integral()
     int_dwn  = hfits_use[1].Integral()
+    print("    nom: ",int_nom)
+    print("     up: ",int_up)
+    print("    dwn: ",int_dwn)
+
 
     rat_up = int_up/int_nom
     rat_dwn = int_dwn/int_nom
@@ -360,6 +372,10 @@ def makeCombineHistandPng(hdata,hfitnom,hfitup,hfitdn,name):
 
     pngname = go.makeOutFile('ttbar_'+name,'ratio_161718_combineplots','.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(pngname)
+    
+    print("recapping the histogram integral")
+    for h in hfits_use:
+        print("    ",h.Integral())
 
     return hfits_use
 
@@ -442,26 +458,32 @@ if __name__=='__main__':
 
         #Lets do an alternate fit
     print("=================       Doing Alt fit         =================")
-    print("****offset***")
-    emuexpoffsetfit = ROOT.expOffsetFitTH1F(hemu6TeV,"emuexpoffset","LRE0+",1300,4000)
+    #print("****offset***")
+    #emuexpoffsetfit = ROOT.expOffsetFitTH1F(hemu6TeV,"emuexpoffset","LRE0+",1300,4000)
     print("****sqr***")
     emuexpsqrfit = ROOT.expSqFitTH1F(hemu6TeV,"emuexpsqr","LRE0+",1300,4000)
-    print("****pwr***")
-    emuexppwrfit = ROOT.expPwrFitTH1F(hemu6TeV,"emuepwr","LR0+",1300,4000)
-    print("****poly3***")
+    #print("****pwr***")
+    #emuexppwrfit = ROOT.expPwrFitTH1F(hemu6TeV,"emuepwr","LR0+",1300,4000)
+    #print("****poly3***")
     #hemu6TeV.Fit("pol3","L+")
     #emupoly3fit = hemu6TeV.GetFunction("pol3")
-    emupoly3fit = ROOT.poly3FitTH1F(hemu6TeV,"poly3","LRE0+",1300,3000
-)
+    #emupoly3fit = ROOT.poly3FitTH1F(hemu6TeV,"poly3","LRE0+",1300,3000)
 
-    print("****poly2***")
-    emupoly2fit = ROOT.poly2FitTH1F(hemu6TeV,"poly2","LRE0+",1100,3000)
-    print("*******line******")
-    emulinefit = ROOT.lineFitTH1F(hemu6TeV,"line","LRE0+",1300,4000)
+    #print("****poly2***")
+    #emupoly2fit = ROOT.poly2FitTH1F(hemu6TeV,"poly2","LRE0+",1100,3000)
+    #print("*******line******")
+    #emulinefit = ROOT.lineFitTH1F(hemu6TeV,"line","LRE0+",1300,4000)
 
-    altfit_syst = {"nom":emuexpfit,"up":emuexpoffsetfit,"dwn":emuexpsqrfit,"name":"AltFunc"}
-    altfit_syst1 = {"nom":emuexpfit,"up":emupoly2fit,"dwn":emuexpsqrfit,"name":"AltFunc"}
-    altfit_syst2 = {"nom":emuexpfit,"up":emuexppwrfit,"dwn":emuexpsqrfit,"name":"AltFunc"}
+    print("****xExp***")
+    emuxexpfit = ROOT.xexpFitTH1F(hemu6TeV,"xexp","LRE0+",1100,4000)
+    #print("****x2Exp***")
+    #emux2expfit = ROOT.x2expFitTH1F(hemu6TeV,"x2exp","LRE0+",1100,4000)
+
+    #altfit_syst = {"nom":emuexpfit,"up":emuexpoffsetfit,"dwn":emuexpsqrfit,"name":"AltFunc"}
+    #altfit_syst1 = {"nom":emuexpfit,"up":emupoly2fit,"dwn":emuexpsqrfit,"name":"AltFunc"}
+    #altfit_syst2 = {"nom":emuexpfit,"up":emuexppwrfit,"dwn":emuexpsqrfit,"name":"AltFunc"}
+    altfit_syst3 = {"nom":emuexpfit,"up":emuxexpfit,"dwn":emuexpsqrfit,"name":"AltFunc"}
+    #altfit_syst4 = {"nom":emuexpfit,"up":emux2expfit,"dwn":emuexpsqrfit,"name":"AltFunc"}
 
     #Doing the systematic shifted fits
     print("================= Doing fits to gather errors =================")
@@ -478,18 +500,21 @@ if __name__=='__main__':
     makePlotandPng(hsrttori.Rebin(2),hemufull,"fullemuregion_mccomp")
     makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_mccomp",fitdict = {"nom":emuexpfit,"name":"nominal exp"})
     makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncexpsqr",fitdict = {"nom":emuexpsqrfit,"name":"alt exp sqr"})
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncexppwr",fitdict = {"nom":emuexppwrfit,"name":"alt exp pwr"})
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncexpoff",fitdict = {"nom":emuexpoffsetfit,"name":"alt exp offset"})
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncpoly3",fitdict = {"nom":emupoly3fit,"name":"alt ploy3"})
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncpoly2",fitdict = {"nom":emupoly2fit,"name":"alt ploy2"})
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncline",fitdict = {"nom":emulinefit,"name":"alt line"})
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncexppwr",fitdict = {"nom":emuexppwrfit,"name":"alt exp pwr"})
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncexpoff",fitdict = {"nom":emuexpoffsetfit,"name":"alt exp offset"})
+    ##makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncpoly3",fitdict = {"nom":emupoly3fit,"name":"alt ploy3"})
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncpoly2",fitdict = {"nom":emupoly2fit,"name":"alt ploy2"})
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncline",fitdict = {"nom":emulinefit,"name":"alt line"})
+    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncxexp",fitdict = {"nom":emuxexpfit,"name":"alt xexp"})
     makePlotandPng(hsrtt6TeV,hemu6TeV,"6Tevemu_par0syst",fitdict = par0_syst)
     makePlotandPng(hsrtt6TeV,hemu6TeV,"6Tevemu_par1syst",fitdict = par1_syst)
     makePlotandPng(hsrttori,hemufull,"fullemuregion_par0syst",fitdict = par0_syst)
     makePlotandPng(hsrttori,hemufull,"fullemuregion_par1syst",fitdict = par1_syst)
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_exp",fitdict =altfit_syst)
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_poly2exp",fitdict =altfit_syst1)
-    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_pwrexp",fitdict =altfit_syst2)
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_exp",fitdict =altfit_syst)
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_poly2exp",fitdict =altfit_syst1)
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_pwrexp",fitdict =altfit_syst2)
+    makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_xexp",fitdict =altfit_syst3)
+    #makePlotandPng(hsrtt6TeV,hemu6TeV,"6TeVemu_altfuncts_x2exp",fitdict =altfit_syst4)
 
     #Do Combine Plots 
     #do check of recovered ttbar file and combine submission dists
@@ -499,10 +524,15 @@ if __name__=='__main__':
     hemufromfullspec = hemufromfullspec.Rebin(len(newbinedges)-1,"TTemuFromFullinLimitRange",newbinedges)#The 6 bin that go to combine
     makePlotandPng(hemufromfullspec,hesttt,"combineest_over_estfromrecovdredfile")
     par0hists = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuupfits[0],emudnfits[0],"Par0")
+    print(par0hists[0].Integral())
+    print(par0hists[1].Integral())
+    print(par0hists[2].Integral())
     par1hists = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuupfits[1],emudnfits[1],"Par1")
-    altfunchists = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuexpoffsetfit,emuexpsqrfit,"AltFunctOffset")
-    altfunchists1 = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emupoly2fit,emuexpsqrfit,"AltFunct")
-    altfunchists2 = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuexppwrfit,emuexpsqrfit,"AltFunctPwr")
+    #altfunchists = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuexpoffsetfit,emuexpsqrfit,"AltFunctOffset")
+    #altfunchists1 = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emupoly2fit,emuexpsqrfit,"AltFunct")
+    #altfunchists2 = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuexppwrfit,emuexpsqrfit,"AltFunctPwr")
+    altfunchists3 = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emuxexpfit,emuexpsqrfit,"AltFunctxExp")
+    #altfunchists4 = makeCombineHistandPng(hemufull.Clone(),emuexpfit,emux2expfit,emuexpsqrfit,"AltFunctx2Exp")
 
     outname = go.makeOutFile('ttbar_shenanigan_fits_to_data','ratio_161718_signalr','.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     rootout = ROOT.TFile(outname,'recreate')
@@ -510,14 +540,18 @@ if __name__=='__main__':
 
     for h in par0hists:
         h.Write()
-    for h in par1hists:
+    for h in par1hists[:-1]:
         h.Write()
-    for h in altfunchists:
+    #for h in altfunchists:
+    #    h.Write()
+    #for h in altfunchists1:
+    #    h.Write()
+    #for h in altfunchists2:
+    #    h.Write()
+    for h in altfunchists3[:-1]:
         h.Write()
-    for h in altfunchists1:
-        h.Write()
-    for h in altfunchists2:
-        h.Write()
+    #for h in altfunchists4:
+    #    h.Write()
 
     rootout.Close()
 

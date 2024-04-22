@@ -2,6 +2,8 @@ import gecorg_test as go
 import ROOT
 import argparse
 
+ROOT.gROOT.SetBatch(ROOT.kTRUE)
+
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-f","--file", type=str,help = "fit diagnositic file with the output of the injection test")

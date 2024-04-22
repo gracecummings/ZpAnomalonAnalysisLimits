@@ -1648,3 +1648,131 @@ class backgrounds:
 
         #print("    integral added hist: ",hist.Integral())
         return hist
+
+sampnames_run2018 =['Run2018A-17Sep2018-v1.SingleMuon',
+                    'Run2018B-17Sep2018-v1.SingleMuon',
+                    'Run2018C-17Sep2018-v1.SingleMuon',
+                    'Run2018D-22Jan2019-v2.SingleMuon'
+                ]
+sampnames_run2017 =['Run2017B-31Mar2018-v1.SingleMuon',
+                    'Run2017C-31Mar2018-v1.SingleMuon',
+                    'Run2017D-31Mar2018-v1.SingleMuon',
+                    'Run2017E-31Mar2018-v1.SingleMuon',
+                    'Run2017F-31Mar2018-v1.SingleMuon'
+                ]
+sampnames_run2016 =['Run2016B-17Jul2018-ver2-v1.SingleMuons',
+                    'Run2016C-17Jul2018-v1.SingleMuon',
+                    'Run2016D-17Jul2018-v1.SingleMuon',
+                    'Run2016E-17Jul2018-v1.SingleMuon',
+                    'Run2016F-17Jul2018-v1.SingleMuon',
+                    'Run2016G-17Jul2018-v1.SingleMuon'
+                ]
+
+
+class run2:
+    def __init__(self,path,zptcut,hptcut,metcut,btagwp,systr=""):
+        self.path = path
+        self.zptcut = zptcut
+        self.hptcut = hptcut
+        self.metcut = metcut
+        self.btagwp = btagwp
+        self.systr = systr
+        self.cutstring = 'DeepMassDecorrelTagZHbbvsQCD_Zptcut'+str(zptcut)+'_Hptcut'+str(hptcut)+'_metcut'+str(metcut)+'_btagwp'+str(btagwp)
+
+        #gather data files
+        self.run16sb = [path+s+"_upout_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2016]
+        self.run17sb = [path+s+"_upout_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2017]
+        self.run18sb = [path+s+"_upout_sideband_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2018]
+        self.run16sr = [path+s+"_upout_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2016]
+        self.run17sr = [path+s+"_upout_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2017]
+        self.run18sr = [path+s+"_upout_signalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2018]
+        self.run16tr = [path+s+"_upout_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2016]
+        self.run17tr = [path+s+"_upout_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2017]
+        self.run18tr = [path+s+"_upout_totalr_"+systr+"_"+self.cutstring+".root" for s in sampnames_run2018]
+
+        #gather errors
+        self.run16sberrs = [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2016]
+        self.run17sberrs = [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2017]
+        self.run18sberrs = [path+s+"_selected_errors_sideband_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2018]
+        self.run16srerrs = [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2016]
+        self.run17srerrs = [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2017]
+        self.run18srerrs = [path+s+"_selected_errors_signalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2018]
+        self.run16trerrs = [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2016]
+        self.run17trerrs = [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2017]
+        self.run18trerrs = [path+s+"_selected_errors_totalr_"+systr+"_"+self.cutstring+".pkl" for s in sampnames_run2018]
+
+        self.data = {18:
+                      {"sb":[self.run18sb,self.run18sberrs],
+                       "sr":[self.run18sr,self.run18srerrs],
+                       "tr":[self.run18tr,self.run18trerrs],
+                       },
+                      17:
+                      {"sb":[self.run17sb,self.run17sberrs],
+                       "sr":[self.run17sr,self.run17srerrs],
+                       "tr":[self.run17tr,self.run17trerrs],
+                       },
+                     16:
+                      {"sb":[self.run16sb,self.run16sberrs],
+                       "sr":[self.run16sr,self.run16srerrs],
+                       "tr":[self.run16tr,self.run16trerrs],
+                       }
+                      }
+
+    def getAddedHist(self,hist,region,hname,years = [16,17,18]):
+        data = self.data
+        datadfs = []
+        for year in years:
+            files = data[year][region][0]
+            errs  = data[year][region][1]
+            files.sort()
+            errs.sort()
+            for i,f in enumerate(files):
+                tf = ROOT.TFile.Open(f)
+                h = tf.Get(hname)
+                #print(h.Integral())
+                hist.Add(h)
+
+                #calc errs
+                df = pd.read_pickle(errs[i])
+                sqrddf = df**2
+                datadfs.append(sqrddf)
+
+        uncsqddf = sum(datadfs)
+        uncdf   = uncsqddf**(1/2)
+        
+        for ibin in range(hist.GetNbinsX()+1):
+            if ibin == 0:
+                continue
+            else:
+                binerr = uncdf[hname][ibin-1]
+                hist.SetBinError(ibin,binerr)
+
+        return hist
+
+    def getAddedHistPoissonErrors(self,hist,region,hname,years = [16,17,18]):
+        data = self.data
+        datadfs = []
+        alpha = 1.- 0.682689492
+        for year in years:
+            files = data[year][region][0]
+            errs  = data[year][region][1]
+            files.sort()
+            errs.sort()
+            for i,f in enumerate(files):
+                tf = ROOT.TFile.Open(f)
+                h = tf.Get(hname)
+                #print(h.Integral())
+                hist.Add(h)
+        
+        for ibin in range(hist.GetNbinsX()+1):
+            if ibin == 0:
+                continue
+            else:
+                binerr = ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin))+1,1)-hist.GetBinContent(ibin)
+                #binerrdn = hist.GetBinContent(ibin) - ROOT.Math.gamma_quantile_c(alpha/2,int(hist.GetBinContent(ibin)),1)
+                #if int(hist.GetBinContent(ibin)) == 0:
+                #    binerrdn = 0
+                
+                hist.SetBinError(ibin,binerr)
+
+        return hist

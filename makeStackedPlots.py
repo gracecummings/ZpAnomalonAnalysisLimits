@@ -10,6 +10,7 @@ from ROOT import kOrange, kViolet, kCyan, kGreen, kPink, kAzure, kMagenta, kBlue
 from math import sqrt
 import tdrstyle
 import CMS_lumi
+import configparser
 
 #tdrstyle.setTDRStyle()
 #CMS_lumi.lumi_13TeV = "101.27 fb^{-1}"
@@ -42,6 +43,10 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 if __name__=='__main__':
     #build module objects
     parser = argparse.ArgumentParser()
+    config = configparser.RawConfigParser()
+    config.optionxform = str
+    fp = open('systematics.ini')
+    config.read_file(fp)
 
     #Define parser imputs
     parser.add_argument("-x","--xsec", type=float,help = "desired siganl cross section in fb")
@@ -86,11 +91,12 @@ if __name__=='__main__':
         print('You know you are not plotting data, right?')
         
     #Gather Input
-    bkgs  = go.backgrounds(pathplots,zptcut,hptcut,metcut,btagwp,systr)
+    bkgs  = go.backgrounds(config.get('nominal','pathnom'),zptcut,hptcut,metcut,btagwp,systr)
     
     if plot_data:
-        data  = go.run2(pathplots,zptcut,hptcut,metcut,btagwp,'systnominal_btagnom_muidnom')
+        data  = go.run2(config.get('nominal','pathdata'),zptcut,hptcut,metcut,btagwp,config.get('nominal','strdata'))
     datareg = 'sb'
+
     if valid:
         #dynorm = np.load('analysis_output_ZpAnomalon/2022-05-17/Run2_161718_dynormalization_systnominal_kfnom_btagnom_muidnom_elidnom_elreconom_signalblind_Zptcut100.0_Hptcut300.0_metcut0.0_btagwp0.8.npy')[0]
         bkgs = go.validation('mumu_2022-03-31_ProperREOIDSF_validationOfAlphaMethodExtrap',zptcut,hptcut,metcut,btagwp,'systnominal_kfnom_btagnom_muidnom_elidnom_elreconom')

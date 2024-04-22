@@ -540,9 +540,9 @@ if __name__=='__main__':
     #Get the samples
     if not args.directory:
         pathbkg    = config.get(systname,systclass)
-        #pathdata   = config.get(systname,systclass)
-        pathdata   = 'mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref_alphatest'
-    #datastr = 'systnominal_btagnom'
+        pathdata   = config.get(systname,'pathdata')
+        #pathdata   = 'mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref_alphatest'
+        #datastr = 'systnominal_btagnom'
 
     else:
         pathbkg = args.directory
@@ -578,15 +578,21 @@ if __name__=='__main__':
         elif args.normsyst:
             dynormname = args.normsyst
             dynorm = args.normval
+
+        #import files
+        bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphat_"+config.get(systname,syststr))
+        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphat_"+config.get(systname,'strdata'))
+        
+        #old inport strings
         #bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphat_"+config.get(systname,syststr))#Nom?
         #print(pathbkg)
-        bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco")
+        #####bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphat_systnominal_hem_kf_btag_muid_mutrig_eltrig_elid_elreco")
 
         #bkgs = go.backgrounds('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/holderofbasefiles',zptcut,hptcut,metcut,btagwp,'systnominal_kfnom_btagnom_muidnom_elidnom_elreconom')
         #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr).replace("_mutrignom_elidnom_elreconom","").replace("_kfnom",""))
         #data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,config.get(systname,syststr))
         #print("WARNING: Hardcdoed data gathering - make sure it if the correct path")
-        data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphat_systnominal_btagnom_muidnom')
+        #####data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphat_systnominal_btagnom_muidnom')
         #data = go.run2('mumu_2022-03-31_ProperREOIDSF_AlphaMethodExtrap/holderofbasefiles',zptcut,hptcut,metcut,btagwp,"systnominal_btagnom_muidnom")
         #data = go.run2("analysis_output_ZpAnomalon/2022-05-17/",zptcut,hptcut,metcut,btagwp,"systnominal_btagnom_muidnom")###Nominal??
         sbstring = "30 < m_{hcand,SD} < 70"
@@ -594,8 +600,8 @@ if __name__=='__main__':
         srregionstring = "Signal Region"
 
     #print(bkgs.bkgs["ZZTo2L2Q"])
-    print(bkgs.bkgs["DYJetsToLL"][17]["sr"][0])
-    print(bkgs.bkgs["DYJetsToLL"][17]["sr"][1])
+    #print(bkgs.bkgs["DYJetsToLL"][17]["sr"][0])
+    #print(bkgs.bkgs["DYJetsToLL"][17]["sr"][1])
     #print(data.data[18]["sb"][1])
     #print(data.data[18]["vr"][1])
     #print(data.data[17]["vr"][1])
@@ -605,7 +611,7 @@ if __name__=='__main__':
     print("Using the DY normalization factor: ",dynorm)
     
     #Get the histograms needed
-    tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
+    tf1 = ROOT.TFile.Open(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_zp_jigm')
     empty.Reset("ICESM")#creates an empty hist with same structure
     empty2 = empty.Clone()
@@ -748,14 +754,17 @@ if __name__=='__main__':
     #dysrparsdecodn,dysrfiterrdecodn,dysrfitsdecodn = doExpFitShifts(srfit,2,"dysrdwn",dysrxmax,dysrxmin,dysrfitdecorrparamsdn)
 
     #Exp-offset
+    htest = hsrdy.Clone()
     srfit = ROOT.expOffsetFit(hsrdy,"dysrl","ER0+",dysrxmax,dysrxmin)#4000)
     srdyunc = ROOT.expOffsetFitErrBands(hsrdy,"dysrlt","ER0+",sigmabars,dysrxmax,dysrxmin)#4000)
-    dysrfitdecorrparamsup = ROOT.expFitOffsetDecorrParamsShiftedUp(hsrdy.Clone(),"dysrshiftfinder","ER0+",dysrxmax,dysrxmin)
-    dysrparsdecoup,dysrfiterrdecoup,dysrfitsdecoup = doExpOffsetFitShifts(srfit,3,"dysrup",dysrxmax,dysrxmin,dysrfitdecorrparamsup)
-    dysrfitdecorrparamsdn = ROOT.expFitOffsetDecorrParamsShiftedDown(hsrdy.Clone(),"dysrshiftfinder","ER0+",dysrxmax,dysrxmin)
-    dysrparsdecodn,dysrfiterrdecodn,dysrfitsdecodn = doExpOffsetFitShifts(srfit,3,"dysrdwn",dysrxmax,dysrxmin,dysrfitdecorrparamsdn)
+    print("commented out segfaulting part -- will not work")
+    #dysrfitdecorrparamsup = ROOT.expFitOffsetDecorrParamsShiftedUp(htest,"dysrshiftfinder","ER0+",dysrxmax,dysrxmin)
+    #dysrparsdecoup,dysrfiterrdecoup,dysrfitsdecoup = doExpOffsetFitShifts(srfit,3,"dysrup",dysrxmax,dysrxmin,dysrfitdecorrparamsup)
+    #dysrfitdecorrparamsdn = ROOT.expFitOffsetDecorrParamsShiftedDown(hsrdy.Clone(),"dysrshiftfinder","ER0+",dysrxmax,dysrxmin)
+    #dysrparsdecodn,dysrfiterrdecodn,dysrfitsdecodn = doExpOffsetFitShifts(srfit,3,"dysrdwn",dysrxmax,dysrxmin,dysrfitdecorrparamsdn)
 
     print("================== doing tt sb fit ==================")
+    print(type(hsbtt))
     sbttfit = ROOT.expFit(hsbtt,"ttsbl","LER0+",ttsbxmax,ttsbxmin)#3000)
     sbttunc = ROOT.expFitErrBands(hsbtt,"sbl","LEQR0+",sigmabars,ttsbxmax,ttsbxmin)#3000)
     ttsbfitdecorrparamsup = ROOT.expFitDecorrParamsShiftedUp(hsbtt.Clone(),"ttsbshiftfinder","LER0+",ttsbxmax,ttsbxmin)

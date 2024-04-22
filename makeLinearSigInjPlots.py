@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-mp = 'Zp2000ND400NS200'
-infs = glob.glob("analysis_output_ZpAnomalon/2022-09-30/"+mp+"*_expectedsignal*signalinjectionplots_Zptcut100_Hptcut300_metcut75_btagwp8E-10.root")
+ROOT.gROOT.SetBatch(ROOT.kTRUE)
+
+mp = 'Zp5500ND1800NS200'
+infs = glob.glob("analysis_output_ZpAnomalon/2024-02-08/"+mp+"*_expectedsignal*signalinjectionplots_Zptcut100_Hptcut300_metcut75_btagwp8E-10.root")
 
 pdict = {}
 injs = []
@@ -21,10 +23,11 @@ errs  = []
 for p in injs:
     print('Injected signal: ',p)
     tf = ROOT.TFile(pdict[p])
-    h = tf.Get("hrge")
+    #h = tf.Get("hrge")
+    h = tf.Get("hr")
     f1 = h.GetFunction("f1")
     mu = f1.GetParameter(1)
-    sigma = f1.GetParameter(2)
+    sigma = abs(f1.GetParameter(2))
     print("The mean of the guassian: ",mu)
     print('The sigma of the gaussian: ',sigma)
     rmeas.append(mu)

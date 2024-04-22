@@ -21,7 +21,7 @@ if __name__=="__main__":
     for path in paths:
         print("Checking ............................. ",path)
         fs = subprocess.check_output("eos root://cmseos.fnal.gov ls "+path,shell=True).decode(sys.stdout.encoding).split()
-        fnames = [f.split('_Zptcut')[0] for f in fs]
+        fnames = [f.split('_Zptcut')[0] for f in fs]#splits so systematic string is in the sample designation
         fnamesclean = list(set(fnames))
         for name in fnamesclean:
             samps = {}

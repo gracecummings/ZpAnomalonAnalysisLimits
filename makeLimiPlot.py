@@ -62,9 +62,11 @@ if __name__=='__main__':
     #limitpath = "analysis_output_ZpAnomalon/2022-10-01/higgs"#ns200
     #limitpath = "analysis_output_ZpAnomalon/2023-05-04/higgs"#may 2023 - JER
     #limitpath = "analysis_output_ZpAnomalon/2023-05-15/higgs"#may 2023 - vv bug fix
-    limitpath = "analysis_output_ZpAnomalon/2023-06-06/higgs"#may 2023 - conservative pu
+    #limitpath = "analysis_output_ZpAnomalon/2023-06-06/higgs"#may 2023 - conservative pu
+    limitpath  = "limitoutput_20230602/pileupuncs/higgs"
     #limitpath = "analysis_output_ZpAnomalon/2022-10-10_mc/higgs"#ns=1
     lims = glob.glob(limitpath+"*"+"Zptcut"+zptcut+"_Hptcut"+hptcut+"_metcut"+metcut+"_btagwp"+btagwp+".txt*")
+    print(lims)
     #interpolatedlims = []#glob.glob("analysis_output_ZpAnomalon/2022-10-05/higgs*")#ns=200
     #interpolatedlims = glob.glob("analysis_output_ZpAnomalon/2022-10-10_interp/higgs*")
     #interpolatedlims = glob.glob("analysis_output_ZpAnomalon/2023-05-17/higgs*")
@@ -77,6 +79,7 @@ if __name__=='__main__':
     #Creates a dataframe first with just the masspoints
     #wanted to incldue tfiles, but live and learn
     limsdf = makeBaseDataframe(lims+interpolatedlims+extrainterp,"pileupuncs")
+    print(limsdf)
 
     #Find relvant params
     zpmax = max(limsdf['mzp'])
@@ -203,7 +206,6 @@ if __name__=='__main__':
         ndbins = len(df['mnd'])
 
 
-
         sf = df.sort_values(by=['mnd'])
         ndbinvals = sf['mnd']
         limits = sf['limit']
@@ -268,8 +270,87 @@ if __name__=='__main__':
         tc1.Modified()
         tc1.Update()
 
-        plotname = go.makeOutFile('Run2_161718_ZllHbbMET','limits_Zp'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        plotname = go.makeOutFile('Run2_161718_ZllHbbMET','limits_Zp'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.pdf',str(zptcut),str(hptcut),str(metcut),str(btagwp))
         tc1.SaveAs(plotname)
+        tg.Delete()
+        tc1.Clear()
+
+    for mzpt in list(set(limsdf['mnd'])):
+        print("Making Brazlian Flag plot for mND = "+str(mzpt))
+        title = "limit per m_{ND} = "+str(mzpt)
+        df = limsdf[limsdf['mnd'] == mzpt]
+        print(df)
+        ndbins = len(df['mzp'])
+
+
+        sf = df.sort_values(by=['mzp'])
+        ndbinvals = sf['mzp']
+        limits = sf['limit']
+        limsup = sf['limitup']
+        limsdn = sf['limitdn']
+        lims2up = sf['limit2up']
+        lims2dn = sf['limit2dn']
+
+        #if mzpt == 1500:
+        #    print(limits)
+
+        limits = np.array(limits)
+        limsup = np.array(limsup)-np.array(limits)
+        limsdn = np.array(limits)-np.array(limsdn)
+        lims2up = np.array(lims2up)-np.array(limits)
+        lims2dn = np.array(limits)-np.array(lims2dn)
+        xerrs   = np.zeros(int(ndbins))
+
+        ndbinvals = np.array(ndbinvals,dtype=float)
+
+        print(int(ndbins),ndbinvals,limits,xerrs,xerrs,limsdn,limsup)
+        
+        #tg = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
+        mg = ROOT.TMultiGraph()
+        mg.SetTitle(";m_{Zp} (GeV);#sigma B A (fb)")
+        tg = ROOT.TGraphAsymmErrors(int(ndbins),ndbinvals,limits,xerrs,xerrs,limsdn,limsup)
+        g = ROOT.TGraphErrors(int(ndbins),ndbinvals,limits)
+        tg2 = ROOT.TGraphAsymmErrors(int(ndbins),ndbinvals,limits,xerrs,xerrs,lims2dn,lims2up)
+        leg = ROOT.TLegend(0.60,0.55,0.93,0.8)
+        empt = ROOT.TObject()
+        leg.SetFillColor(0)
+        leg.SetBorderSize(0)
+        g.SetLineColor(ROOT.kBlack)
+        g.SetLineWidth(3)
+        g.SetLineStyle(9)
+
+        tg.SetFillColor(ROOT.kGreen+1)
+        tg.SetMarkerStyle(8)
+        tg2.SetFillColor(ROOT.kOrange)
+        tg2.SetMarkerStyle(8)
+
+        leg.SetHeader("95% CL Upper Limits")
+        leg.AddEntry(empt,"m_{ND} = "+str(mzpt)+" GeV","")
+        leg.AddEntry(g,"Median Expected","l")
+        leg.AddEntry(tg,"68% expected","f")
+        leg.AddEntry(tg2,"95% expected","f")
+        mg.Add(tg2)
+        mg.Add(tg)
+        mg.Add(g)
+
+        mg.SetMinimum(0.01)
+        mg.SetMaximum(max(limits)*1000)
+        #mg.GetXaxis().SetTitle("m_{ND} (GeV)")
+        #mg.GetYaxis().SetTitle("\sigma (fb)")
+                               
+        
+        tc1.cd()
+        tc1.SetLogy()
+        mg.Draw("AC3")
+        leg.Draw()
+        CMS_lumi.writeExtraText = 1
+        CMS_lumi.extraText = "Simulation Preliminary"
+        CMS_lumi.CMS_lumi(tc1,4,13)
+        tc1.Modified()
+        tc1.Update()
+
+        plotndname = go.makeOutFile('Run2_161718_ZllHbbMET','limits_ND'+str(mzpt)+"_NS"+str(limsdf['mns'][0]),'.pdf',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+        tc1.SaveAs(plotndname)
         tg.Delete()
         tc1.Clear()
 

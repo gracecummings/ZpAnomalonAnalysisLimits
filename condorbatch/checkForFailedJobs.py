@@ -13,7 +13,7 @@ if __name__=='__main__':
     parser.add_argument("-d","--date",type=str,help="when you submitted to see if all worked")
     parser.add_argument("-r","--resub",type=bool,help="resubmit the jobs?")
     parser.add_argument("-c","--channel",type=str,help="channel: mumu,ee,emu")
-    parser.add_argument("-syst","--syststr",type=str,default="none",help="the systematic flag you used, again, to check")
+    parser.add_argument("-syst","--syststr",type=str,help="the systematic flag you used, again, to check")
     args = parser.parse_args()
 
     #Check json
@@ -35,7 +35,10 @@ if __name__=='__main__':
                 totalsamps.append(sampleName)
 
     #Get the files that were made
-    eospath = "/store/user/lpcboostres/topiaries_systematics-"+args.syststr+"_"+args.date
+    systname = ""
+    if args.syststr:
+        systname = args.syststr
+    eospath = "/store/user/lpcboostres/topiaries_systematics-"+systname+"_"+args.date
     fs = subprocess.check_output("eos root://cmseos.fnal.gov ls "+eospath,shell=True).decode(sys.stdout.encoding).split()
     fnames = [f.split('_topiary')[0] for f in fs]
     fnamesclean = list(set(fnames))
