@@ -210,6 +210,7 @@ def makeNormPickleFile(name,normdict,envnormdict,nomnorm,multi):
     f.close()
 
 
+ROOT.gROOT.SetBatch()
 ROOT.gSystem.CompileMacro("../ZpAnomalonAnalysisUproot/cfunctions/alphafits.C","kfc")
 ROOT.gSystem.Load("../ZpAnomalonAnalysisUproot/cfunctions/alphafits_C")
 
@@ -220,23 +221,42 @@ if __name__=='__main__':
     parser.add_argument("-j","--hptcut", type=float,help = "hpt cut of samples")
     parser.add_argument("-wp","--btagwp", type=float,help = "btag working point")
     parser.add_argument("-dir","--directory", type=str,help = "date folder with output")
-    parser.add_argument("-s","--syst", type=str,help = "systematic string")
+    #parser.add_argument("-s","--syst", type=str,help = "systematic string")
+    parser.add_argument("-sn","--systname", type=str,help = "systematic name ['nominal', 'jec', 'btag', 'unclmet', 'muonid', 'muontrig', 'pdfscale', 'qcdscale', 'prefire', 'jer', 'pileup1', 'pileup2']")
+    parser.add_argument("-sd","--systdirection", type=str,help = "systematic direction,: up, dwn, nom")
     parser.add_argument("-v","--validationregion", type=bool,help = "is this a validation region?")
     args = parser.parse_args()
 
+    #Get systematic info
+    config = configparser.RawConfigParser()
+    config.optionxform = str
+    fp = open('systematics.ini')
+    config.read_file(fp)
+    systs = config.sections()
+    systname = args.systname
+    systclass = 'path'+args.systdirection
+    syststr = 'str'+args.systdirection
 
-    #will replace with command line options
-    pathbkg    = args.directory
-    pathdata   = args.directory
-    pathdata   = "mumu_2022-07-18_ProperSF_EE_METXY_HEMveto_Pref_alphatest"
+
+    #Get the samples
+    if not args.directory:
+        pathbkg    = config.get(systname,systclass)
+        pathdata   = config.get(systname,'pathdata')
+    else:
+        print("manually putting in a path, hope you know what you're doing")
+        pathbkg = args.directory
+        pathdata   = config.get(systname,'pathdata')
+        
+    
+    #Command Line options for Selections
     zptcut  = args.zptcut#'150.0'
     hptcut  = args.hptcut#'300.0'
     metcut  = args.metcut#'200.0'
     btagwp  = args.btagwp#'0.8'
     years   = [16,17,18]
     yearstr = go.yearFormatter(years)
-    systr = args.syst
 
+    #Plotting Style
     tdrstyle.setTDRStyle()
     CMS_lumi.lumi_13TeV = go.lumiFormatter(years)
     CMS_lumi.writeExtraText = 1
@@ -263,8 +283,12 @@ if __name__=='__main__':
     #print(bkgs.bkgs)
 
     #nominal paths
-    bkgs  = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
-    data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphat_systnominal_btagnom_muidnom')
+    #bkgs  = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,systr)
+    #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,'alphat_systnominal_btagnom_muidnom')
+
+    bkgs = go.backgrounds(pathbkg,zptcut,hptcut,metcut,btagwp,"alphat_"+config.get(systname,syststr))
+    data = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphat_"+config.get(systname,'strdata'))
+
     #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"systnominal_kfnom_btagnom_muidnom_elidnom_elreconom")
     #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,"alphatest_systnominal_btagnom_muidnom")
     #data  = go.run2(pathdata,zptcut,hptcut,metcut,btagwp,systr)
@@ -272,7 +296,7 @@ if __name__=='__main__':
     #print(bkgs.bkgs["DYJetsToLL"][16]["tr"])
     #print(data.data)
 
-    tf1 = ROOT.TFile(bkgs.f17dyjetsb[0])
+    tf1 = ROOT.TFile.Open(bkgs.f17dyjetsb[0])
     empty = tf1.Get('h_h_sd')
     empty.Reset("ICESM")#creates an empty hist with same structure
     empty2 = empty.Clone()
@@ -396,10 +420,11 @@ if __name__=='__main__':
     ttchi2f,ttndoff,ttfitpavetext = makeTPadOfFitGOF(ttfit)
     vvchi2f,vvndoff,vvfitpavetext = makeTPadOfFitGOF(vvfit)
     mcnormchi2,mcnormdof,mcnormtpavetext = makeTPadOfFitGOF(bkgfit,normfits=True)
-    normchi2,normdof,normtpavetext = makeTPadOfFitGOF(totnormfit,normfits=True)
+    #normchi2,normdof,normtpavetext = makeTPadOfFitGOF(totnormfit,normfits=True)
+    normchi2,normdof,normtpavetext = makeTPadOfFitGOF(sbdatfit,normfits=True)
     
     #Save the normalization
-    normfilename = go.makeOutFile('Run2_'+yearstr,'dynormalization_'+systr+'_'+rstr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    normfilename = go.makeOutFile('Run2_'+yearstr,'dynormalization_'+config.get(systname,syststr)+'_'+rstr,'.npy',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     normfile     = open(normfilename,'wb')
     np.save(normfile,np.array([dynormpostfit]))
     normfile.close()
@@ -524,7 +549,7 @@ if __name__=='__main__':
     p13.Update()
     tc.cd()
     
-    normshapes = go.makeOutFile('Run2_'+yearstr,'norm_shapes_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    normshapes = go.makeOutFile('Run2_'+yearstr,'norm_shapes_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc.SaveAs(normshapes)
 
     tc1 = ROOT.TCanvas("tc1","stacked",1500,800)
@@ -654,7 +679,7 @@ if __name__=='__main__':
     tc1.Update()
 
 
-    stackedfit = go.makeOutFile('Run2_'+yearstr,'norm_stackfit_'+systr+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    stackedfit = go.makeOutFile('Run2_'+yearstr,'norm_stackfit_'+config.get(systname,syststr)+'_'+rstr,'.png',str(zptcut),str(hptcut),str(metcut),str(btagwp))
     tc1.SaveAs(stackedfit)
 
 
@@ -667,7 +692,7 @@ if __name__=='__main__':
     #plotEnvelopeFits(dyfit,htrdy,dyenvelopefits,"DY",100,dyfithist,"envelopefits")
     #plotEnvelopeFits(ttfit,htrtt,ttenvelopefits,"TT",40,ttfithist,"envelopefits")
     
-    debughists = go.makeOutFile('Run2_'+yearstr,'norm_debug_shapes_'+systr,'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
+    debughists = go.makeOutFile('Run2_'+yearstr,'norm_debug_shapes_'+config.get(systname,syststr),'.root',str(zptcut),str(hptcut),str(metcut),str(btagwp))
 
     rootfile = ROOT.TFile(debughists,"recreate")
     savehists = [htrtt,htrdy,htrvv,hdatsb]
