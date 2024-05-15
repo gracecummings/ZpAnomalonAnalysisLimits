@@ -15,12 +15,16 @@ if __name__=='__main__':
 
     #command line inputs
     f = args.file
-    expsig = args.expsig
+    #expsig = args.expsig
     maxr = args.maxr
     minr = args.minr
     binw = args.binwidth
     if minr and maxr:
         binnumber = int(abs(maxr)+abs(minr)/binw)
+
+    #get the expected signal
+    n1 = f.split('expectedsignal')[-1]
+    expsig = n1.split('_')[0]
 
     #open the files and get the basic objects
     tf = ROOT.TFile(f)
@@ -30,15 +34,19 @@ if __name__=='__main__':
 
     #define the histograms to fill
     #hr = ROOT.TH1F("hr","r {fit_status==0}",binnumber,minr,maxr)
-    hr = ROOT.TH1F("hr","r {fit_status==0}",60,-10,10)
+    ###hr = ROOT.TH1F("hr","r {fit_status==0}",60,-10,10)##nominal
+    hr = ROOT.TH1F("hr","r {fit_status==0}",40,-2,2)
     #hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",20,-5,5)
     #hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",60,-10,10)
-    hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",60,-10,10)
+    ###hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",60,-10,10)
+    hdr = ROOT.TH1F("hdr","r-r_exp {fit_status==0}",40,-2,2)
     #hdrerr = ROOT.TH1F("hdrerr","(r -r_exp)/rErr, standard error, {fit_status==0})",20,-5,5)
     hdrerrhl = ROOT.TH1F("hdrerrhl","(r -r_exp)/rErr, hilow error, {fit_status==0})",60,-10,10)
-    hrge = ROOT.TH1F("hrge","r {fit_status>=0}",60,-10,-10)
+    ###hrge = ROOT.TH1F("hrge","r {fit_status>=0}",60,-10,-10)
+    hrge = ROOT.TH1F("hrge","r {fit_status>=0}",40,-2,2)
     #hdrge = ROOT.TH1F("hdrge","r-r_exp {fit_status>=0}",20,-5,5)
-    hdrge = ROOT.TH1F("hdrge","r-r_exp {fit_status>=0}",60,-10,10)
+    ###hdrge = ROOT.TH1F("hdrge","r-r_exp {fit_status>=0}",60,-10,10)
+    hdrge = ROOT.TH1F("hdrge","r-r_exp {fit_status>=0}",40,-2,2)
     #hdrerrge = ROOT.TH1F("hdrerrge","(r -r_exp)/rErr, standard error, {fit_status>=0}",20,-5,5)
     hdrerrgehl = ROOT.TH1F("hdrerrgehl","(r -r_exp)/rErr, hilow error, {fit_status>=0}",60,-10,10)
     #hhilowerr = ROOT.TH1F("hhilowerr","hilow error, {fit_status>=0}",60,-5,5)
